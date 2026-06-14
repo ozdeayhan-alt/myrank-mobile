@@ -28,4 +28,4 @@ mkdir -p "$PUBLIC_DIR"
 ln -sfn "$APK" "$PUBLIC_DIR/myrank-test.apk"
 
 echo "[build] Done: $APK"
-echo "[build] Download: http://142.132.237.25:3000/download/myrank.apk"
+echo "[build] Download: https://myrank.com.tr/download/myrank.apk"

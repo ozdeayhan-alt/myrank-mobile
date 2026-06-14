@@ -52,5 +52,5 @@ mkdir -p "$PUBLIC_DIR"
 ln -sfn "$DEV_APK" "$PUBLIC_DIR/myrank-dev.apk"
 
 echo "[dev] Done: $DEV_APK"
-echo "[dev] Download: http://142.132.237.25:3000/download/myrank-dev.apk"
+echo "[dev] Download: https://myrank.com.tr/download/myrank-dev.apk"
 echo "[dev] Sonra: cd myrank-mobile && npm run start:tunnel"

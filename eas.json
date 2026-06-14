@@ -21,7 +21,7 @@
       "distribution": "internal",
       "env": {
         "APP_VARIANT": "preview",
-        "EXPO_PUBLIC_API_URL": "http://142.132.237.25"
+        "EXPO_PUBLIC_API_URL": "https://myrank.com.tr"
       },
       "android": {
         "buildType": "apk",
@@ -35,7 +35,7 @@
     "production": {
       "env": {
         "APP_VARIANT": "production",
-        "EXPO_PUBLIC_API_URL": "http://142.132.237.25"
+        "EXPO_PUBLIC_API_URL": "https://myrank.com.tr"
       },
       "android": {
         "buildType": "app-bundle",

@@ -33,4 +33,5 @@ mkdir -p "$PUBLIC_DIR"
 ln -sfn "$PREVIEW_APK" "$PUBLIC_DIR/myrank-preview.apk"
 
 echo "[preview] Done: $PREVIEW_APK"
+echo "[preview] Download: https://myrank.com.tr/download/myrank-preview.apk"
 echo "[preview] Variant: $APP_VARIANT (no dev client for preview/production)"
