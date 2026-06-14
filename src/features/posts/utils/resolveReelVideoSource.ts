@@ -1,6 +1,6 @@
 import type { VideoSource } from "expo-video";
 import { isReelsHlsFirstEnabled } from "@/lib/reelsHlsFirstEnabled";
-import { resolveMediaDisplayUrl } from "@/lib/media/resolveMediaDisplayUrl";
+import { resolveVideoStreamUrl } from "@/lib/media/resolveMediaDisplayUrl";
 import type { Post } from "../types";
 
 function sourceKey(source: VideoSource): string {
@@ -27,8 +27,8 @@ export function resolveReelVideoSources(post: Post | undefined): VideoSource[] {
   const sources: VideoSource[] = [];
   const seen = new Set<string>();
 
-  const mp4 = resolveMediaDisplayUrl(post?.mediaURL);
-  const hlsUrl = resolveMediaDisplayUrl(post?.hlsURL);
+  const mp4 = resolveVideoStreamUrl(post?.mediaURL);
+  const hlsUrl = resolveVideoStreamUrl(post?.hlsURL);
   const hlsSource: VideoSource | null = hlsUrl
     ? { uri: hlsUrl, contentType: "hls" }
     : null;

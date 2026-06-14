@@ -26,10 +26,22 @@ describe("resolveMediaDisplayUrl", () => {
     const { resolveMediaDisplayUrl } = await import("./resolveMediaDisplayUrl");
     expect(
       resolveMediaDisplayUrl(
-        "https://firebasestorage.googleapis.com/v0/b/bucket/o/video.mp4?alt=media"
+        "https://firebasestorage.googleapis.com/v0/b/bucket/o/poster.jpg?alt=media"
       )
     ).toBe(
-      "https://myrank.com.tr/fb-media/v0/b/bucket/o/video.mp4?alt=media"
+      "https://myrank.com.tr/fb-media/v0/b/bucket/o/poster.jpg?alt=media"
+    );
+  });
+
+  it("resolveVideoStreamUrl skips proxy even when configured", async () => {
+    process.env.EXPO_PUBLIC_MEDIA_PROXY_ORIGIN = "https://myrank.com.tr";
+    const { resolveVideoStreamUrl } = await import("./resolveMediaDisplayUrl");
+    expect(
+      resolveVideoStreamUrl(
+        "https://firebasestorage.googleapis.com/v0/b/bucket/o/video.mp4?alt=media&token=abc"
+      )
+    ).toBe(
+      "https://firebasestorage.googleapis.com/v0/b/bucket/o/video.mp4?alt=media"
     );
   });
 

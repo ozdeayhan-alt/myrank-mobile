@@ -3,6 +3,11 @@ const FIREBASE_STORAGE_HOSTS = new Set([
   "storage.googleapis.com",
 ]);
 
+export type ResolveMediaDisplayUrlOptions = {
+  /** Poster/görsel için true (varsayılan). Video stream (MP4/HLS) için false. */
+  useProxy?: boolean;
+};
+
 function getMediaProxyOrigin(): string | null {
   const raw = process.env.EXPO_PUBLIC_MEDIA_PROXY_ORIGIN?.trim();
   if (!raw) {
@@ -27,20 +32,43 @@ function applyMediaProxy(url: URL): URL {
   return new URL(`${proxyOrigin}/fb-media${url.pathname}${url.search}`);
 }
 
-/**
- * Geçersiz download token'lı Firebase URL'lerinde public Storage kuralları devreye girsin.
- * EXPO_PUBLIC_MEDIA_PROXY_ORIGIN tanımlıysa medya same-origin CDN proxy üzerinden servis edilir.
- */
-export function resolveMediaDisplayUrl(url: string | undefined): string | undefined {
+function resolveMediaUrl(
+  url: string | undefined,
+  options: ResolveMediaDisplayUrlOptions
+): string | undefined {
   const trimmed = url?.trim();
   if (!trimmed) {
     return undefined;
   }
 
+  const useProxy = options.useProxy !== false;
+
   try {
     const parsed = stripFirebaseDownloadToken(new URL(trimmed));
-    return applyMediaProxy(parsed).toString();
+    if (useProxy) {
+      return applyMediaProxy(parsed).toString();
+    }
+    return parsed.toString();
   } catch {
     return trimmed;
   }
+}
+
+/**
+ * Poster, profil fotoğrafı, feed görselleri — CDN proxy kullanılabilir.
+ */
+export function resolveMediaDisplayUrl(
+  url: string | undefined,
+  options?: ResolveMediaDisplayUrlOptions
+): string | undefined {
+  return resolveMediaUrl(url, options ?? { useProxy: true });
+}
+
+/**
+ * MP4 / HLS oynatma ve prefetch — doğrudan Firebase (proxy HLS segmentlerini bozar).
+ */
+export function resolveVideoStreamUrl(
+  url: string | undefined
+): string | undefined {
+  return resolveMediaUrl(url, { useProxy: false });
 }
