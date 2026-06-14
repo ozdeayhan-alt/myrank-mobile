@@ -1,13 +1,12 @@
 import type { VideoPlayer, VideoSource } from "expo-video";
 import { devWarn } from "@/lib/devLog";
+import { sourceReadyTimeoutMs } from "./videoSourceTiming";
 
 export const REEL_BUFFER_OPTIONS = {
-  preferredForwardBufferDuration: 5,
-  minBufferForPlayback: 0.35,
-  waitsToMinimizeStalling: false,
+  preferredForwardBufferDuration: 6,
+  minBufferForPlayback: 0.5,
+  waitsToMinimizeStalling: true,
 } as const;
-
-export const SOURCE_READY_TIMEOUT_MS = 12_000;
 
 export function configureActivePlayer(player: VideoPlayer) {
   player.loop = true;
@@ -54,7 +53,7 @@ export async function replaceWithSourceFallback(
       await player.replaceAsync(source);
       const ready = await waitForPlayerReady(
         player,
-        SOURCE_READY_TIMEOUT_MS
+        sourceReadyTimeoutMs(source)
       );
       if (ready || player.status === "readyToPlay") {
         return source;

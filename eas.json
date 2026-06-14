@@ -23,7 +23,7 @@
         "APP_VARIANT": "preview",
         "EXPO_PUBLIC_API_URL": "https://myrank.com.tr",
         "EXPO_PUBLIC_MEDIA_PROXY_ORIGIN": "https://myrank.com.tr",
-        "EXPO_PUBLIC_REELS_HLS_FIRST": "true"
+        "EXPO_PUBLIC_REELS_HLS_FIRST": "false"
       },
       "android": {
         "buildType": "apk",
@@ -39,7 +39,7 @@
         "APP_VARIANT": "production",
         "EXPO_PUBLIC_API_URL": "https://myrank.com.tr",
         "EXPO_PUBLIC_MEDIA_PROXY_ORIGIN": "https://myrank.com.tr",
-        "EXPO_PUBLIC_REELS_HLS_FIRST": "true"
+        "EXPO_PUBLIC_REELS_HLS_FIRST": "false"
       },
       "android": {
         "buildType": "app-bundle",
