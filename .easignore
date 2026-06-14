@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Expo / Metro
+.expo/
+dist/
+web-build/
+
+# Local env (EAS secrets kullanılır)
+.env
+.env*.local
+
+# Native — EAS prebuild sırasında üretilir
+android/
+ios/
+
+# Git / IDE
+.git/
+.claude/
+*.log
+
+# Tests & docs (build'e gerek yok)
+**/*.test.ts
+**/*.test.tsx
+coverage/
+
+# Server credentials
+service-account.json
+service-account*.json

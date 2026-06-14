@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "479174575595",
+    "project_id": "myrankapp-d62b9",
+    "storage_bucket": "myrankapp-d62b9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:479174575595:android:0304e36b0765ad390585ae",
+        "android_client_info": {
+          "package_name": "com.myrank.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "479174575595-vlasl9vkqgkdnmju2ebuqpr1n27dtdkr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.myrank.mobile",
+            "certificate_hash": "745e83c42633c0e58b0600738fe6c061550825ce"
+          }
+        },
+        {
+          "client_id": "479174575595-1l6n9dnvjh741pnq9j1eicqnhs4dsl40.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCwMjYAIrysRb7DjxyXtlmugg8by311rbc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "479174575595-1l6n9dnvjh741pnq9j1eicqnhs4dsl40.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

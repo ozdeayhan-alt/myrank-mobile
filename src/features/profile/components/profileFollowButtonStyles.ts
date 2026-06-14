@@ -1,0 +1,75 @@
+import { StyleSheet } from "react-native";
+
+export function createProfileFollowButtonStyles(size: number) {
+  return StyleSheet.create({
+    wrapper: {
+      width: size,
+      height: size + 6,
+      alignItems: "center",
+      justifyContent: "flex-start",
+    },
+    dropShadow: {
+      position: "absolute",
+      bottom: 0,
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      opacity: 0.35,
+    },
+    face: {
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      borderWidth: 2.5,
+      overflow: "hidden",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.14,
+      shadowRadius: 6,
+      elevation: 5,
+    },
+    content: {
+      flex: 1,
+      width: "100%",
+      alignItems: "center",
+      justifyContent: "flex-end",
+      paddingBottom: Math.max(6, Math.round(size * 0.1)),
+    },
+    iconCenter: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingBottom: 6,
+    },
+    gloss: {
+      position: "absolute",
+      top: 4,
+      left: size * 0.14,
+      right: size * 0.14,
+      height: size * 0.36,
+      borderBottomLeftRadius: size,
+      borderBottomRightRadius: size,
+      backgroundColor: "rgba(255,255,255,0.16)",
+    },
+    innerRim: {
+      position: "absolute",
+      bottom: 6,
+      left: size * 0.18,
+      right: size * 0.18,
+      height: 2,
+      borderRadius: 2,
+      backgroundColor: "rgba(0,0,0,0.12)",
+    },
+    label: {
+      fontSize: size >= 74 ? 10 : 9,
+      fontWeight: "700",
+      color: "#ffffff",
+      letterSpacing: 0.15,
+      textAlign: "center",
+      alignSelf: "center",
+      textShadowColor: "rgba(0,0,0,0.25)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
+    },
+  });
+}
