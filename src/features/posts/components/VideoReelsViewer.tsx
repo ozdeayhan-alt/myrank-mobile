@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { VideoView } from "expo-video";
-import { resolveMediaDisplayUrl } from "@/lib/media/resolveMediaDisplayUrl";
+import { resolveVideoPosterUrl } from "@/lib/media/resolveMediaDisplayUrl";
 import type { EngagementStatus } from "@/features/ranking/types";
 import { useVideoReelsPlayback } from "../hooks/useVideoReelsPlayback";
 import { indexOfVideoPost } from "../utils/videoPosts";
@@ -87,8 +87,11 @@ export function VideoReelsViewer({
   );
 
   const activePosterUri = useMemo(
-    () => resolveMediaDisplayUrl(playback.activePost?.posterURL),
-    [playback.activePost?.posterURL]
+    () =>
+      playback.activePost
+        ? resolveVideoPosterUrl(playback.activePost)
+        : undefined,
+    [playback.activePost]
   );
 
   if (videoPosts.length === 0) {

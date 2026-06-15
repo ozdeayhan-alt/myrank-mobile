@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 import { Text, useWindowDimensions, View } from "react-native";
 import { Image } from "expo-image";
-import { resolveMediaDisplayUrl } from "@/lib/media/resolveMediaDisplayUrl";
+import { resolveMediaDisplayUrl, resolveVideoPosterUrl } from "@/lib/media/resolveMediaDisplayUrl";
 import { useMediaAspectRatio } from "../hooks/useMediaAspectRatio";
 import type { Post } from "../types";
 import {
@@ -127,7 +127,7 @@ function PostFeedMediaLayout({
     return null;
   }
 
-  const posterUri = resolveMediaDisplayUrl(post.posterURL);
+  const posterUri = resolveVideoPosterUrl(post);
 
   if (inlineAutoplay) {
     return (

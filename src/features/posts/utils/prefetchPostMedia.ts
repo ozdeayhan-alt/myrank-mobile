@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import type { VideoSource } from "expo-video";
-import { resolveMediaDisplayUrl } from "@/lib/media/resolveMediaDisplayUrl";
+import { resolveMediaDisplayUrl, resolveVideoPosterUrl } from "@/lib/media/resolveMediaDisplayUrl";
 import type { Post } from "../types";
 import { resolveReelVideoSources } from "./resolveReelVideoSource";
 import { isVideoPost } from "./videoPosts";
@@ -119,7 +119,7 @@ export function prefetchPostMedia(post: Post): void {
     return;
   }
 
-  const posterUri = resolveMediaDisplayUrl(post.posterURL);
+  const posterUri = resolveVideoPosterUrl(post);
   if (posterUri) {
     void Image.prefetch(posterUri);
   }

@@ -10,7 +10,7 @@ describe("resolveMediaDisplayUrl", () => {
     jest.resetModules();
   });
 
-  it("removes firebase download token", async () => {
+  it("removes firebase download token for generic display", async () => {
     const { resolveMediaDisplayUrl } = await import("./resolveMediaDisplayUrl");
     expect(
       resolveMediaDisplayUrl(
@@ -21,35 +21,49 @@ describe("resolveMediaDisplayUrl", () => {
     );
   });
 
-  it("rewrites firebase storage URLs through media proxy when configured", async () => {
-    process.env.EXPO_PUBLIC_MEDIA_PROXY_ORIGIN = "https://myrank.com.tr";
-    const { resolveMediaDisplayUrl } = await import("./resolveMediaDisplayUrl");
+  it("keeps token for poster display", async () => {
+    const { resolvePosterDisplayUrl } = await import("./resolveMediaDisplayUrl");
     expect(
-      resolveMediaDisplayUrl(
-        "https://firebasestorage.googleapis.com/v0/b/bucket/o/poster.jpg?alt=media"
+      resolvePosterDisplayUrl(
+        "https://firebasestorage.googleapis.com/v0/b/bucket/o/poster.jpg?alt=media&token=abc"
       )
     ).toBe(
-      "https://myrank.com.tr/fb-media/v0/b/bucket/o/poster.jpg?alt=media"
+      "https://firebasestorage.googleapis.com/v0/b/bucket/o/poster.jpg?alt=media&token=abc"
     );
   });
 
-  it("resolveVideoStreamUrl skips proxy even when configured", async () => {
-    process.env.EXPO_PUBLIC_MEDIA_PROXY_ORIGIN = "https://myrank.com.tr";
-    const { resolveVideoStreamUrl } = await import("./resolveMediaDisplayUrl");
+  it("derives poster url from fast mp4 media url", async () => {
+    const { derivePosterUrlFromMediaUrl } = await import(
+      "./resolveMediaDisplayUrl"
+    );
     expect(
-      resolveVideoStreamUrl(
-        "https://firebasestorage.googleapis.com/v0/b/bucket/o/video.mp4?alt=media&token=abc"
+      derivePosterUrlFromMediaUrl(
+        "https://firebasestorage.googleapis.com/v0/b/myrankapp-d62b9.firebasestorage.app/o/posts%2Fu1%2F123_fast.mp4?alt=media"
       )
     ).toBe(
-      "https://firebasestorage.googleapis.com/v0/b/bucket/o/video.mp4?alt=media"
+      "https://firebasestorage.googleapis.com/v0/b/myrankapp-d62b9.firebasestorage.app/o/posts%2Fu1%2F123_poster.jpg?alt=media"
     );
   });
 
-  it("leaves non-firebase URLs unchanged", async () => {
-    process.env.EXPO_PUBLIC_MEDIA_PROXY_ORIGIN = "https://myrank.com.tr";
-    const { resolveMediaDisplayUrl } = await import("./resolveMediaDisplayUrl");
-    expect(resolveMediaDisplayUrl("https://cdn.example.com/poster.jpg")).toBe(
-      "https://cdn.example.com/poster.jpg"
-    );
+  it("resolveVideoPosterUrl falls back to mediaURL", async () => {
+    const { resolveVideoPosterUrl } = await import("./resolveMediaDisplayUrl");
+    expect(
+      resolveVideoPosterUrl({
+        mediaURL:
+          "https://firebasestorage.googleapis.com/v0/b/myrankapp-d62b9.firebasestorage.app/o/posts%2Fu1%2F123_fast.mp4?alt=media",
+      })
+    ).toContain("123_poster.jpg");
+  });
+
+  it("resolveVideoPosterUrl prefers posterURL field", async () => {
+    const { resolveVideoPosterUrl } = await import("./resolveMediaDisplayUrl");
+    expect(
+      resolveVideoPosterUrl({
+        posterURL:
+          "https://firebasestorage.googleapis.com/v0/b/bucket/o/custom.jpg?alt=media&token=tok",
+        mediaURL:
+          "https://firebasestorage.googleapis.com/v0/b/bucket/o/posts%2Fu1%2F9_fast.mp4?alt=media",
+      })
+    ).toContain("token=tok");
   });
 });

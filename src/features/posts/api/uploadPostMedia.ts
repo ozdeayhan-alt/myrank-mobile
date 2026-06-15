@@ -1,4 +1,5 @@
 import { devWarn } from "@/lib/devLog";
+import { derivePosterUrlFromMediaUrl } from "@/lib/media/resolveMediaDisplayUrl";
 import { uploadFileToStorage } from "@/lib/media/uploadToStorage";
 import { prepareImageForUpload } from "@/lib/media/prepareImageForUpload";
 import type { PostContentType } from "../types";
@@ -84,7 +85,10 @@ export async function uploadPostMedia(
     return {
       mediaURL,
       hlsURL,
-      posterURL,
+      posterURL:
+        posterURL ??
+        derivePosterUrlFromMediaUrl(mediaURL) ??
+        derivePosterUrlFromMediaUrl(rawMediaURL),
       ...(prepared.posterWidth && prepared.posterHeight
         ? {
             mediaWidth: prepared.posterWidth,

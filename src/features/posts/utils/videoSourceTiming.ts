@@ -13,5 +13,5 @@ export function isHlsVideoSource(source: VideoSource): boolean {
 }
 
 export function sourceReadyTimeoutMs(source: VideoSource): number {
-  return isHlsVideoSource(source) ? 2_500 : 8_000;
+  return isHlsVideoSource(source) ? 2_000 : 4_000;
 }

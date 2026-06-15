@@ -9,7 +9,7 @@ import {
 import { Image } from "expo-image";
 import { fetchPostsByAuthor } from "@/features/posts/api/fetchPostsByAuthor";
 import type { Post } from "@/features/posts/types";
-import { resolveMediaDisplayUrl } from "@/lib/media/resolveMediaDisplayUrl";
+import { resolveMediaDisplayUrl, resolveVideoPosterUrl } from "@/lib/media/resolveMediaDisplayUrl";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 
 type ProfilePostGridProps = {
@@ -82,7 +82,7 @@ export function ProfilePostGrid({ authorId }: ProfilePostGridProps) {
       contentContainerStyle={{ gap: 4 }}
       renderItem={({ item }) => {
         const thumbUri =
-          resolveMediaDisplayUrl(item.posterURL) ||
+          resolveVideoPosterUrl(item) ||
           resolveMediaDisplayUrl(item.mediaURL);
         return (
           <View
