@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import { navigateFromNotification } from "@/features/notifications/utils/navigateFromNotification";
 import { registerPushToken } from "../api/registerPushToken";
 import { unregisterPushToken } from "../api/unregisterPushToken";
-import { requestNotificationPermissions } from "../utils/requestNotificationPermissions";
+import { requestNotificationPermissions, ensureAndroidChannel } from "../utils/requestNotificationPermissions";
 import { devWarn } from "@/lib/devLog";
 import { notificationFromPushData } from "../utils/parsePushNotificationData";
 
@@ -59,6 +59,10 @@ async function resolveExpoPushToken(): Promise<string | null> {
 export function usePushNotifications(userId?: string) {
   const router = useRouter();
   const registeredTokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    void ensureAndroidChannel();
+  }, []);
 
   useEffect(() => {
     if (!userId) {

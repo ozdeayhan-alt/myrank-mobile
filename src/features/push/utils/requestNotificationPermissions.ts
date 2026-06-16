@@ -17,8 +17,13 @@ async function ensureAndroidChannel() {
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: "#111827",
+    sound: "default",
+    enableVibrate: true,
+    showBadge: true,
   });
 }
+
+export { ensureAndroidChannel };
 
 export async function requestNotificationPermissions(): Promise<NotificationPermissionResult> {
   if (!Device.isDevice) {
