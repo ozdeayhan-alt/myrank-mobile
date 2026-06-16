@@ -5,7 +5,9 @@ import { resolveMediaDisplayUrl, resolveVideoPosterUrl } from "@/lib/media/resol
 import { useMediaAspectRatio } from "../hooks/useMediaAspectRatio";
 import type { Post } from "../types";
 import {
+  DEFAULT_VIDEO_ASPECT_RATIO,
   feedMediaLayout,
+  feedVideoMediaLayout,
   MAX_FEED_MEDIA_HEIGHT,
   normalizeAspectRatio,
 } from "../utils/mediaAspectRatio";
@@ -14,7 +16,6 @@ import { PostFeedInlineVideo } from "./PostFeedInlineVideo";
 
 /** Parent ScrollView content uses px-4 — medyayı kenardan kenara göster */
 const FEED_HORIZONTAL_INSET = 16;
-const DEFAULT_VIDEO_ASPECT = 16 / 9;
 
 const COMPACT_MEDIA_HEIGHT = 160;
 
@@ -85,7 +86,8 @@ function PostFeedMediaLayout({
   }
 
   const containerWidth = compact ? screenWidth - 48 : screenWidth;
-  const maxHeight = compact ? COMPACT_MEDIA_HEIGHT : MAX_FEED_MEDIA_HEIGHT;
+  const isVideo = post.contentType === "video" && isVideoPost(post);
+  const imageMaxHeight = compact ? COMPACT_MEDIA_HEIGHT : MAX_FEED_MEDIA_HEIGHT;
   const layout =
     fixedHeight != null
       ? {
@@ -93,7 +95,13 @@ function PostFeedMediaLayout({
           width: containerWidth,
           height: fixedHeight,
         }
-      : feedMediaLayout(containerWidth, aspectRatio, maxHeight);
+      : isVideo
+        ? feedVideoMediaLayout(
+            containerWidth,
+            aspectRatio,
+            compact ? COMPACT_MEDIA_HEIGHT : undefined
+          )
+        : feedMediaLayout(containerWidth, aspectRatio, imageMaxHeight);
 
   const outerStyle = compact
     ? { width: "100%" as const }
@@ -123,7 +131,7 @@ function PostFeedMediaLayout({
     );
   }
 
-  if (!isVideoPost(post)) {
+  if (!isVideo) {
     return null;
   }
 
@@ -152,7 +160,7 @@ function PostFeedMediaLayout({
             <Image
               source={{ uri: posterUri }}
               style={{ width: "100%", height: "100%" }}
-              contentFit={compact ? "cover" : "contain"}
+              contentFit="cover"
               {...imageCacheProps}
             />
             <PlayOverlay />
@@ -192,7 +200,7 @@ function PostFeedMediaDynamic({
       ? imageAspectRatio
       : post.posterURL?.trim()
         ? posterAspectRatio
-        : DEFAULT_VIDEO_ASPECT;
+        : DEFAULT_VIDEO_ASPECT_RATIO;
 
   return (
     <PostFeedMediaLayout
@@ -220,7 +228,7 @@ function PostFeedMediaInner({
       <PostFeedMediaLayout
         post={post}
         variant={variant}
-        aspectRatio={DEFAULT_VIDEO_ASPECT}
+        aspectRatio={DEFAULT_VIDEO_ASPECT_RATIO}
         imagePriority={imagePriority}
         fixedHeight={placeholderHeight}
         inlineAutoplay={inlineAutoplay}

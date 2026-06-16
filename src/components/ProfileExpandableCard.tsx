@@ -1,17 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps, ReactNode } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
-import {
-  PROFILE_ICON_THEMES,
-  type ProfileIconTheme,
-} from "@/features/profile/profileIconThemes";
+import { PROFILE_HORIZONTAL_PADDING } from "@/features/profile/profileLayout";
+import { PROFILE_MUTED_ICON_COLOR } from "@/features/profile/profileIconThemes";
 
 type ProfileExpandableCardProps = {
   title: string;
   expanded: boolean;
   onToggle: () => void;
   icon: ComponentProps<typeof Ionicons>["name"];
-  iconTheme: ProfileIconTheme;
   accessibilityLabel: string;
   trailing?: ReactNode;
   children?: ReactNode;
@@ -22,38 +19,35 @@ export function ProfileExpandableCard({
   expanded,
   onToggle,
   icon,
-  iconTheme,
   accessibilityLabel,
   trailing,
   children,
 }: ProfileExpandableCardProps) {
-  const theme = PROFILE_ICON_THEMES[iconTheme];
-
   return (
-    <View className="mb-4">
+    <View
+      className="mb-4"
+      style={{ marginHorizontal: -PROFILE_HORIZONTAL_PADDING }}
+    >
       <View
-        className="flex-row items-center rounded-2xl border border-gray-200 bg-white px-3 py-3 shadow-sm"
+        className="flex-row items-center rounded-2xl border border-gray-200 bg-white px-3 py-2 shadow-sm"
         style={Platform.OS === "android" ? { elevation: 2 } : undefined}
       >
         <Pressable
-          className="min-h-[44px] flex-1 flex-row items-center py-1 pr-2"
+          className="min-h-[40px] flex-1 flex-row items-center py-0.5 pr-2"
           onPress={onToggle}
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel}
           accessibilityState={{ expanded }}
         >
-          <View
-            className="mr-3 h-9 w-9 items-center justify-center rounded-full"
-            style={{ backgroundColor: theme.iconBg }}
-          >
-            <Ionicons name={icon} size={18} color={theme.iconColor} />
+          <View className="mr-2.5 w-5 items-center">
+            <Ionicons name={icon} size={20} color={PROFILE_MUTED_ICON_COLOR} />
           </View>
-          <Text className="flex-1 text-base font-semibold text-gray-900">
+          <Text className="flex-1 text-sm font-semibold text-gray-900">
             {title}
           </Text>
           <Ionicons
             name={expanded ? "chevron-up" : "chevron-down"}
-            size={20}
+            size={18}
             color="#6b7280"
           />
         </Pressable>
@@ -61,7 +55,7 @@ export function ProfileExpandableCard({
       </View>
 
       {expanded && children ? (
-        <View className="mt-2 overflow-hidden rounded-2xl border border-gray-100 bg-white">
+        <View className="mt-1.5 overflow-hidden rounded-2xl border border-gray-100 bg-white">
           {children}
         </View>
       ) : null}

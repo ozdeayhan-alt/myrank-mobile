@@ -1,9 +1,11 @@
 import {
   collection,
   getDocs,
+  getDocsFromServer,
   limit,
   orderBy,
   query,
+  type Query,
 } from "firebase/firestore";
 import {
   buildSegmentKey,
@@ -18,6 +20,7 @@ import {
 } from "@/features/filters/utils/segmentLabel";
 import { hasActiveSegmentFilters } from "@/features/posts/api/matchesSegmentFilters";
 import { getFirestoreDb } from "@/lib/firebase";
+import { normalizeAvatarUrl } from "@/lib/media/normalizeAvatarUrl";
 import { parsePostMetadata } from "@/features/posts/api/parsePostMetadata";
 import type { RankingEntry, RankingTrendLabel } from "../types";
 
@@ -50,16 +53,26 @@ function mapEntryDoc(
     totalScore: typeof data.totalScore === "number" ? data.totalScore : 0,
     rank: typeof data.rank === "number" ? data.rank : fallbackRank,
     metadata: parsePostMetadata({ metadata: data.metadata }),
-    photoURL:
-      typeof data.photoURL === "string" && data.photoURL.trim()
-        ? data.photoURL.trim()
-        : undefined,
+    photoURL: (() => {
+      const normalized = normalizeAvatarUrl(
+        typeof data.photoURL === "string" ? data.photoURL : undefined
+      );
+      return normalized || undefined;
+    })(),
     previousRank: parseOptionalNumber(data.previousRank),
     rankChange: parseOptionalNumber(data.rankChange),
     previousTotalScore: parseOptionalNumber(data.previousTotalScore),
     tpChange: parseOptionalNumber(data.tpChange),
     trendLabel: parseTrendLabel(data.trendLabel),
   };
+}
+
+async function runRankingQuery(q: Query) {
+  try {
+    return await getDocsFromServer(q);
+  } catch {
+    return await getDocs(q);
+  }
 }
 
 async function fetchRankingsFromSegment(
@@ -71,7 +84,7 @@ async function fetchRankingsFromSegment(
     orderBy("totalScore", "desc"),
     limit(max)
   );
-  const snapshot = await getDocs(q);
+  const snapshot = await runRankingQuery(q);
   return snapshot.docs.map((docSnap, index) =>
     mapEntryDoc(docSnap, index + 1)
   );

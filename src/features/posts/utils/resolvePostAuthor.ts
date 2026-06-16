@@ -1,4 +1,5 @@
 import { DEFAULT_DISPLAY_NAME } from "@/features/profile/types";
+import { normalizeAvatarUrl } from "@/lib/media/normalizeAvatarUrl";
 import type { Post } from "../types";
 
 export function resolvePostAuthorDisplayName(post: Post): string {
@@ -11,7 +12,7 @@ export function resolvePostAuthorDisplayName(post: Post): string {
 }
 
 export function resolvePostAuthorPhotoURL(post: Post): string {
-  return post.authorPhotoURL?.trim() ?? "";
+  return normalizeAvatarUrl(post.authorPhotoURL);
 }
 
 export function resolvePostAuthorInitial(post: Post): string {

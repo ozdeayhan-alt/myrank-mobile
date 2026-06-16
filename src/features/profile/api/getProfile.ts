@@ -1,4 +1,5 @@
-import { doc, getDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { readFirestoreDoc } from "@/lib/firebase/readFirestoreDoc";
 import { getFirestoreDb } from "@/lib/firebase";
 import { EMPTY_METADATA, type UserMetadata } from "../types";
 import {
@@ -11,7 +12,9 @@ const USERS_COLLECTION = "users";
 export type LoadedProfile = ParsedProfileFields;
 
 export async function getProfile(userId: string): Promise<LoadedProfile | null> {
-  const snapshot = await getDoc(doc(getFirestoreDb(), USERS_COLLECTION, userId));
+  const snapshot = await readFirestoreDoc(
+    doc(getFirestoreDb(), USERS_COLLECTION, userId)
+  );
 
   if (!snapshot.exists()) {
     return null;

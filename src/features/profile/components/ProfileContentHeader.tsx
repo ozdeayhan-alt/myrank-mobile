@@ -9,8 +9,14 @@ import type { UserMetadata } from "../types";
 import type { BioCategoryVisibility } from "../utils/bioCategoryVisibility";
 import { hasVisibleBioCategory } from "../utils/bioCategoryVisibility";
 import { formatProfileCategoriesLine } from "../utils/formatProfileCategoriesLine";
+import {
+  PROFILE_EDGE_INSET,
+  PROFILE_HORIZONTAL_PADDING,
+  PROFILE_MENU_RIGHT_INSET,
+} from "../profileLayout";
 import { ProfileAvatar } from "./ProfileAvatar";
 import { ProfileRankingsAccordion } from "./ProfileRankingsAccordion";
+import { ProfileSegmentRankBadge } from "./ProfileSegmentRankBadge";
 
 type ProfileContentHeaderProps = {
   userId: string;
@@ -22,7 +28,6 @@ type ProfileContentHeaderProps = {
   isOwnProfile: boolean;
   rankingsReady: boolean;
   scoreSlot: ReactNode;
-  voteButtonsSlot: ReactNode;
   currentUserId?: string | null;
 };
 
@@ -36,7 +41,6 @@ function ProfileContentHeaderInner({
   isOwnProfile,
   rankingsReady,
   scoreSlot,
-  voteButtonsSlot,
   currentUserId = null,
 }: ProfileContentHeaderProps) {
   const router = useRouter();
@@ -51,23 +55,40 @@ function ProfileContentHeaderInner({
 
   return (
     <View className="pt-4" collapsable={false}>
-      <View className="relative mb-4">
+      <View className="relative mb-1">
         {isOwnProfile ? (
-          <View className="absolute right-0 top-0 z-10 flex-row items-center">
+          <View
+            className="absolute right-0 top-0 z-10"
+            style={{
+              marginRight: -(PROFILE_HORIZONTAL_PADDING - PROFILE_MENU_RIGHT_INSET),
+            }}
+          >
             <ProfileHeaderButton />
           </View>
         ) : (
-          <View className="absolute left-0 right-0 top-0 z-10 flex-row items-center justify-between">
+          <View
+            className="absolute left-0 right-0 top-0 z-10 flex-row items-start justify-between"
+            style={{
+              marginHorizontal: -PROFILE_HORIZONTAL_PADDING,
+              paddingLeft: PROFILE_EDGE_INSET,
+            }}
+          >
             <Pressable
               onPress={() => router.back()}
               hitSlop={10}
               accessibilityRole="button"
               accessibilityLabel="Geri"
-              className="p-2"
+              className="pb-2 pr-2 pt-0"
             >
               <Ionicons name="chevron-back" size={26} color="#374151" />
             </Pressable>
-            <ProfileUserMenuButton userId={userId} displayName={displayName} />
+            <View
+              style={{
+                marginRight: -(PROFILE_HORIZONTAL_PADDING - PROFILE_MENU_RIGHT_INSET),
+              }}
+            >
+              <ProfileUserMenuButton userId={userId} displayName={displayName} />
+            </View>
           </View>
         )}
         <View className="items-center">
@@ -95,14 +116,15 @@ function ProfileContentHeaderInner({
               {categoriesLine}
             </Text>
           ) : null}
+          <ProfileSegmentRankBadge
+            userId={userId}
+            metadata={metadata}
+            isOwnProfile={isOwnProfile}
+          />
         </View>
       </View>
 
       <View collapsable={false}>{scoreSlot}</View>
-
-      <View className="mt-1" collapsable={false}>
-        {voteButtonsSlot}
-      </View>
 
       {rankingsReady ? (
         <ProfileRankingsAccordion
@@ -115,13 +137,10 @@ function ProfileContentHeaderInner({
       {rankingsReady && isOwnProfile ? (
         <WhileYouWereAwaySection
           userId={userId}
+          displayName={displayName}
           currentUserId={currentUserId}
         />
       ) : null}
-
-      <Text className="mb-3 text-lg font-semibold text-gray-900">
-        {isOwnProfile ? "Gönderilerim" : "Gönderiler"}
-      </Text>
     </View>
   );
 }

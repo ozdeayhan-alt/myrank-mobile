@@ -1,5 +1,11 @@
-/** Feed medya kutusu üst sınırı (px). */
+/** Feed görsel kutusu üst sınırı (px). */
 export const MAX_FEED_MEDIA_HEIGHT = 300;
+
+/** Instagram feed dikey video üst sınırı: 4:5 (yükseklik = genişlik × 1.25). */
+export const MAX_FEED_VIDEO_HEIGHT_RATIO = 1.25;
+
+/** Boyut bilinmeyen videolar için varsayılan (9:16). */
+export const DEFAULT_VIDEO_ASPECT_RATIO = 9 / 16;
 
 /** Aşırı uç oranları keser; yönü (yatay/dikey) korur. */
 const MIN_ASPECT_RATIO = 0.25;
@@ -50,6 +56,32 @@ export function feedMediaLayout(
   return {
     width: maxHeight * aspectRatio,
     height: maxHeight,
+    containerWidth,
+  };
+}
+
+/** Feed videoları: tam genişlik; yükseklik Instagram 4:5 ile sınırlı (genişlik küçülmez). */
+export function feedVideoMediaLayout(
+  containerWidth: number,
+  aspectRatio: number,
+  maxHeightOverride?: number
+): FeedMediaLayout {
+  if (containerWidth <= 0) {
+    return {
+      width: 0,
+      height: 0,
+      containerWidth: 0,
+    };
+  }
+
+  const maxHeight =
+    maxHeightOverride ?? containerWidth * MAX_FEED_VIDEO_HEIGHT_RATIO;
+  const safeRatio = aspectRatio > 0 ? aspectRatio : DEFAULT_VIDEO_ASPECT_RATIO;
+  const naturalHeight = containerWidth / safeRatio;
+
+  return {
+    width: containerWidth,
+    height: Math.min(naturalHeight, maxHeight),
     containerWidth,
   };
 }

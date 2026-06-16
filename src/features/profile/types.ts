@@ -1,3 +1,5 @@
+import { normalizeAvatarUrl } from "@/lib/media/normalizeAvatarUrl";
+
 export type UserMetadata = {
   country: string;
   city: string;
@@ -40,9 +42,9 @@ export function resolvePhotoURL(
   authPhoto?: string | null
 ): string {
   const trimmed = firestorePhoto?.trim();
-  if (trimmed) return trimmed;
+  if (trimmed) return normalizeAvatarUrl(trimmed);
   const authTrimmed = authPhoto?.trim();
-  if (authTrimmed) return authTrimmed;
+  if (authTrimmed) return normalizeAvatarUrl(authTrimmed);
   return "";
 }
 

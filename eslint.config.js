@@ -11,6 +11,7 @@ module.exports = defineConfig([
       "dist/",
       "web-build/",
       ".expo/",
+      "scripts/",
     ],
   },
 ]);

@@ -1,3 +1,4 @@
+import { memo, useEffect, useState } from "react";
 import {
   Text,
   View,
@@ -6,6 +7,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Image } from "expo-image";
+import { normalizeAvatarUrl } from "@/lib/media/normalizeAvatarUrl";
 import {
   PRESTIGE_RING,
   type PrestigeTier,
@@ -24,34 +26,18 @@ type ProfileAvatarProps = {
   prestigeTier?: PrestigeTier | null;
 };
 
-export function ProfileAvatar({
-  photoURL,
-  fallbackLetter = "?",
-  size = PROFILE_AVATAR_SIZE,
+function LetterAvatar({
+  letter,
+  size,
   style,
-  imageStyle,
-  prestigeTier = null,
-}: ProfileAvatarProps) {
+}: {
+  letter: string;
+  size: number;
+  style?: StyleProp<ViewStyle>;
+}) {
   const borderRadius = size / 2;
-  const letter = fallbackLetter[0]?.toUpperCase() ?? "?";
-  const ring = prestigeTier ? PRESTIGE_RING[prestigeTier] : null;
 
-  const avatarContent = photoURL?.trim() ? (
-    <Image
-      source={{ uri: photoURL.trim() }}
-      style={[
-        {
-          width: size,
-          height: size,
-          borderRadius,
-        },
-        imageStyle,
-      ]}
-      contentFit="cover"
-      cachePolicy="memory-disk"
-      recyclingKey={photoURL.trim()}
-    />
-  ) : (
+  return (
     <View
       style={[
         {
@@ -71,6 +57,45 @@ export function ProfileAvatar({
       </Text>
     </View>
   );
+}
+
+function ProfileAvatarInner({
+  photoURL,
+  fallbackLetter = "?",
+  size = PROFILE_AVATAR_SIZE,
+  style,
+  imageStyle,
+  prestigeTier = null,
+}: ProfileAvatarProps) {
+  const letter = fallbackLetter[0]?.toUpperCase() ?? "?";
+  const ring = prestigeTier ? PRESTIGE_RING[prestigeTier] : null;
+  const displayUrl = normalizeAvatarUrl(photoURL);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [displayUrl]);
+
+  const avatarContent =
+    displayUrl && !imageFailed ? (
+      <Image
+        source={{ uri: displayUrl }}
+        style={[
+          {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+          },
+          imageStyle,
+        ]}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        recyclingKey={displayUrl}
+        onError={() => setImageFailed(true)}
+      />
+    ) : (
+      <LetterAvatar letter={letter} size={size} style={style} />
+    );
 
   if (!ring) {
     return avatarContent;
@@ -102,3 +127,5 @@ export function ProfileAvatar({
     </View>
   );
 }
+
+export const ProfileAvatar = memo(ProfileAvatarInner);

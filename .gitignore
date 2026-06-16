@@ -13,6 +13,8 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+play-upload.keystore
+play-keystore.properties
 *.p8
 *.p12
 *.key

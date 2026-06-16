@@ -21,8 +21,7 @@ import { ProfileContentHeader } from "./ProfileContentHeader";
 import { ProfileVoteProvider } from "./ProfileVoteProvider";
 import { ProfileScoreRow } from "./ProfileScoreRow";
 import { ProfileVoteButtons } from "./ProfileVoteButtons";
-
-const PROFILE_HORIZONTAL_PADDING = 24;
+import { PROFILE_HORIZONTAL_PADDING } from "../profileLayout";
 
 type ProfileContentProps = {
   userId: string;
@@ -118,13 +117,11 @@ function ProfileFeedBody({
           isOwnProfile={isOwnProfile}
           rankingsReady={rankingsReady}
           scoreSlot={
-            <ProfileScoreRow
-              userId={userId}
-              metadata={metadata}
-              isOwnProfile={isOwnProfile}
-            />
+            <>
+              <ProfileScoreRow userId={userId} />
+              <ProfileVoteButtons />
+            </>
           }
-          voteButtonsSlot={<ProfileVoteButtons />}
           currentUserId={currentUserId}
         />
       </View>

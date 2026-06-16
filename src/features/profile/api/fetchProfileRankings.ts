@@ -1,3 +1,4 @@
+import { GLOBAL_RANKING_SEGMENT } from "@/features/filters/constants";
 import { resolveSegmentRank } from "./resolveSegmentRank";
 import {
   buildSegmentKey,
@@ -5,29 +6,50 @@ import {
   type UserMetadata,
 } from "../types";
 
+export type ProfileRankingKey = keyof UserMetadata | "global";
+
 export type CategoryRanking = {
-  key: keyof UserMetadata;
-  label: string;
-  value: string;
+  key: ProfileRankingKey;
   rank: number | null;
-  totalInSegment: number;
   isOfficial: boolean;
 };
 
-const CATEGORIES: { key: keyof UserMetadata; label: string }[] = [
-  { key: "country", label: "Ülke" },
-  { key: "city", label: "Şehir" },
-  { key: "age", label: "Yaş" },
-  { key: "gender", label: "Cinsiyet" },
-  { key: "profession", label: "Meslek" },
-  { key: "maritalStatus", label: "Medeni Durum" },
+const CATEGORY_KEYS: (keyof UserMetadata)[] = [
+  "country",
+  "city",
+  "age",
+  "gender",
+  "profession",
+  "maritalStatus",
 ];
 
-function formatValue(metadata: UserMetadata, key: keyof UserMetadata): string {
+function hasMetadataValue(
+  metadata: UserMetadata,
+  key: keyof UserMetadata
+): boolean {
   if (key === "age") {
-    return metadata.age !== null ? String(metadata.age) : "—";
+    return metadata.age !== null && metadata.age > 0;
   }
-  return metadata[key] || "—";
+  const value = metadata[key];
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+async function fetchCategoryRanking(
+  userId: string,
+  metadata: UserMetadata,
+  key: keyof UserMetadata
+): Promise<CategoryRanking> {
+  const segmentKey = buildCategorySegmentKey(metadata, key);
+  const { rank, isOfficial } = await resolveSegmentRank(segmentKey, userId);
+  return { key, rank, isOfficial };
+}
+
+async function fetchGlobalRanking(userId: string): Promise<CategoryRanking> {
+  const { rank, isOfficial } = await resolveSegmentRank(
+    GLOBAL_RANKING_SEGMENT,
+    userId
+  );
+  return { key: "global", rank, isOfficial };
 }
 
 function buildCategorySegmentKey(
@@ -42,21 +64,14 @@ export async function fetchProfileRankings(
   userId: string,
   metadata: UserMetadata
 ): Promise<CategoryRanking[]> {
-  return Promise.all(
-    CATEGORIES.map(async ({ key, label }) => {
-      const segmentKey = buildCategorySegmentKey(metadata, key);
-      const { rank, totalInSegment, isOfficial } = await resolveSegmentRank(
-        segmentKey,
-        userId
-      );
-      return {
-        key,
-        label,
-        value: formatValue(metadata, key),
-        rank,
-        totalInSegment,
-        isOfficial,
-      };
-    })
+  const activeKeys = CATEGORY_KEYS.filter((key) =>
+    hasMetadataValue(metadata, key)
   );
+
+  const categoryRankings = await Promise.all(
+    activeKeys.map((key) => fetchCategoryRanking(userId, metadata, key))
+  );
+  const globalRanking = await fetchGlobalRanking(userId);
+
+  return [...categoryRankings, globalRanking];
 }

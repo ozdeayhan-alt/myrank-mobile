@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Animated, View, type StyleProp, type ViewStyle } from "react-native";
+import { Animated, type StyleProp, type ViewStyle } from "react-native";
 
 type ShimmerSkeletonProps = {
   width?: number | `${number}%`;

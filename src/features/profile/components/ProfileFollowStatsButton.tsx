@@ -115,7 +115,7 @@ export function ProfileFollowStatsButton({
 
   const styles = useMemo(() => createStyles(diameter), [diameter]);
   const iconSize = Math.round(diameter * 0.34);
-  const countLabel = `${counts.followingCount} · ${counts.followersCount}`;
+  const label = "Takiplerim";
 
   const loadCounts = useCallback(() => {
     setLoading(true);
@@ -195,7 +195,14 @@ export function ProfileFollowStatsButton({
               )}
             </View>
             {!loading ? (
-              <Text style={styles.label}>{countLabel}</Text>
+              <Text
+                style={[
+                  styles.label,
+                  { fontSize: diameter >= 74 ? 8 : 7 },
+                ]}
+              >
+                {label}
+              </Text>
             ) : null}
           </View>
         </LinearGradient>

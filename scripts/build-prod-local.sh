@@ -13,8 +13,13 @@ echo "[prod] verifying environment..."
 "$ROOT/scripts/verify-build-env.sh"
 
 echo "[prod] APP_VARIANT=$APP_VARIANT"
+echo "[prod] play upload keystore..."
+"$ROOT/scripts/ensure-play-keystore.sh"
+
 echo "[prod] prebuild (android)..."
 npx expo prebuild --platform android --no-install
+
+"$ROOT/scripts/apply-play-signing.sh"
 
 mkdir -p "$ROOT/android"
 cat > "$ROOT/android/local.properties" <<EOF
@@ -32,3 +37,4 @@ cp -f "$AAB" "$PUBLIC_DIR/myrank-release.aab"
 
 echo "[prod] Done: $AAB"
 echo "[prod] Play upload bundle: $PUBLIC_DIR/myrank-release.aab"
+echo "[prod] Firebase SHA-1 için: bash scripts/print-play-sha1.sh"

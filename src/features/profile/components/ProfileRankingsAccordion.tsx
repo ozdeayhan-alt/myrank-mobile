@@ -5,6 +5,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { UserMetadata } from "../types";
 import { ui } from "@/lib/uiClasses";
 import { ensureRankingEntries } from "../api/ensureRankingEntries";
@@ -12,6 +13,7 @@ import {
   fetchRankingSnapshotMeta,
   formatOfficialRankUpdatedAt,
 } from "../api/fetchRankingSnapshotMeta";
+import { formatProfileRankingSentence } from "../utils/formatProfileRankingSentence";
 import { useProfileRankings } from "../hooks/useProfileRankings";
 import { ProfileExpandableCard } from "@/components/ProfileExpandableCard";
 
@@ -20,6 +22,37 @@ type ProfileRankingsAccordionProps = {
   metadata: UserMetadata;
   isOwnProfile?: boolean;
 };
+
+function ProfileRankingsInfoNote({
+  officialUpdatedLabel,
+  isOwnProfile,
+}: {
+  officialUpdatedLabel: string | null;
+  isOwnProfile: boolean;
+}) {
+  return (
+    <View className="flex-row gap-2 border-t border-gray-100 bg-gray-50 px-4 py-2">
+      <Ionicons
+        name="information-circle-outline"
+        size={16}
+        color="#9ca3af"
+        style={{ marginTop: 1 }}
+      />
+      <View className="flex-1">
+        <Text className="text-xs leading-5 text-gray-500">
+          Resmi sıra her gece 00:00 (Türkiye) güncellenir; gün içinde gördüğünüz
+          sıra son geceki listedir.
+          {isOwnProfile ? " Toplam puanınız (TP) anlık değişir." : ""}
+        </Text>
+        {officialUpdatedLabel ? (
+          <Text className="mt-1 text-xs leading-5 text-gray-600">
+            Son resmi güncelleme: {officialUpdatedLabel}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
 
 function ProfileRankingsAccordionInner({
   userId,
@@ -87,18 +120,8 @@ function ProfileRankingsAccordionInner({
       expanded={expanded}
       onToggle={handleToggle}
       icon="podium-outline"
-      iconTheme="follow"
       accessibilityLabel={title}
     >
-      <Text className="border-b border-gray-50 px-4 py-3 text-center text-xs text-gray-500">
-        Resmi sıra her gece 00:00 (Türkiye) güncellenir; gün içinde gördüğünüz
-        sıra son geceki listedir. Toplam puanınız (TP) anlık değişir.
-      </Text>
-      {officialUpdatedLabel ? (
-        <Text className="border-b border-gray-50 px-4 py-2 text-center text-xs text-gray-600">
-          Son resmi güncelleme: {officialUpdatedLabel}
-        </Text>
-      ) : null}
       {loading ? (
         <ActivityIndicator className="my-6" color="#374151" />
       ) : error ? (
@@ -144,35 +167,31 @@ function ProfileRankingsAccordionInner({
           {rankings.map((item, index) => (
             <View
               key={item.key}
-              className={`flex-row items-center justify-between px-4 py-3 ${
+              className={`px-4 py-2.5 ${
                 index < rankings.length - 1 ? "border-b border-gray-50" : ""
               }`}
             >
-              <View className="flex-1 pr-3">
-                <Text className="text-xs text-gray-400">{item.label}</Text>
-                <Text className="text-sm font-medium text-gray-900">
-                  {item.value}
-                </Text>
-              </View>
-              <View className="items-end">
-                <Text className="text-sm font-bold text-gray-800">
-                  {item.rank !== null
-                    ? item.isOfficial
-                      ? `#${item.rank}`
-                      : `~#${item.rank}`
-                    : "—"}
-                </Text>
-                {item.totalInSegment > 0 ? (
-                  <Text className="text-[10px] text-gray-400">
-                    / {item.totalInSegment} kişi
-                    {!item.isOfficial ? " · tahmini" : ""}
-                  </Text>
-                ) : null}
-              </View>
+              <Text
+                className={`text-sm leading-5 text-gray-900 ${
+                  item.isOfficial ? "" : "text-gray-700"
+                }`}
+              >
+                {formatProfileRankingSentence({
+                  key: item.key,
+                  metadata,
+                  rank: item.rank,
+                  isOfficial: item.isOfficial,
+                  isOwnProfile,
+                })}
+              </Text>
             </View>
           ))}
         </>
       )}
+      <ProfileRankingsInfoNote
+        officialUpdatedLabel={officialUpdatedLabel}
+        isOwnProfile={isOwnProfile}
+      />
     </ProfileExpandableCard>
   );
 }

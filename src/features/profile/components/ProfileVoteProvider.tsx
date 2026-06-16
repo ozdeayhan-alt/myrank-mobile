@@ -15,10 +15,10 @@ import {
   saveGaugeVoteMode,
   type GaugeVoteMode,
 } from "../lib/gaugeVoteModeStorage";
-export type { GaugeVoteMode } from "../lib/gaugeVoteModeStorage";
-
 import { useProfileVoteTap } from "../hooks/useProfileVoteTap";
 import { useProfileStore } from "../store/useProfileStore";
+
+export type { GaugeVoteMode } from "../lib/gaugeVoteModeStorage";
 
 export type VoteFlashDirection = "up" | "down" | null;
 

@@ -19,3 +19,6 @@ export const PROFILE_ICON_THEMES = {
 } as const;
 
 export type ProfileIconTheme = keyof typeof PROFILE_ICON_THEMES;
+
+/** Profil kart/satır ikonları — dairesiz, nötr vurgu */
+export const PROFILE_MUTED_ICON_COLOR = "#6b7280";

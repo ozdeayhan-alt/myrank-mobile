@@ -20,11 +20,13 @@ import { ProfileExpandableCard } from "@/components/ProfileExpandableCard";
 
 type WhileYouWereAwaySectionProps = {
   userId: string;
+  displayName: string;
   currentUserId?: string | null;
 };
 
 export function WhileYouWereAwaySection({
   userId,
+  displayName,
   currentUserId = null,
 }: WhileYouWereAwaySectionProps) {
   const router = useRouter();
@@ -33,7 +35,9 @@ export function WhileYouWereAwaySection({
     limit: 10,
     enabled: expanded,
   });
-  const { speakGossip, speaking } = useGossipSpeech(notifications);
+  const { speakGossip, speaking } = useGossipSpeech(notifications, {
+    recipientDisplayName: displayName,
+  });
 
   const handleNotificationPress = useCallback(
     (item: AppNotification) => {
@@ -56,7 +60,6 @@ export function WhileYouWereAwaySection({
       expanded={expanded}
       onToggle={handleToggleExpand}
       icon="notifications-outline"
-      iconTheme="message"
       accessibilityLabel="Sen yokken neler oldu listesini aç"
       trailing={
         expanded ? (
@@ -66,7 +69,7 @@ export function WhileYouWereAwaySection({
     >
       {!expanded ? null : (
         <>
-          <Text className="border-b border-gray-50 px-4 py-3 text-center text-xs text-gray-500">
+          <Text className="border-b border-gray-50 px-4 py-2.5 text-center text-xs text-gray-500">
             Kadın ikona basınca son 10 olay sesli okunur.
           </Text>
           {loading ? (
@@ -82,7 +85,7 @@ export function WhileYouWereAwaySection({
           ) : (
             notifications.map((item, index) => {
               const pressable = canNavigateFromNotification(item);
-              const rowClassName = `px-4 py-3 ${
+              const rowClassName = `px-4 py-2.5 ${
                 index < notifications.length - 1 ? "border-b border-gray-50" : ""
               }`;
 

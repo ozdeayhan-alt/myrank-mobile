@@ -1,4 +1,5 @@
 import { DEFAULT_DISPLAY_NAME } from "@/features/profile/types";
+import { normalizeAvatarUrl } from "@/lib/media/normalizeAvatarUrl";
 import type { PostComment } from "../types";
 
 export function resolveCommentAuthorDisplayName(comment: PostComment): string {
@@ -11,7 +12,7 @@ export function resolveCommentAuthorDisplayName(comment: PostComment): string {
 }
 
 export function resolveCommentAuthorPhotoURL(comment: PostComment): string {
-  return comment.actorPhotoURL?.trim() ?? "";
+  return normalizeAvatarUrl(comment.actorPhotoURL);
 }
 
 export function resolveCommentAuthorInitial(comment: PostComment): string {

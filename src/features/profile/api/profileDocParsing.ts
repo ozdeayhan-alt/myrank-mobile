@@ -1,4 +1,5 @@
 import { EMPTY_METADATA, type UserMetadata } from "../types";
+import { normalizeAvatarUrl } from "@/lib/media/normalizeAvatarUrl";
 import {
   type BioCategoryVisibility,
   parseBioCategoryVisibility,
@@ -52,7 +53,7 @@ export function parseProfileFields(data: Record<string, unknown>): ParsedProfile
   return {
     metadata: parseMetadataFromDoc(data),
     displayName: String(data.displayName ?? ""),
-    photoURL: String(data.photoURL ?? ""),
+    photoURL: normalizeAvatarUrl(String(data.photoURL ?? "")),
     bio: typeof data.bio === "string" ? data.bio.trim() : "",
     bioCategoryVisibility: parseBioCategoryVisibility(data),
     totalScore: typeof data.totalScore === "number" ? data.totalScore : 0,

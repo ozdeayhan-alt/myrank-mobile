@@ -69,6 +69,7 @@
     "build:dev:local": "bash scripts/build-dev-apk.sh",
     "build:preview:local": "bash scripts/build-preview-apk.sh",
     "build:prod:local": "bash scripts/build-prod-local.sh",
+    "build:setup-fcm": "node scripts/setup-expo-fcm-v1.js",
     "build:verify-env": "bash scripts/verify-build-env.sh",
     "build:dev:android": "bash scripts/verify-build-env.sh && npx eas-cli build -p android --profile development --non-interactive",
     "build:preview:android": "bash scripts/verify-build-env.sh && npx eas-cli build -p android --profile preview --non-interactive",

@@ -129,7 +129,7 @@ export function ProfileUserMenuButton({
       hitSlop={10}
       accessibilityRole="button"
       accessibilityLabel="Profil seçenekleri"
-      className="p-2"
+      className="pb-2 pl-2 pt-0"
     >
       <Ionicons name="ellipsis-horizontal" size={22} color="#374151" />
     </Pressable>
