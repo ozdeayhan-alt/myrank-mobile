@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Text, View } from "react-native";
 import type { Post } from "../types";
+import { recordError } from "@/lib/crashReporting";
 import { FeedPostCellLite } from "./FeedPostCellLite";
 
 type FeedPostErrorBoundaryProps = {
@@ -28,6 +29,7 @@ export class FeedPostErrorBoundary extends Component<
       error.message,
       info.componentStack
     );
+    recordError(error, `FeedPostErrorBoundary:${this.props.post.id}`);
   }
 
   render(): ReactNode {

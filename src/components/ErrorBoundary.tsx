@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { queryClient } from "@/lib/queryClient";
+import { recordError } from "@/lib/crashReporting";
 
 const REACT_QUERY_CACHE_KEY = "REACT_QUERY_OFFLINE_CACHE";
 
@@ -25,6 +26,7 @@ export class ErrorBoundary extends Component<
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error("[ErrorBoundary]", error.message, info.componentStack);
+    recordError(error, "ErrorBoundary");
   }
 
   private handleReset = async (): Promise<void> => {

@@ -197,6 +197,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
       ...getGoogleSignInPlugins(),
       ...getBuildPropertiesPlugins(apiUsesHttps),
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
       "expo-splash-screen",
       "expo-video",
       "react-native-compressor",

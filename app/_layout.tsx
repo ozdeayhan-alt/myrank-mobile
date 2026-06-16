@@ -11,6 +11,10 @@ import {
 } from "expo-router";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/features/auth";
+import {
+  initCrashReporting,
+  setCrashUserId,
+} from "@/lib/crashReporting";
 import { CommentSheetHost } from "@/features/posts/components/CommentSheetHost";
 import { PushNotificationHandler } from "@/features/push";
 import { QueryProvider } from "@/providers/QueryProvider";
@@ -19,6 +23,20 @@ import {
   useLoadProfile,
   useProfileStore,
 } from "@/features/profile";
+
+function CrashReportingBootstrap() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    void initCrashReporting();
+  }, []);
+
+  useEffect(() => {
+    setCrashUserId(user?.uid ?? null);
+  }, [user?.uid]);
+
+  return null;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, initializing } = useAuth();
@@ -114,6 +132,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <CrashReportingBootstrap />
       <PushNotificationHandler />
       <CommentSheetHost />
       {children}
