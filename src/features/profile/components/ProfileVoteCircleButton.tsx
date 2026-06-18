@@ -25,12 +25,39 @@ const THEMES: Record<"up" | "down", VoteTheme> = {
   },
 };
 
+const GHOST_THEMES: Record<"up" | "down", VoteTheme> = {
+  up: {
+    gradient: [
+      "rgba(91,155,213,0.28)",
+      "rgba(37,99,235,0.32)",
+      "rgba(30,58,138,0.36)",
+    ],
+    rim: "rgba(147,197,253,0.45)",
+    dropShadow: "transparent",
+  },
+  down: {
+    gradient: [
+      "rgba(229,115,115,0.28)",
+      "rgba(220,38,38,0.32)",
+      "rgba(153,27,27,0.36)",
+    ],
+    rim: "rgba(252,165,165,0.45)",
+    dropShadow: "transparent",
+  },
+};
+
 type ProfileVoteCircleButtonProps = {
   direction: "up" | "down";
   onPress: () => void;
   disabled: boolean;
   accessibilityLabel: string;
   diameter?: number;
+  /** Profil: Yükselt/Alçalt yazısı; gönderi: sadece ok */
+  showLabel?: boolean;
+  /** Reels overlay gibi yarı saydam yüzey (0–1) */
+  visualOpacity?: number;
+  /** Reels: saydam gradient, gölgesiz yüzey */
+  ghost?: boolean;
 };
 
 function VoteChevron({
@@ -54,11 +81,13 @@ function VoteChevron({
   );
 }
 
-function createStyles(size: number) {
+function createStyles(size: number, showLabel: boolean, ghost: boolean) {
+  const borderWidth = size >= 64 ? 2.5 : ghost ? 1.5 : 2;
+
   return StyleSheet.create({
     wrapper: {
       width: size,
-      height: size + 6,
+      height: showLabel ? size + 6 : size,
       alignItems: "center",
       justifyContent: "flex-start",
     },
@@ -68,28 +97,29 @@ function createStyles(size: number) {
       width: size,
       height: size,
       borderRadius: size / 2,
-      opacity: 0.35,
+      opacity: ghost ? 0 : 0.35,
     },
     face: {
       width: size,
       height: size,
       borderRadius: size / 2,
-      borderWidth: 2.5,
+      borderWidth,
       overflow: "hidden",
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.14,
-      shadowRadius: 6,
-      elevation: 5,
+      shadowOffset: { width: 0, height: ghost ? 0 : 4 },
+      shadowOpacity: ghost ? 0 : 0.14,
+      shadowRadius: ghost ? 0 : 6,
+      elevation: ghost ? 0 : 5,
     },
     content: {
       flex: 1,
       width: "100%",
       alignItems: "center",
-      paddingBottom: Math.max(6, Math.round(size * 0.1)),
+      justifyContent: showLabel ? "flex-end" : "center",
+      paddingBottom: showLabel ? Math.max(6, Math.round(size * 0.1)) : 0,
     },
     iconWrap: {
-      flex: 1,
+      flex: showLabel ? 1 : undefined,
       width: "100%",
       alignItems: "center",
       justifyContent: "center",
@@ -102,7 +132,7 @@ function createStyles(size: number) {
       height: size * 0.36,
       borderBottomLeftRadius: size,
       borderBottomRightRadius: size,
-      backgroundColor: "rgba(255,255,255,0.16)",
+      backgroundColor: ghost ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.16)",
     },
     innerRim: {
       position: "absolute",
@@ -111,7 +141,7 @@ function createStyles(size: number) {
       right: size * 0.18,
       height: 2,
       borderRadius: 2,
-      backgroundColor: "rgba(0,0,0,0.12)",
+      backgroundColor: ghost ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.12)",
     },
     label: {
       fontSize: size >= 84 ? 10 : 9,
@@ -133,11 +163,19 @@ export function ProfileVoteCircleButton({
   disabled,
   accessibilityLabel,
   diameter = DEFAULT_DIAMETER,
+  showLabel = true,
+  visualOpacity = 1,
+  ghost = false,
 }: ProfileVoteCircleButtonProps) {
-  const theme = THEMES[direction];
+  const theme = ghost ? GHOST_THEMES[direction] : THEMES[direction];
   const label = direction === "up" ? "Yükselt" : "Alçalt";
-  const styles = useMemo(() => createStyles(diameter), [diameter]);
-  const triangleSize = Math.round(diameter * 0.66);
+  const styles = useMemo(
+    () => createStyles(diameter, showLabel, ghost),
+    [diameter, showLabel, ghost]
+  );
+  const triangleSize = Math.round(diameter * (showLabel ? 0.66 : 0.58));
+  const idleOpacity = ghost ? Math.min(visualOpacity, 0.32) : visualOpacity;
+  const disabledOpacity = disabled ? idleOpacity * 0.6 : idleOpacity;
 
   return (
     <Pressable
@@ -149,7 +187,12 @@ export function ProfileVoteCircleButton({
       style={({ pressed }) => [
         styles.wrapper,
         {
-          opacity: disabled ? 0.45 : 1,
+          opacity:
+            disabled
+              ? disabledOpacity
+              : pressed
+                ? Math.min(idleOpacity + 0.45, 0.9)
+                : idleOpacity,
           transform: [
             { scale: pressed && !disabled ? 0.94 : 1 },
             { translateY: pressed && !disabled ? 3 : 0 },
@@ -175,7 +218,7 @@ export function ProfileVoteCircleButton({
           <View style={styles.iconWrap}>
             <VoteChevron direction={direction} size={triangleSize} />
           </View>
-          <Text style={styles.label}>{label}</Text>
+          {showLabel ? <Text style={styles.label}>{label}</Text> : null}
         </View>
       </LinearGradient>
     </Pressable>

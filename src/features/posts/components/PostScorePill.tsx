@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Platform, StyleSheet, Text } from "react-native";
+import { Platform, StyleSheet, Text, type ViewStyle } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -9,39 +9,63 @@ import Animated, {
 
 type PostScorePillProps = {
   score: number;
+  variant?: "feed" | "reels";
 };
 
-export function PostScorePill({ score }: PostScorePillProps) {
+export function PostScorePill({ score, variant = "feed" }: PostScorePillProps) {
   const prevScore = useRef(score);
   const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
+  const pulseOpacity = useSharedValue(1);
+  const isReels = variant === "reels";
 
   useEffect(() => {
     if (score > prevScore.current) {
       scale.value = withSequence(
-        withTiming(1.04, { duration: 120 }),
+        withTiming(1.06, { duration: 120 }),
         withTiming(1, { duration: 130 })
       );
-      opacity.value = withSequence(
-        withTiming(0.88, { duration: 80 }),
+      pulseOpacity.value = withSequence(
+        withTiming(isReels ? 0.75 : 0.88, { duration: 80 }),
         withTiming(1, { duration: 170 })
       );
     }
     prevScore.current = score;
-  }, [opacity, scale, score]);
+  }, [isReels, pulseOpacity, scale, score]);
 
   const pillStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    opacity: opacity.value,
+    opacity: pulseOpacity.value,
   }));
+
+  const containerStyle: ViewStyle[] = [
+    isReels ? styles.reelsPill : styles.pill,
+    !isReels && Platform.OS === "ios" ? styles.pillShadow : null,
+    pillStyle,
+  ].filter(Boolean) as ViewStyle[];
 
   return (
     <Animated.View
-      style={[styles.pill, Platform.OS === "ios" ? styles.pillShadow : null, pillStyle]}
+      style={containerStyle}
       accessibilityLabel={`Gönderi puanı ${score}`}
     >
-      <Text className="text-[10px] font-medium leading-3 text-gray-400">Puan</Text>
-      <Text className="text-base font-semibold leading-5 text-gray-900">{score}</Text>
+      <Text
+        className={
+          isReels
+            ? "text-[9px] font-medium leading-3 text-white/55"
+            : "text-[10px] font-medium leading-3 text-gray-400"
+        }
+      >
+        Puan
+      </Text>
+      <Text
+        className={
+          isReels
+            ? "text-sm font-semibold leading-4 text-white/90"
+            : "text-base font-semibold leading-5 text-gray-900"
+        }
+      >
+        {score}
+      </Text>
     </Animated.View>
   );
 }
@@ -58,6 +82,19 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     paddingHorizontal: 10,
     paddingVertical: 4,
+  },
+  reelsPill: {
+    minHeight: 32,
+    minWidth: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.38)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    opacity: 0.48,
   },
   pillShadow: {
     shadowColor: "#111827",

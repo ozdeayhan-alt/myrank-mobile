@@ -1,14 +1,13 @@
 import { memo, useMemo } from "react";
-import { Text, useWindowDimensions, View } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Image } from "expo-image";
 import { resolveMediaDisplayUrl, resolveVideoPosterUrl } from "@/lib/media/resolveMediaDisplayUrl";
 import { useMediaAspectRatio } from "../hooks/useMediaAspectRatio";
 import type { Post } from "../types";
 import {
   DEFAULT_VIDEO_ASPECT_RATIO,
-  feedMediaLayout,
+  feedImageMediaLayout,
   feedVideoMediaLayout,
-  MAX_FEED_MEDIA_HEIGHT,
   normalizeAspectRatio,
 } from "../utils/mediaAspectRatio";
 import { isVideoPost } from "../utils/videoPosts";
@@ -21,16 +20,56 @@ const COMPACT_MEDIA_HEIGHT = 160;
 
 type ImagePriority = "low" | "normal" | "high";
 
+type ImageCacheProps = {
+  cachePolicy: "memory-disk";
+  recyclingKey: string;
+  priority: ImagePriority;
+};
+
+function GlowFeedImage({
+  uri,
+  cacheProps,
+}: {
+  uri: string;
+  cacheProps: ImageCacheProps;
+}) {
+  return (
+    <View className="h-full w-full overflow-hidden bg-neutral-950">
+      <Image
+        source={{ uri }}
+        style={StyleSheet.absoluteFillObject}
+        contentFit="cover"
+        blurRadius={42}
+        priority="low"
+        cachePolicy={cacheProps.cachePolicy}
+        recyclingKey={`${cacheProps.recyclingKey}-bg`}
+      />
+      <View
+        pointerEvents="none"
+        style={StyleSheet.absoluteFillObject}
+        className="bg-black/40"
+      />
+      <Image
+        source={{ uri }}
+        style={{ width: "100%", height: "100%" }}
+        contentFit="contain"
+        {...cacheProps}
+      />
+    </View>
+  );
+}
+
 function storedAspectRatio(post: Post): number | null {
   if (
-    typeof post.mediaWidth === "number" &&
-    typeof post.mediaHeight === "number" &&
-    post.mediaWidth > 0 &&
-    post.mediaHeight > 0
+    typeof post.mediaWidth !== "number" ||
+    typeof post.mediaHeight !== "number" ||
+    post.mediaWidth <= 0 ||
+    post.mediaHeight <= 0
   ) {
-    return normalizeAspectRatio(post.mediaWidth, post.mediaHeight);
+    return null;
   }
-  return null;
+
+  return normalizeAspectRatio(post.mediaWidth, post.mediaHeight);
 }
 
 function PlayOverlay() {
@@ -87,7 +126,7 @@ function PostFeedMediaLayout({
 
   const containerWidth = compact ? screenWidth - 48 : screenWidth;
   const isVideo = post.contentType === "video" && isVideoPost(post);
-  const imageMaxHeight = compact ? COMPACT_MEDIA_HEIGHT : MAX_FEED_MEDIA_HEIGHT;
+  const compactMaxHeight = compact ? COMPACT_MEDIA_HEIGHT : undefined;
   const layout =
     fixedHeight != null
       ? {
@@ -99,9 +138,9 @@ function PostFeedMediaLayout({
         ? feedVideoMediaLayout(
             containerWidth,
             aspectRatio,
-            compact ? COMPACT_MEDIA_HEIGHT : undefined
+            compactMaxHeight
           )
-        : feedMediaLayout(containerWidth, aspectRatio, imageMaxHeight);
+        : feedImageMediaLayout(containerWidth, aspectRatio, compactMaxHeight);
 
   const outerStyle = compact
     ? { width: "100%" as const }
@@ -118,14 +157,9 @@ function PostFeedMediaLayout({
 
   if (post.contentType === "image") {
     return (
-      <View style={outerStyle} className="items-center bg-black">
+      <View style={outerStyle}>
         <View style={frameStyle}>
-          <Image
-            source={{ uri: displayMediaURL }}
-            style={{ width: "100%", height: "100%" }}
-            contentFit={compact ? "cover" : "contain"}
-            {...imageCacheProps}
-          />
+          <GlowFeedImage uri={displayMediaURL} cacheProps={imageCacheProps} />
         </View>
       </View>
     );
@@ -221,6 +255,20 @@ function PostFeedMediaInner({
   placeholderHeight,
   inlineAutoplay = false,
 }: PostFeedMediaProps) {
+  const isImage = post.contentType === "image";
+
+  if (isImage) {
+    return (
+      <PostFeedMediaDynamic
+        post={post}
+        variant={variant}
+        imagePriority={imagePriority}
+        placeholderHeight={placeholderHeight}
+        inlineAutoplay={inlineAutoplay}
+      />
+    );
+  }
+
   const storedRatio = storedAspectRatio(post);
 
   if (placeholderHeight != null && storedRatio == null) {

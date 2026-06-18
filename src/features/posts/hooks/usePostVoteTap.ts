@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { AppState, type AppStateStatus } from "react-native";
 import type { PostCounts } from "@/features/ranking/types";
 import { fetchPostVoteBatch } from "@/features/ranking/api/fetchPostVoteBatch";
+import { flushVoteDeltaInChunks } from "@/features/ranking/lib/flushVoteDeltaInChunks";
 
 const FLUSH_IDLE_MS = 3000;
 const MAX_PENDING_DELTA = 10_000;
@@ -142,17 +143,27 @@ export function usePostVoteTap({
     flushingRef.current = true;
 
     try {
-      const result = await fetchPostVoteBatch(postIdRef.current, flushDelta);
-
-      pendingRef.current = clampPending(pendingRef.current - flushDelta);
-      serverScoreRef.current = result.postScore;
-      publishDisplay();
-      onFlushedRef.current?.({
-        postScore: result.postScore,
-        authorTotalScore: result.authorTotalScore,
-        authorId: result.authorId,
-        counts: result.counts,
+      const result = await flushVoteDeltaInChunks(flushDelta, async (chunk) => {
+        const batchResult = await fetchPostVoteBatch(
+          postIdRef.current,
+          chunk
+        );
+        pendingRef.current = clampPending(pendingRef.current - chunk);
+        serverScoreRef.current = batchResult.postScore;
+        publishDisplay();
+        onFlushedRef.current?.({
+          postScore: batchResult.postScore,
+          authorTotalScore: batchResult.authorTotalScore,
+          authorId: batchResult.authorId,
+          counts: batchResult.counts,
+        });
+        return batchResult;
       });
+
+      if (result == null) {
+        return;
+      }
+
       clearRetryTimer();
 
       if (pendingRef.current !== 0) {

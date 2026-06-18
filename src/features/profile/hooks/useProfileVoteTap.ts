@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { fetchProfileVoteBatch } from "../api/fetchProfileVoteBatch";
+import { flushVoteDeltaInChunks } from "@/features/ranking/lib/flushVoteDeltaInChunks";
 
 const FLUSH_IDLE_MS = 3000;
 const MAX_PENDING_DELTA = 10_000;
@@ -136,15 +137,22 @@ export function useProfileVoteTap({
     flushingRef.current = true;
 
     try {
-      const result = await fetchProfileVoteBatch(
-        targetUserIdRef.current,
-        flushDelta
-      );
+      const result = await flushVoteDeltaInChunks(flushDelta, async (chunk) => {
+        const batchResult = await fetchProfileVoteBatch(
+          targetUserIdRef.current,
+          chunk
+        );
+        pendingRef.current = clampPending(pendingRef.current - chunk);
+        serverTPRef.current = batchResult.totalScore;
+        publishDisplay();
+        onFlushedScoreRef.current?.(batchResult.totalScore);
+        return batchResult;
+      });
 
-      pendingRef.current = clampPending(pendingRef.current - flushDelta);
-      serverTPRef.current = result.totalScore;
-      publishDisplay();
-      onFlushedScoreRef.current?.(result.totalScore);
+      if (result == null) {
+        return;
+      }
+
       clearRetryTimer();
 
       if (pendingRef.current !== 0) {
@@ -227,6 +235,5 @@ export function useProfileVoteTap({
     registerUp,
     registerDown,
     flushPendingVotes,
-    hasPendingVotes: pendingRef.current !== 0,
   };
 }

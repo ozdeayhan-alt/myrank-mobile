@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/features/auth";
@@ -18,8 +18,13 @@ import {
 } from "../utils/resolvePostAuthor";
 import { useOpenCommentSheet } from "../hooks/useOpenCommentSheet";
 import { PostInteractionRail } from "./PostInteractionRail";
+import { PostScorePill } from "./PostScorePill";
+import { PostVoteCirclePair } from "./PostVoteCirclePair";
 import { RepostQuoteModal } from "./RepostQuoteModal";
 import { isRepostPost } from "../utils/repostUtils";
+
+const AVATAR_SIZE = 44;
+const VOTE_ABOVE_AVATAR_GAP = 10;
 
 type VideoReelOverlayProps = {
   post: Post;
@@ -46,6 +51,8 @@ export function VideoReelOverlay({
   const insets = useSafeAreaInsets();
   const resolvedBottomInset = bottomInset ?? insets.bottom;
   const openCommentSheet = useOpenCommentSheet();
+  const avatarRowRef = useRef<View>(null);
+  const [voteBarBottom, setVoteBarBottom] = useState<number | null>(null);
 
   const {
     score,
@@ -80,6 +87,17 @@ export function VideoReelOverlay({
 
   const caption = post.content?.trim();
   const displayName = resolvePostAuthorDisplayName(post);
+  const bottomBlockBottom = resolvedBottomInset + 16;
+
+  const syncVoteBarPosition = useCallback(() => {
+    avatarRowRef.current?.measureInWindow((_x, y) => {
+      setVoteBarBottom(height - y + VOTE_ABOVE_AVATAR_GAP);
+    });
+  }, [height]);
+
+  useEffect(() => {
+    syncVoteBarPosition();
+  }, [syncVoteBarPosition, caption, score, displayName, bottomBlockBottom]);
 
   return (
     <View
@@ -89,26 +107,58 @@ export function VideoReelOverlay({
     >
       <LikeHeartBurst burstKey={heartBurstKey} />
 
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: insets.top + 10,
+          right: 12,
+          zIndex: 22,
+        }}
+      >
+        <PostScorePill score={score} variant="reels" />
+      </View>
+
       <PostInteractionRail
-        variant="reels"
         bottomInset={resolvedBottomInset}
         counts={counts}
         shareActive={shareActive}
         saveActive={saveActive}
         loading={loading}
-        onLike={handleLikePress}
-        onDislike={handleDislike}
         onComment={() => openCommentSheet(post.id, applyCommentResult)}
         onShare={handleSharePress}
         onSave={handleSave}
       />
 
+      {voteBarBottom != null ? (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: voteBarBottom,
+            alignItems: "center",
+            zIndex: 22,
+          }}
+        >
+          <PostVoteCirclePair
+            variant="reels"
+            disabled={loading}
+            onUp={handleLikePress}
+            onDown={handleDislike}
+          />
+        </View>
+      ) : null}
+
       <View
         pointerEvents="box-none"
         className="absolute left-0 right-20"
-        style={{ bottom: resolvedBottomInset + 16, paddingLeft: 16 }}
+        style={{ bottom: bottomBlockBottom, paddingLeft: 16 }}
       >
         <Pressable
+          ref={avatarRowRef}
+          onLayout={syncVoteBarPosition}
           className="flex-row items-center"
           onPress={() =>
             navigateToAuthorProfile(post.authorId, user?.uid, {
@@ -121,7 +171,7 @@ export function VideoReelOverlay({
           accessibilityLabel={`${displayName} profilini aç`}
         >
           <ProfileAvatar
-            size={44}
+            size={AVATAR_SIZE}
             photoURL={resolvePostAuthorPhotoURL(post)}
             fallbackLetter={resolvePostAuthorInitial(post)}
           />
@@ -137,7 +187,6 @@ export function VideoReelOverlay({
             {caption}
           </Text>
         ) : null}
-        <Text className="mt-2 text-xs text-white/70">Puan: {score}</Text>
       </View>
 
       {!isRepostPost(post) ? (

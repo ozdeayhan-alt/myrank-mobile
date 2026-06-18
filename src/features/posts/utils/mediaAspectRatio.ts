@@ -1,11 +1,17 @@
-/** Feed görsel kutusu üst sınırı (px). */
+/** @deprecated Compact mod için; feed görselleri feedImageMediaLayout kullanır. */
 export const MAX_FEED_MEDIA_HEIGHT = 300;
 
-/** Instagram feed dikey video üst sınırı: 4:5 (yükseklik = genişlik × 1.25). */
+/** Instagram feed dikey üst sınırı: 4:5 (yükseklik = genişlik × 1.25). */
 export const MAX_FEED_VIDEO_HEIGHT_RATIO = 1.25;
 
-/** Boyut bilinmeyen videolar için varsayılan (9:16). */
-export const DEFAULT_VIDEO_ASPECT_RATIO = 9 / 16;
+/** Feed Glow: video poster kutusu; görsel içeride contain ile tam gösterilir. */
+export function feedImageMediaLayout(
+  containerWidth: number,
+  aspectRatio: number,
+  maxHeightOverride?: number
+): FeedMediaLayout {
+  return feedVideoMediaLayout(containerWidth, aspectRatio, maxHeightOverride);
+}
 
 /** Aşırı uç oranları keser; yönü (yatay/dikey) korur. */
 const MIN_ASPECT_RATIO = 0.25;
@@ -59,6 +65,9 @@ export function feedMediaLayout(
     containerWidth,
   };
 }
+
+/** Boyut bilinmeyen videolar için varsayılan (9:16). */
+export const DEFAULT_VIDEO_ASPECT_RATIO = 9 / 16;
 
 /** Feed videoları: tam genişlik; yükseklik Instagram 4:5 ile sınırlı (genişlik küçülmez). */
 export function feedVideoMediaLayout(
