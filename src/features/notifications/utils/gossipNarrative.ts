@@ -27,7 +27,9 @@ export function analyzeGossipNotifications(
   const slice = notifications.slice(0, 10);
 
   return {
-    likeCount: slice.filter((n) => n.type === "post_liked").length,
+    likeCount: slice
+      .filter((n) => n.type === "post_liked")
+      .reduce((sum, n) => sum + (n.payload.voteDelta ?? 1), 0),
     commentCount: slice.filter((n) => n.type === "post_commented").length,
     messageCount: slice.filter((n) => n.type === "message_received").length,
     rankPassedCount: slice.filter((n) => n.type === "rank_passed").length,

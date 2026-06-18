@@ -5,55 +5,37 @@ type PostInteractionRailProps = {
   counts: PostCounts;
   shareActive: boolean;
   saveActive: boolean;
-  likeActive?: boolean;
-  dislikeActive?: boolean;
   loading: boolean;
   onLike: () => void;
-  onLikeLongPress?: () => void;
-  likeBonusLabel?: string | null;
   onDislike: () => void;
-  onDislikeLongPress?: () => void;
-  dislikeBonusLabel?: string | null;
   onComment: () => void;
   onShare: () => void;
   onSave: () => void;
   variant?: "feed" | "reels";
+  bottomInset?: number;
 };
 
 function RailButton({
   label,
   sub,
-  extra,
-  extraTone = "like",
   onPress,
-  onLongPress,
-  delayLongPress,
   disabled,
   active,
   light,
-  accessibilityHint,
 }: {
   label: string;
   sub?: string;
-  extra?: string;
-  extraTone?: "like" | "dislike";
   onPress: () => void;
-  onLongPress?: () => void;
-  delayLongPress?: number;
   disabled?: boolean;
   active?: boolean;
   light?: boolean;
-  accessibilityHint?: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={delayLongPress}
       disabled={disabled}
       className="mb-5 items-center"
       hitSlop={8}
-      accessibilityHint={accessibilityHint}
     >
       <Text
         className={`text-2xl ${
@@ -83,21 +65,6 @@ function RailButton({
           {sub}
         </Text>
       ) : null}
-      {extra ? (
-        <Text
-          className={`text-[10px] ${
-            extraTone === "dislike"
-              ? light
-                ? "text-red-200"
-                : "text-red-500"
-              : light
-                ? "text-indigo-200"
-                : "text-indigo-500"
-          }`}
-        >
-          {extra}
-        </Text>
-      ) : null}
     </Pressable>
   );
 }
@@ -106,19 +73,14 @@ export function PostInteractionRail({
   counts,
   shareActive,
   saveActive,
-  likeActive = false,
-  dislikeActive = false,
   loading,
   onLike,
-  onLikeLongPress,
-  likeBonusLabel,
   onDislike,
-  onDislikeLongPress,
-  dislikeBonusLabel,
   onComment,
   onShare,
   onSave,
   variant = "feed",
+  bottomInset = 0,
 }: PostInteractionRailProps) {
   const light = variant === "reels";
 
@@ -126,32 +88,26 @@ export function PostInteractionRail({
     <View
       className={
         variant === "reels"
-          ? "absolute bottom-28 right-3 z-20 items-center"
+          ? "absolute right-3 z-20 items-center"
           : "flex-row flex-wrap px-1 py-1"
+      }
+      style={
+        variant === "reels"
+          ? { bottom: bottomInset + 112 }
+          : undefined
       }
     >
       <RailButton
         light={light}
         label="👍"
-        extra={likeBonusLabel ? `+${likeBonusLabel}` : undefined}
         onPress={onLike}
-        onLongPress={onLikeLongPress}
-        delayLongPress={450}
         disabled={loading}
-        active={likeActive}
-        accessibilityHint="Basılı tutarak bonus beğeni puanı seçin"
       />
       <RailButton
         light={light}
         label="👎"
-        extra={dislikeBonusLabel ? `−${dislikeBonusLabel}` : undefined}
-        extraTone="dislike"
         onPress={onDislike}
-        onLongPress={onDislikeLongPress}
-        delayLongPress={450}
         disabled={loading}
-        active={dislikeActive}
-        accessibilityHint="Basılı tutarak bonus beğenmeme puanı seçin"
       />
       <RailButton
         light={light}

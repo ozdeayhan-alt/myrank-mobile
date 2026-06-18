@@ -1,6 +1,6 @@
 {
   "name": "myrank-mobile",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "expo-router/entry",
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -12,6 +12,7 @@
     "@tanstack/react-query": "^5.100.14",
     "@tanstack/react-query-persist-client": "^5.101.0",
     "expo": "~54.0.0",
+    "expo-blur": "~15.0.8",
     "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.0",
     "expo-dev-client": "~6.0.21",

@@ -5,9 +5,10 @@ import { useAuth } from "@/features/auth";
 import { LikeHeartBurst } from "@/components/LikeHeartBurst";
 import { ProfileAvatar } from "@/features/profile/components/ProfileAvatar";
 import { navigateToAuthorProfile } from "@/features/profile/navigateToAuthorProfile";
-import type { EngagementStatus } from "@/features/ranking/types";
-import { useBonusPressHandlers } from "../hooks/useLikePressHandlers";
-import { BonusPointsPicker } from "./LikePointsPicker";
+import {
+  useEngagementStore,
+  usePostEngagement,
+} from "@/features/ranking/store/useEngagementStore";
 import { useShareAndRepost } from "../hooks/useShareAndRepost";
 import type { Post } from "../types";
 import {
@@ -22,40 +23,36 @@ import { isRepostPost } from "../utils/repostUtils";
 
 type VideoReelOverlayProps = {
   post: Post;
-  engagement?: EngagementStatus;
-  onEngagementPatch?: (patch: Partial<EngagementStatus>) => void;
   onScoreUpdate?: (postId: string, postScore: number) => void;
+  /** Tab bar üstünde kalmak için; modalda varsayılan safe-area bottom */
+  bottomInset?: number;
 };
 
 export function VideoReelOverlay({
   post,
-  engagement,
-  onEngagementPatch,
   onScoreUpdate,
+  bottomInset,
 }: VideoReelOverlayProps) {
+  const engagement = usePostEngagement(post.id);
+  const patchEngagement = useEngagementStore((s) => s.patchEngagement);
+  const onEngagementPatch = useCallback(
+    (patch: Parameters<typeof patchEngagement>[1]) => {
+      patchEngagement(post.id, patch);
+    },
+    [patchEngagement, post.id]
+  );
   const { user } = useAuth();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const resolvedBottomInset = bottomInset ?? insets.bottom;
   const openCommentSheet = useOpenCommentSheet();
 
   const {
     score,
     counts,
     loading,
-    liked,
-    disliked,
     handleLike,
     handleDislike,
-    openLikeBonusPicker,
-    closeLikeBonusPicker,
-    applyLikeBonus,
-    openDislikeBonusPicker,
-    closeDislikeBonusPicker,
-    applyDislikeBonus,
-    likeBonusPickerOpen,
-    dislikeBonusPickerOpen,
-    likeBonusPoints,
-    dislikeBonusPoints,
     handleSharePress,
     handleSave,
     applyCommentResult,
@@ -76,25 +73,10 @@ export function VideoReelOverlay({
     setHeartBurstKey((k) => k + 1);
   }, []);
 
-  const { onPress: handleLikePress, onLongPress: handleLikeLongPress } =
-    useBonusPressHandlers({
-      active: liked,
-      onToggle: () => {
-        const willLike = !liked;
-        handleLike();
-        if (willLike) {
-          triggerLikeHeart();
-        }
-      },
-      onOpenBonusPicker: openLikeBonusPicker,
-    });
-
-  const { onPress: handleDislikePress, onLongPress: handleDislikeLongPress } =
-    useBonusPressHandlers({
-      active: disliked,
-      onToggle: handleDislike,
-      onOpenBonusPicker: openDislikeBonusPicker,
-    });
+  const handleLikePress = useCallback(() => {
+    handleLike();
+    triggerLikeHeart();
+  }, [handleLike, triggerLikeHeart]);
 
   const caption = post.content?.trim();
   const displayName = resolvePostAuthorDisplayName(post);
@@ -109,22 +91,13 @@ export function VideoReelOverlay({
 
       <PostInteractionRail
         variant="reels"
+        bottomInset={resolvedBottomInset}
         counts={counts}
         shareActive={shareActive}
         saveActive={saveActive}
-        likeActive={liked}
-        dislikeActive={disliked}
         loading={loading}
         onLike={handleLikePress}
-        onLikeLongPress={handleLikeLongPress}
-        likeBonusLabel={
-          likeBonusPoints ? String(likeBonusPoints) : null
-        }
-        onDislike={handleDislikePress}
-        onDislikeLongPress={handleDislikeLongPress}
-        dislikeBonusLabel={
-          dislikeBonusPoints ? String(dislikeBonusPoints) : null
-        }
+        onDislike={handleDislike}
         onComment={() => openCommentSheet(post.id, applyCommentResult)}
         onShare={handleSharePress}
         onSave={handleSave}
@@ -133,7 +106,7 @@ export function VideoReelOverlay({
       <View
         pointerEvents="box-none"
         className="absolute left-0 right-20"
-        style={{ bottom: insets.bottom + 16, paddingLeft: 16 }}
+        style={{ bottom: resolvedBottomInset + 16, paddingLeft: 16 }}
       >
         <Pressable
           className="flex-row items-center"
@@ -167,24 +140,6 @@ export function VideoReelOverlay({
         <Text className="mt-2 text-xs text-white/70">Puan: {score}</Text>
       </View>
 
-      <BonusPointsPicker
-        variant="like"
-        visible={likeBonusPickerOpen}
-        currentBonus={likeBonusPoints}
-        submitting={loading}
-        onSelect={applyLikeBonus}
-        onClose={closeLikeBonusPicker}
-      />
-
-      <BonusPointsPicker
-        variant="dislike"
-        visible={dislikeBonusPickerOpen}
-        currentBonus={dislikeBonusPoints}
-        submitting={loading}
-        onSelect={applyDislikeBonus}
-        onClose={closeDislikeBonusPicker}
-      />
-
       {!isRepostPost(post) ? (
         <RepostQuoteModal
           visible={repostOpen}
@@ -193,7 +148,6 @@ export function VideoReelOverlay({
           onReposted={handleReposted}
         />
       ) : null}
-
     </View>
   );
 }

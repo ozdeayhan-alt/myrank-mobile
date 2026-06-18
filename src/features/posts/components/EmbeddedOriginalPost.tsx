@@ -9,6 +9,7 @@ import {
   resolvePostAuthorPhotoURL,
 } from "../utils/resolvePostAuthor";
 import { PostFeedMedia } from "./PostFeedMedia";
+import { getContentTypeLabel } from "../constants/contentTypeLabels";
 import { isVideoPost } from "../utils/videoPosts";
 
 type EmbeddedOriginalPostProps = {
@@ -77,13 +78,7 @@ export function EmbeddedOriginalPost({
             {displayName}
           </Text>
           <Text className="text-[10px] text-gray-400 capitalize">
-            {post.contentType === "tweet"
-              ? "Gönderi"
-              : post.contentType === "image"
-                ? "Fotoğraf"
-                : post.contentType === "video"
-                  ? "Video"
-                  : "Gönderi"}
+            {getContentTypeLabel(post.contentType)}
           </Text>
         </Pressable>
       </View>

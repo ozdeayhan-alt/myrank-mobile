@@ -105,12 +105,14 @@ export type MediaPickMode = "image" | "video";
 
 export function showMediaSourcePicker(
   mode: MediaPickMode,
-  onSelect: (asset: ImagePicker.ImagePickerAsset) => void
+  onSelect: (asset: ImagePicker.ImagePickerAsset) => void,
+  options?: { title?: string }
 ): void {
   const isImage = mode === "image";
+  const defaultTitle = isImage ? "Fotoğraf ekle" : "Video ekle";
 
   Alert.alert(
-    isImage ? "Fotoğraf ekle" : "Video ekle",
+    options?.title ?? defaultTitle,
     "Kaynak seçin",
     [
       {

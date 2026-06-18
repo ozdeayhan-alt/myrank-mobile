@@ -7,8 +7,6 @@ const DEFAULT_ENGAGEMENT: EngagementStatus = {
   saved: false,
   liked: false,
   disliked: false,
-  likeBonusPoints: null,
-  dislikeBonusPoints: null,
 };
 
 export function useBatchEngagement(postIds: string[]) {

@@ -4,18 +4,7 @@ export const SHARE_POINTS = 66;
 export const SAVE_POINTS = 66;
 export const COMMENT_POINTS = 33;
 
-/** Basılı tut beğeni/beğenmeme bonus seçenekleri */
-export const LIKE_BONUS_TIERS = [33, 66, 99] as const;
-export type BonusPoints = (typeof LIKE_BONUS_TIERS)[number];
-/** @deprecated Use BonusPoints */
-export type LikeBonusPoints = BonusPoints;
-
-/** Beğeni/beğenmeme oturumu sunucuya sync gecikmesi (ms) */
-export const VOTE_SESSION_FLUSH_MS = 3000;
-
 export const INTERACTION_TYPES = [
-  "like",
-  "dislike",
   "share",
   "comment",
   "save",
@@ -25,6 +14,7 @@ export type InteractionType = (typeof INTERACTION_TYPES)[number];
 
 /**
  * Post Score = (likes - dislikes) + likeBonusTotal - dislikeBonusTotal + ...
+ * Bonus alanları eski gönderiler için geriye dönük uyumluluk.
  */
 export function calculatePostScore(params: {
   likeCount?: number;

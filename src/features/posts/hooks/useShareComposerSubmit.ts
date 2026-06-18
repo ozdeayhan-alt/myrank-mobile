@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { Alert } from "react-native";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
+import { recordError } from "@/lib/crashReporting";
 import { invalidateServerFeedCache } from "../api/invalidateServerFeedCache";
 import { notifyPostFanOut } from "../api/notifyPostFanOut";
 import { createPost } from "../api/createPost";
@@ -102,6 +103,7 @@ export function useShareComposerSubmit({
       void invalidateServerFeedCache();
       void notifyPostFanOut(created.id).catch((error) => {
         console.error("[createPost] fan-out failed:", error);
+        recordError(error, "createPost:fanOut");
       });
 
       setSuccessMessage("Gönderiniz paylaşıldı");

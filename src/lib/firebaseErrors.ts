@@ -1,5 +1,16 @@
 import { FirebaseError } from "firebase/app";
 
+function reportToCrashlytics(error: unknown, context: string): void {
+  try {
+    // Lazy load: jest tests import firebaseErrors without RN native modules.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { recordError } = require("./crashReporting") as typeof import("./crashReporting");
+    recordError(error, context);
+  } catch {
+    // Crash reporting must never break error logging.
+  }
+}
+
 export function logFirebaseError(
   context: string,
   error: unknown,
@@ -26,6 +37,21 @@ export function logFirebaseError(
   if (payload.serverResponse) {
     console.error(`[${context}] serverResponse:`, payload.serverResponse);
   }
+
+  if (error instanceof FirebaseError) {
+    const benignCodes = new Set([
+      "permission-denied",
+      "storage/unauthorized",
+      "storage/canceled",
+    ]);
+    if (benignCodes.has(error.code)) {
+      return;
+    }
+  }
+
+  const reportError =
+    error instanceof Error ? error : new Error(`[${context}] ${String(error)}`);
+  reportToCrashlytics(reportError, context);
 }
 
 export function getFirebaseErrorMessage(error: unknown): string {

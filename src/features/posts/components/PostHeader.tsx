@@ -8,6 +8,7 @@ import {
   resolvePostAuthorInitial,
   resolvePostAuthorPhotoURL,
 } from "../utils/resolvePostAuthor";
+import { getContentTypeLabel } from "../constants/contentTypeLabels";
 import { PostScorePill } from "./PostScorePill";
 
 const FEED_AVATAR_SIZE = 40;
@@ -16,18 +17,10 @@ const MENU_BUTTON_CLASS =
 
 function resolveContentTypeLabel(contentType: Post["contentType"]): string | null {
   if (!contentType) return null;
-  switch (contentType) {
-    case "tweet":
-      return "Gönderi";
-    case "image":
-      return "Fotoğraf";
-    case "video":
-      return "Video";
-    case "repost":
-      return "Repost";
-    default:
-      return "Gönderi";
+  if (contentType === "repost") {
+    return "Repost";
   }
+  return getContentTypeLabel(contentType);
 }
 
 function resolveSecondaryLabel(post: Post): string | null {

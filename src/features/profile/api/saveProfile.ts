@@ -11,17 +11,6 @@ import { normalizeUserMetadata } from "../utils/normalizeMetadata";
 
 const USERS_COLLECTION = "users";
 
-function rankingEnsureError(reason?: string): Error {
-  if (reason === "metadata_incomplete") {
-    return new Error(
-      "Profil kaydedildi ancak sıralama segmentleri oluşturulamadı: eksik kategori bilgisi."
-    );
-  }
-  return new Error(
-    "Profil kaydedildi ancak sıralama listelerine eklenemedi. Lütfen tekrar kaydedin."
-  );
-}
-
 export async function saveProfile(
   userId: string,
   email: string,
@@ -89,8 +78,5 @@ export async function saveProfile(
     await updateProfile(auth.currentUser, { displayName: trimmedName });
   }
 
-  const result = await ensureRankingEntries();
-  if (!result.ensured) {
-    throw rankingEnsureError(result.reason);
-  }
+  await ensureRankingEntries({ profileSaved: true });
 }

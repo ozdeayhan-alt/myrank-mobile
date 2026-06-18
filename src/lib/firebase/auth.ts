@@ -6,6 +6,7 @@ import {
 } from "firebase/auth";
 import { getFirebaseApp } from "./app";
 import { getAuthPersistence } from "./authPersistence";
+import { recordError } from "@/lib/crashReporting";
 
 let firebaseAuth: Auth | null = null;
 
@@ -25,6 +26,7 @@ export function getFirebaseAuth(): Auth {
       "Firebase initializeAuth başarısız; getAuth fallback kullanılıyor:",
       error
     );
+    recordError(error, "Firebase:initializeAuthFallback");
     firebaseAuth = getAuth(app);
   }
 

@@ -18,7 +18,7 @@ export function navigateToAuthorProfile(
   }
 
   router.push({
-    pathname: "/user/[userId]",
+    pathname: "/(tabs)/user/[userId]",
     params: {
       userId: authorId,
       displayName: snapshot?.displayName?.trim() ?? "",

@@ -1,5 +1,5 @@
 import type { UserMetadata } from "@/features/profile/types";
-import type { InteractionType, BonusPoints } from "./constants";
+import type { InteractionType } from "./constants";
 
 export type PostCounts = {
   likeCount: number;
@@ -29,34 +29,7 @@ export type EngagementStatus = {
   saved: boolean;
   liked: boolean;
   disliked: boolean;
-  likeBonusPoints?: BonusPoints | null;
-  dislikeBonusPoints?: BonusPoints | null;
-};
-
-export type LikeBonusResponse = {
-  ok: boolean;
-  postId: string;
-  authorId: string;
-  postScore: number;
-  scoreDelta: number;
-  authorTotalScore: number;
-  likeBonusTotal: number;
-  counts: PostCounts;
-  engagement: EngagementStatus;
-  unchanged?: boolean;
-};
-
-export type DislikeBonusResponse = {
-  ok: boolean;
-  postId: string;
-  authorId: string;
-  postScore: number;
-  scoreDelta: number;
-  authorTotalScore: number;
-  dislikeBonusTotal: number;
-  counts: PostCounts;
-  engagement: EngagementStatus;
-  unchanged?: boolean;
+  voteNet?: number;
 };
 
 export type InteractionResponse = {

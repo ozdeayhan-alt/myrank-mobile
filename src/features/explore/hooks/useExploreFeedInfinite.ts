@@ -9,7 +9,8 @@ import {
   type FeedPageResult,
 } from "@/features/posts/api/fetchFeedPage";
 import { useFeedRefreshStore } from "@/features/posts/store/useFeedRefreshStore";
-import { patchPostScoreInPages } from "@/features/posts/utils/patchPostScoreInCache";
+import { patchPostInPages } from "@/features/posts/utils/patchPostInCache";
+import type { PostCounts } from "@/features/ranking/types";
 import { getFilterSegmentLabel } from "@/features/filters/utils/segmentLabel";
 import type { UserMetadata } from "@/features/profile/types";
 import { flattenFeedPages } from "@/features/explore/utils/flattenFeedPages";
@@ -60,10 +61,10 @@ export function useExploreFeedInfinite(
   };
 
   const updatePostScore = useCallback(
-    (postId: string, postScore: number) => {
+    (postId: string, postScore: number, counts?: PostCounts) => {
       queryClient.setQueryData<InfiniteData<FeedPageResult>>(
         queryKey,
-        (old) => patchPostScoreInPages(old, postId, postScore)
+        (old) => patchPostInPages(old, postId, { postScore, counts })
       );
     },
     [queryClient, queryKey]

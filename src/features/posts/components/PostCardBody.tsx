@@ -16,7 +16,6 @@ import { RichPostText } from "./RichPostText";
 
 type PostCardBodyProps = {
   post: Post;
-  liked: boolean;
   heartBurstKey: number;
   onLike: () => void;
   onLikeAnimated: () => void;
@@ -28,7 +27,6 @@ type PostCardBodyProps = {
 
 export function PostCardBody({
   post,
-  liked,
   heartBurstKey,
   onLike,
   onLikeAnimated,
@@ -74,7 +72,6 @@ export function PostCardBody({
         </>
       ) : (
         <DoubleTapToLike
-          liked={liked}
           onLike={onLike}
           onLikeAnimated={onLikeAnimated}
           onSinglePress={isVideoPost(post) ? openVideo : undefined}

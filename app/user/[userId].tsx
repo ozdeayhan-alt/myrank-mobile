@@ -1,32 +1,27 @@
-import { Text, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
-import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
-import { UserProfileView } from "@/features/profile/components/UserProfileView";
+import { Redirect, useLocalSearchParams } from "expo-router";
 
-export default function UserProfileScreen() {
+/** Eski stack rotası; tab bar ile açılsın diye (tabs) altına yönlendirir. */
+export default function UserProfileRedirect() {
   const { userId, displayName, photoURL } = useLocalSearchParams<{
-    userId: string;
+    userId?: string;
     displayName?: string;
     photoURL?: string;
   }>();
 
   if (!userId || typeof userId !== "string") {
-    return (
-      <View className="flex-1 items-center justify-center bg-white px-6">
-        <Text className="text-center text-sm text-gray-600">
-          Profil bulunamadı.
-        </Text>
-      </View>
-    );
+    return <Redirect href="/(tabs)/" />;
   }
 
   return (
-    <TabScreenSafeArea className="flex-1 bg-white">
-      <UserProfileView
-        userId={userId}
-        displayName={typeof displayName === "string" ? displayName : undefined}
-        photoURL={typeof photoURL === "string" ? photoURL : undefined}
-      />
-    </TabScreenSafeArea>
+    <Redirect
+      href={{
+        pathname: "/(tabs)/user/[userId]",
+        params: {
+          userId,
+          displayName: typeof displayName === "string" ? displayName : "",
+          photoURL: typeof photoURL === "string" ? photoURL : "",
+        },
+      }}
+    />
   );
 }

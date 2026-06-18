@@ -53,7 +53,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const inAuthGroup = segments[0] === "(auth)";
   const inLegalGroup = segments[0] === "legal";
   const inProfileRoute =
-    (segments[0] === "(tabs)" && segments.includes("profile")) ||
+    (segments[0] === "(tabs)" &&
+      (segments.includes("profile") || segments.includes("user"))) ||
     segments[0] === "user";
   const metadataComplete = isMetadataComplete(metadata);
 

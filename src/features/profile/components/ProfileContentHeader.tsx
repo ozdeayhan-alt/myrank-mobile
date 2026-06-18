@@ -14,6 +14,8 @@ import {
   PROFILE_HORIZONTAL_PADDING,
   PROFILE_MENU_RIGHT_INSET,
 } from "../profileLayout";
+import { isSystemProfileUserId } from "@/lib/profile/isSystemProfile";
+import { SystemProfileBadge } from "@/components/SystemProfileBadge";
 import { ProfileAvatar } from "./ProfileAvatar";
 import { ProfileRankingsAccordion } from "./ProfileRankingsAccordion";
 import { ProfileSegmentRankBadge } from "./ProfileSegmentRankBadge";
@@ -52,6 +54,7 @@ function ProfileContentHeaderInner({
   }, [bioCategoryVisibility, metadata]);
   const hasBioText = bio.trim().length > 0;
   const hasCategoriesLine = categoriesLine.length > 0;
+  const isSystemProfile = isSystemProfileUserId(userId);
 
   return (
     <View className="pt-4" collapsable={false}>
@@ -100,6 +103,11 @@ function ProfileContentHeaderInner({
             />
           </View>
           <Text className="text-lg font-bold text-gray-900">{displayName}</Text>
+          {isSystemProfile ? (
+            <View className="mt-1.5">
+              <SystemProfileBadge />
+            </View>
+          ) : null}
           {hasBioText ? (
             <Text
               className="mt-1 max-w-[280px] text-center text-sm text-gray-500"

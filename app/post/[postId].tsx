@@ -4,7 +4,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/features/auth";
 import { PostCard } from "@/features/posts";
 import { PostInteractionProvider } from "@/features/posts/context/PostInteractionContext";
-import { VideoReelsViewer } from "@/features/posts/components/VideoReelsViewer";
+import { navigateToReels } from "@/features/posts/navigateToReels";
 import { fetchPostById } from "@/features/posts/api/fetchPostById";
 import type { Post } from "@/features/posts/types";
 import { filterVideoPosts, isVideoPost } from "@/features/posts/utils/videoPosts";
@@ -16,7 +16,6 @@ export default function PostDetailScreen() {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [videoOpen, setVideoOpen] = useState(false);
 
   useEffect(() => {
     if (!postId) return;
@@ -47,17 +46,11 @@ export default function PostDetailScreen() {
             post={post}
             currentUserId={user?.uid ?? null}
             onOpenVideo={
-              isVideoPost(post) ? () => setVideoOpen(true) : undefined
+              isVideoPost(post)
+                ? () => navigateToReels(post.id, videoPosts)
+                : undefined
             }
           />
-          {videoOpen && videoPosts.length > 0 ? (
-            <VideoReelsViewer
-              visible
-              videoPosts={videoPosts}
-              initialPostId={post.id}
-              onClose={() => setVideoOpen(false)}
-            />
-          ) : null}
         </PostInteractionProvider>
       ) : null}
     </ScrollView>

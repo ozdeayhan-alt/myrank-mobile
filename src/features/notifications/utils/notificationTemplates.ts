@@ -16,8 +16,13 @@ export function formatNotificationLine(notification: AppNotification): string {
   const { type, payload } = notification;
 
   switch (type) {
-    case "post_liked":
-      return `${name} son gönderini beğendi.`;
+    case "post_liked": {
+      const delta = payload.voteDelta;
+      if (typeof delta === "number" && delta > 1) {
+        return `${name} gönderini ${delta} kez beğendi.`;
+      }
+      return `${name} gönderini beğendi.`;
+    }
     case "post_commented":
       return `${name} gönderine yorum yaptı.`;
     case "post_saved":

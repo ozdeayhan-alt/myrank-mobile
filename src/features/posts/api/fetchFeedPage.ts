@@ -9,6 +9,7 @@ import {
 import type { Post } from "../types";
 import { revivePost } from "../utils/revivePost";
 import type { EngagementStatus } from "@/features/ranking/types";
+import { markEngagementsFromFeed } from "@/features/ranking/engagementHydration";
 import { useEngagementStore } from "@/features/ranking/store/useEngagementStore";
 
 export type FeedPageResult = {
@@ -34,6 +35,7 @@ type FeedApiResponse = {
 export function applyFeedPageEngagements(page: FeedPageResult): void {
   if (page.engagements && Object.keys(page.engagements).length > 0) {
     useEngagementStore.getState().mergeBatch(page.engagements);
+    markEngagementsFromFeed(Object.keys(page.engagements));
   }
 }
 
@@ -93,10 +95,6 @@ export function fetchRecentFeedPage(
     cursor: cursor ?? undefined,
     limit: String(limit),
   });
-}
-
-export function fetchTopFeedPage(limit = 10): Promise<FeedPageResult> {
-  return fetchFeedEndpoint("top", { limit: String(limit) });
 }
 
 export function fetchExploreFeedPage(

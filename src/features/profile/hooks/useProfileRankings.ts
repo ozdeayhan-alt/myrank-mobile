@@ -28,6 +28,7 @@ export function useProfileRankings(
   return {
     rankings: query.data ?? [],
     loading: query.isFetching && query.data === undefined,
+    isRefreshing: query.isFetching && query.data !== undefined,
     error: query.error ? getUserFacingErrorMessage(query.error) : null,
     refresh: query.refetch,
   };

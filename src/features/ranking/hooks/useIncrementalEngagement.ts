@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { fetchBatchEngagement } from "../api/fetchBatchEngagement";
 import {
+  isEngagementHydratedFromFeed,
+  resetEngagementHydration,
+} from "../engagementHydration";
+import {
   DEFAULT_ENGAGEMENT,
   useEngagementStore,
 } from "../store/useEngagementStore";
@@ -15,6 +19,13 @@ function chunkArray<T>(items: T[], size: number): T[][] {
     chunks.push(items.slice(index, index + size));
   }
   return chunks;
+}
+
+function isEngagementLoaded(postId: string): boolean {
+  if (isEngagementHydratedFromFeed(postId)) {
+    return true;
+  }
+  return postId in useEngagementStore.getState().engagements;
 }
 
 /**
@@ -38,6 +49,7 @@ export function useIncrementalEngagement(
 
   useEffect(() => {
     knownIdsRef.current = new Set();
+    resetEngagementHydration();
     useEngagementStore.getState().reset();
   }, [resetKey]);
 
@@ -47,8 +59,7 @@ export function useIncrementalEngagement(
       if (knownIdsRef.current.has(id)) {
         return false;
       }
-      const stored = useEngagementStore.getState().engagements[id];
-      if (stored) {
+      if (isEngagementLoaded(id)) {
         knownIdsRef.current.add(id);
         return false;
       }
@@ -68,7 +79,9 @@ export function useIncrementalEngagement(
 
     debounceTimerRef.current = setTimeout(() => {
       debounceTimerRef.current = null;
-      const batch = [...pendingIdsRef.current];
+      const batch = [...pendingIdsRef.current].filter(
+        (id) => !isEngagementLoaded(id)
+      );
       pendingIdsRef.current = new Set();
       if (batch.length === 0) return;
 

@@ -1,20 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/features/auth";
+import { patchPublicProfileTotalScore } from "@/features/profile/lib/patchPublicProfileTotalScore";
 import { useProfileStore } from "@/features/profile/store/useProfileStore";
 import { sendPostInteractionSafe } from "@/features/ranking/api/sendPostInteraction";
 import { useUserEngagement } from "@/features/ranking/hooks/useUserEngagement";
-import { useVoteSession } from "@/features/ranking/hooks/useVoteSession";
 import type { EngagementStatus, PostCounts } from "@/features/ranking/types";
+import { triggerVoteHaptic } from "@/lib/voteFeedback";
 import type { Post } from "../types";
 import { usePostInteractionContext } from "../context/PostInteractionContext";
-import { usePostBonusHandlers } from "./usePostBonusHandlers";
 import { usePostShareActions } from "./usePostShareActions";
+import { usePostVoteTap } from "./usePostVoteTap";
 
 type UsePostInteractionsOptions = {
   post: Post;
   currentUserId?: string | null;
   engagement?: EngagementStatus;
   onEngagementPatch?: (patch: Partial<EngagementStatus>) => void;
-  onScoreUpdate?: (postId: string, postScore: number) => void;
+  onScoreUpdate?: (
+    postId: string,
+    postScore: number,
+    counts?: PostCounts
+  ) => void;
 };
 
 export function usePostInteractions({
@@ -24,8 +31,11 @@ export function usePostInteractions({
   onEngagementPatch,
   onScoreUpdate,
 }: UsePostInteractionsOptions) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const interactionContext = usePostInteractionContext();
   const setAuthorTotalScore = useProfileStore((s) => s.setTotalScore);
+  const votesEnabled = Boolean(user?.uid);
 
   const fallbackSendInteraction = useCallback(
     async (request: Parameters<NonNullable<typeof interactionContext>["sendInteraction"]>[0]) => {
@@ -63,18 +73,6 @@ export function usePostInteractions({
     ]
   );
 
-  const voteSession = useVoteSession({
-    postId: post.id,
-    authorId: post.authorId,
-    initialCounts,
-    initialPostScore: post.postScore,
-    initialLikeBonusTotal: post.likeBonusTotal ?? 0,
-    initialDislikeBonusTotal: post.dislikeBonusTotal ?? 0,
-    initialEngagement: baseEngagement,
-    onEngagementPatch,
-    onScoreUpdate,
-  });
-
   const [counts, setCounts] = useState<PostCounts>(initialCounts);
 
   useEffect(() => {
@@ -94,15 +92,41 @@ export function usePostInteractions({
     post.commentCount,
   ]);
 
+  const handleFlushedScore = useCallback(
+    (result: {
+      postScore: number;
+      authorTotalScore: number;
+      authorId: string;
+      counts: PostCounts;
+    }) => {
+      setCounts(result.counts);
+      onScoreUpdate?.(post.id, result.postScore, result.counts);
+      patchPublicProfileTotalScore(
+        queryClient,
+        result.authorId,
+        result.authorTotalScore
+      );
+      if (currentUserId && result.authorId === currentUserId) {
+        setAuthorTotalScore(result.authorTotalScore);
+      }
+    },
+    [currentUserId, onScoreUpdate, post.id, queryClient, setAuthorTotalScore]
+  );
+
+  const { displayScore, registerUp, registerDown } = usePostVoteTap({
+    postId: post.id,
+    initialPostScore: post.postScore,
+    enabled: votesEnabled,
+    onFlushed: handleFlushedScore,
+  });
+
   const applyResult = useCallback(
     (result: NonNullable<Awaited<ReturnType<typeof sendInteraction>>>) => {
       setCounts(result.counts);
-      onScoreUpdate?.(post.id, result.postScore);
+      onScoreUpdate?.(post.id, result.postScore, result.counts);
 
       if (result.engagement) {
         onEngagementPatch?.({
-          liked: result.engagement.liked,
-          disliked: result.engagement.disliked,
           shared: result.engagement.shared,
           saved: result.engagement.saved,
         });
@@ -110,15 +134,6 @@ export function usePostInteractions({
     },
     [onEngagementPatch, onScoreUpdate, post.id]
   );
-
-  const bonus = usePostBonusHandlers({
-    postId: post.id,
-    currentUserId,
-    voteSession,
-    baseEngagement,
-    onEngagementPatch,
-    onScoreUpdate,
-  });
 
   const markShared = useCallback(() => {
     if (onEngagementPatch) {
@@ -145,60 +160,36 @@ export function usePostInteractions({
   });
 
   const handleLike = useCallback(() => {
-    voteSession.registerLikeTap();
-  }, [voteSession]);
+    if (!votesEnabled) return;
+    triggerVoteHaptic();
+    registerUp();
+  }, [registerUp, votesEnabled]);
 
   const handleDislike = useCallback(() => {
-    voteSession.registerDislikeTap();
-  }, [voteSession]);
-
-  const loading =
-    bonus.actionLoading || share.commentLoading || share.shareSaveLoading;
-
-  const displayCounts: PostCounts = {
-    ...counts,
-    likeCount: voteSession.counts.likeCount,
-    dislikeCount: voteSession.counts.dislikeCount,
-  };
+    if (!votesEnabled) return;
+    triggerVoteHaptic();
+    registerDown();
+  }, [registerDown, votesEnabled]);
 
   const engagement = useMemo<EngagementStatus>(
     () => ({
       shared: baseEngagement.shared,
       saved: baseEngagement.saved,
-      liked: voteSession.liked,
-      disliked: voteSession.disliked,
-      likeBonusPoints: bonus.likeBonusPoints,
-      dislikeBonusPoints: bonus.dislikeBonusPoints,
+      liked: false,
+      disliked: false,
     }),
-    [
-      baseEngagement.shared,
-      baseEngagement.saved,
-      voteSession.liked,
-      voteSession.disliked,
-      bonus.likeBonusPoints,
-      bonus.dislikeBonusPoints,
-    ]
+    [baseEngagement.shared, baseEngagement.saved]
   );
 
   return {
-    score: voteSession.score,
-    counts: displayCounts,
+    score: displayScore,
+    counts,
     engagement,
-    loading,
-    liked: voteSession.liked,
-    disliked: voteSession.disliked,
-    likeBonusPoints: bonus.likeBonusPoints,
-    dislikeBonusPoints: bonus.dislikeBonusPoints,
-    likeBonusPickerOpen: bonus.likeBonusPickerOpen,
-    dislikeBonusPickerOpen: bonus.dislikeBonusPickerOpen,
+    loading: share.commentLoading || share.shareSaveLoading,
+    liked: false,
+    disliked: false,
     handleLike,
     handleDislike,
-    openLikeBonusPicker: bonus.openLikeBonusPicker,
-    closeLikeBonusPicker: bonus.closeLikeBonusPicker,
-    applyLikeBonus: bonus.applyLikeBonus,
-    openDislikeBonusPicker: bonus.openDislikeBonusPicker,
-    closeDislikeBonusPicker: bonus.closeDislikeBonusPicker,
-    applyDislikeBonus: bonus.applyDislikeBonus,
     handleExternalShare: share.handleExternalShare,
     handleShare: share.handleShare,
     handleSave: share.handleSave,

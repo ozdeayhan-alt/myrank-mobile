@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { getApiBaseUrl } from "@/lib/api";
 import { getApiAuthToken } from "@/lib/apiAuthToken";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import type { BonusPoints } from "../constants";
 import type { EngagementStatus } from "../types";
 
 const DEFAULT_ENGAGEMENT: EngagementStatus = {
@@ -10,25 +9,20 @@ const DEFAULT_ENGAGEMENT: EngagementStatus = {
   saved: false,
   liked: false,
   disliked: false,
-  likeBonusPoints: null,
-  dislikeBonusPoints: null,
 };
 
-function parseBonusPoints(value: unknown): BonusPoints | null {
-  if (value === 33 || value === 66 || value === 99) {
-    return value;
-  }
-  return null;
-}
-
 function parseEngagement(data: Record<string, unknown>): EngagementStatus {
+  const voteNet =
+    typeof data.voteNet === "number" && Number.isFinite(data.voteNet)
+      ? data.voteNet
+      : undefined;
+
   return {
     shared: Boolean(data.shared),
     saved: Boolean(data.saved),
-    liked: Boolean(data.liked),
-    disliked: Boolean(data.disliked),
-    likeBonusPoints: parseBonusPoints(data.likeBonusPoints),
-    dislikeBonusPoints: parseBonusPoints(data.dislikeBonusPoints),
+    liked: false,
+    disliked: false,
+    voteNet,
   };
 }
 

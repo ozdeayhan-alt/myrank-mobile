@@ -16,7 +16,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { VideoView } from "expo-video";
 import { resolveVideoPosterUrl } from "@/lib/media/resolveMediaDisplayUrl";
-import type { EngagementStatus } from "@/features/ranking/types";
+import { useIncrementalEngagement } from "@/features/ranking/hooks/useIncrementalEngagement";
 import { useVideoReelsPlayback } from "../hooks/useVideoReelsPlayback";
 import { indexOfVideoPost } from "../utils/videoPosts";
 import type { Post } from "../types";
@@ -29,8 +29,6 @@ type VideoReelsViewerProps = {
   initialPostId: string;
   onClose: () => void;
   onScoreUpdate?: (postId: string, postScore: number) => void;
-  getEngagement?: (postId: string) => EngagementStatus;
-  patchEngagement?: (postId: string, patch: Partial<EngagementStatus>) => void;
 };
 
 export function VideoReelsViewer({
@@ -39,8 +37,6 @@ export function VideoReelsViewer({
   initialPostId,
   onClose,
   onScoreUpdate,
-  getEngagement,
-  patchEngagement,
 }: VideoReelsViewerProps) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -48,6 +44,12 @@ export function VideoReelsViewer({
   const initialIndex = useMemo(
     () => indexOfVideoPost(videoPosts, initialPostId),
     [videoPosts, initialPostId]
+  );
+  const postIds = useMemo(() => videoPosts.map((post) => post.id), [videoPosts]);
+
+  useIncrementalEngagement(
+    postIds,
+    visible ? `reels-viewer-${initialPostId}` : undefined
   );
 
   const playback = useVideoReelsPlayback({
@@ -165,10 +167,6 @@ export function VideoReelsViewer({
           {playback.activePost ? (
             <VideoReelOverlay
               post={playback.activePost}
-              engagement={getEngagement?.(playback.activePost.id)}
-              onEngagementPatch={(patch) =>
-                patchEngagement?.(playback.activePost!.id, patch)
-              }
               onScoreUpdate={onScoreUpdate}
             />
           ) : null}

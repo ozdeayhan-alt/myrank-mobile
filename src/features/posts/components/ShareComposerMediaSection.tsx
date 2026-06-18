@@ -8,72 +8,111 @@ type ShareComposerMediaSectionProps = {
   selected: PostContentType;
   mediaUri: string | null;
   submitting: boolean;
-  onPickMedia: () => void;
+  onPickFromCamera: () => void;
+  onPickFromGallery: () => void;
 };
+
+type MediaSourceCardsProps = {
+  isImage: boolean;
+  submitting: boolean;
+  onPickFromCamera: () => void;
+  onPickFromGallery: () => void;
+};
+
+function MediaSourceCards({
+  isImage,
+  submitting,
+  onPickFromCamera,
+  onPickFromGallery,
+}: MediaSourceCardsProps) {
+  return (
+    <View className="flex-row gap-3">
+      <Pressable
+        className="flex-1 items-center rounded-2xl border border-gray-200 bg-white px-3 py-5 shadow-sm active:bg-gray-50"
+        onPress={onPickFromCamera}
+        disabled={submitting}
+        accessibilityRole="button"
+        accessibilityLabel="Kamera"
+      >
+        <View className="mb-3 h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+          <Ionicons name="camera-outline" size={24} color="#111827" />
+        </View>
+        <Text className="text-sm font-semibold text-gray-900">Kamera</Text>
+        <Text className="mt-1 text-center text-xs text-gray-500">
+          {isImage ? "Anında çek" : "En fazla 33 sn"}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        className="flex-1 items-center rounded-2xl border border-gray-200 bg-white px-3 py-5 shadow-sm active:bg-gray-50"
+        onPress={onPickFromGallery}
+        disabled={submitting}
+        accessibilityRole="button"
+        accessibilityLabel="Galeri"
+      >
+        <View className="mb-3 h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+          <Ionicons name="images-outline" size={24} color="#111827" />
+        </View>
+        <Text className="text-sm font-semibold text-gray-900">Galeri</Text>
+        <Text className="mt-1 text-center text-xs text-gray-500">
+          {isImage ? "JPG veya PNG" : "Galeriden seç"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
 
 export function ShareComposerMediaSection({
   selected,
   mediaUri,
   submitting,
-  onPickMedia,
+  onPickFromCamera,
+  onPickFromGallery,
 }: ShareComposerMediaSectionProps) {
   if (selected === "tweet") {
     return null;
   }
 
+  const isImage = selected === "image";
+
   return (
     <View className="mb-4">
-      {mediaUri && selected === "image" ? (
-        <View className="overflow-hidden rounded-2xl border border-gray-200">
+      {mediaUri && isImage ? (
+        <View className="mb-3 overflow-hidden rounded-2xl border border-gray-200">
           <Image
             source={{ uri: mediaUri }}
             style={{ width: "100%", height: 220 }}
             contentFit="cover"
           />
-          <Pressable
-            className="absolute right-3 top-3 rounded-full bg-black/60 px-3 py-1.5"
-            onPress={onPickMedia}
-            disabled={submitting}
-          >
-            <Text className="text-xs font-semibold text-white">Değiştir</Text>
-          </Pressable>
         </View>
       ) : null}
 
       {mediaUri && selected === "video" ? (
-        <View className="overflow-hidden rounded-2xl border border-gray-200">
+        <View className="mb-3 overflow-hidden rounded-2xl border border-gray-200">
           <ShareVideoPreview uri={mediaUri} />
-          <Pressable
-            className="absolute right-3 top-3 rounded-full bg-black/60 px-3 py-1.5"
-            onPress={onPickMedia}
-            disabled={submitting}
-          >
-            <Text className="text-xs font-semibold text-white">Değiştir</Text>
-          </Pressable>
         </View>
       ) : null}
 
-      {!mediaUri ? (
-        <Pressable
-          className="items-center rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-10"
-          onPress={onPickMedia}
-          disabled={submitting}
-        >
-          <Ionicons
-            name={selected === "image" ? "image-outline" : "videocam-outline"}
-            size={32}
-            color="#9CA3AF"
+      {mediaUri ? (
+        <View>
+          <Text className="mb-2 text-xs font-medium text-gray-500">
+            Medyayı değiştir
+          </Text>
+          <MediaSourceCards
+            isImage={isImage}
+            submitting={submitting}
+            onPickFromCamera={onPickFromCamera}
+            onPickFromGallery={onPickFromGallery}
           />
-          <Text className="mt-3 text-sm font-semibold text-gray-700">
-            Kamera veya galeri
-          </Text>
-          <Text className="mt-1 text-xs text-gray-500">
-            {selected === "video"
-              ? "En fazla 33 saniye · kamera veya galeri"
-              : "JPG veya PNG · kamera veya galeri"}
-          </Text>
-        </Pressable>
-      ) : null}
+        </View>
+      ) : (
+        <MediaSourceCards
+          isImage={isImage}
+          submitting={submitting}
+          onPickFromCamera={onPickFromCamera}
+          onPickFromGallery={onPickFromGallery}
+        />
+      )}
     </View>
   );
 }

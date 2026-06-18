@@ -1,11 +1,17 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useScrollToTop } from "@react-navigation/native";
+import {
+  useNavigation,
+  useScrollToTop,
+  type ParamListBase,
+} from "@react-navigation/native";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { View } from "react-native";
 import type { FlashListRef } from "@shopify/flash-list";
+import { HomeFeedContentFilter } from "@/components/HomeFeedContentFilter";
 import {
   HomeFeedModeToggle,
   type HomeFeedMode,
 } from "@/components/HomeFeedModeToggle";
-import { HomeFeedHeader } from "@/components/HomeFeedHeader";
 import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
 import { useAuth } from "@/features/auth";
 import { useFollowingFeedInfinite } from "@/features/explore/hooks/useFollowingFeedInfinite";
@@ -14,94 +20,116 @@ import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
-import {
-  filterVideoPosts,
-  mergeHomeFeedVideoPosts,
-} from "@/features/posts/utils/videoPosts";
+import { ReelsTabFeed } from "@/features/posts/components/ReelsTabFeed";
+import { useHomeFeedContentStore } from "@/features/posts/store/useHomeFeedContentStore";
+import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
+import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
+import { filterVideoPosts } from "@/features/posts/utils/videoPosts";
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation<BottomTabNavigationProp<ParamListBase>>();
   const listRef = useRef<FlashListRef<FeedListItem>>(null);
   useScrollToTop(listRef);
 
-  const [mode, setMode] = useState<HomeFeedMode>("global");
+  const contentFilter = useHomeFeedContentStore((s) => s.contentFilter);
+  const setContentFilter = useHomeFeedContentStore((s) => s.setContentFilter);
+  const [feedMode, setFeedMode] = useState<HomeFeedMode>("global");
 
-  const globalFeed = useHomeFeedInfinite(mode === "global");
-  const followingFeed = useFollowingFeedInfinite(mode === "following");
+  const globalFeed = useHomeFeedInfinite(
+    contentFilter !== "video" && feedMode === "global"
+  );
+  const followingFeed = useFollowingFeedInfinite(
+    contentFilter !== "video" && feedMode === "following"
+  );
 
-  const activeFeed = mode === "global" ? globalFeed : followingFeed;
+  const activeFeed = feedMode === "global" ? globalFeed : followingFeed;
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("tabPress", () => {
+      if (contentFilter === "video") {
+        setContentFilter(null);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, contentFilter, setContentFilter]);
 
   const handleRefresh = useCallback(() => {
     void activeFeed.refresh();
   }, [activeFeed]);
 
-  const globalRecentIds = useMemo(
-    () => new Set(globalFeed.recentPosts.map((p) => p.id)),
-    [globalFeed.recentPosts]
-  );
-  const globalTopOnly = useMemo(
-    () => globalFeed.topPosts.filter((p) => !globalRecentIds.has(p.id)),
-    [globalFeed.topPosts, globalRecentIds]
-  );
+  const listContentFilter =
+    contentFilter === "video" ? null : contentFilter;
 
   const videoPosts = useMemo(() => {
-    if (mode === "global") {
-      return mergeHomeFeedVideoPosts(
-        globalFeed.recentPosts,
-        globalFeed.topPosts
-      );
+    if (feedMode === "global") {
+      return filterVideoPosts(globalFeed.recentPosts);
     }
     return filterVideoPosts(followingFeed.posts);
-  }, [mode, globalFeed.recentPosts, globalFeed.topPosts, followingFeed.posts]);
+  }, [feedMode, globalFeed.recentPosts, followingFeed.posts]);
 
   const feedItems = useMemo((): FeedListItem[] => {
-    if (mode === "following") {
-      return followingFeed.posts.map((post) => ({
+    if (feedMode === "following") {
+      return filterPostsByContentType(
+        followingFeed.posts,
+        listContentFilter
+      ).map((post) => ({
         kind: "post" as const,
         key: post.id,
         post,
       }));
     }
 
-    if (globalFeed.recentPosts.length === 0 && globalTopOnly.length === 0) {
-      return [];
+    return filterPostsByContentType(
+      globalFeed.recentPosts,
+      listContentFilter
+    ).map((post) => ({
+      kind: "post" as const,
+      key: post.id,
+      post,
+    }));
+  }, [
+    feedMode,
+    followingFeed.posts,
+    globalFeed.recentPosts,
+    listContentFilter,
+  ]);
+
+  const emptyMessage = useMemo(() => {
+    if (listContentFilter === "tweet" || listContentFilter === "image") {
+      return getEmptyFeedMessage(listContentFilter);
     }
-
-    const items: FeedListItem[] = [];
-
-    for (const post of globalFeed.recentPosts) {
-      items.push({ kind: "post", key: post.id, post });
+    if (feedMode === "following") {
+      return "Henüz kimseyi takip etmiyorsun veya takip ettiklerinden gönderi yok. Profillere gidip Takip Et'e basabilirsin.";
     }
-
-    if (globalTopOnly.length > 0) {
-      items.push({
-        kind: "header",
-        key: "header-top",
-        title: "En yüksek puanlı",
-        subtitle: "Yukarıdaki listede olmayan öne çıkan gönderiler.",
-      });
-      for (const post of globalTopOnly) {
-        items.push({ kind: "post", key: `top-${post.id}`, post });
-      }
-    }
-
-    return items;
-  }, [mode, followingFeed.posts, globalFeed.recentPosts, globalTopOnly]);
-
-  const emptyMessage =
-    mode === "following"
-      ? "Henüz kimseyi takip etmiyorsun veya takip ettiklerinden gönderi yok. Profillere gidip Takip Et'e basabilirsin."
-      : "Henüz gönderi yok. Paylaş sekmesinden ilk gönderinizi oluşturun.";
+    return "Henüz gönderi yok. Paylaş sekmesinden ilk gönderinizi oluşturun.";
+  }, [feedMode, listContentFilter]);
 
   const listHeader = useMemo(
     () => (
       <>
-        <HomeFeedHeader />
-        <HomeFeedModeToggle mode={mode} onModeChange={setMode} />
+        <HomeFeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
+        <HomeFeedContentFilter
+          contentFilter={contentFilter}
+          onContentFilterChange={setContentFilter}
+        />
       </>
     ),
-    [mode]
+    [contentFilter, feedMode, setContentFilter, setFeedMode]
   );
+
+  if (contentFilter === "video") {
+    return (
+      <View className="flex-1 bg-black">
+        <ReelsTabFeed
+          currentUserId={user?.uid ?? null}
+          feedMode={feedMode}
+          fullscreen
+        />
+      </View>
+    );
+  }
 
   const loading = activeFeed.loading;
   const error = activeFeed.error;

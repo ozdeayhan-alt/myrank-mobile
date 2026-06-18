@@ -1,11 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useIncrementalEngagement } from "@/features/ranking/hooks/useIncrementalEngagement";
-import type { EngagementStatus } from "@/features/ranking/types";
 import { PostInteractionProvider } from "../context/PostInteractionContext";
 import type { Post } from "../types";
+import { navigateToReels } from "../navigateToReels";
 import { filterVideoPosts } from "../utils/videoPosts";
 import { FeedPostRow } from "./FeedPostRow";
-import { VideoReelsViewer } from "./VideoReelsViewer";
 
 type PostCardListProps = {
   posts: Post[];
@@ -28,11 +27,8 @@ export function PostCardList({
   currentUserId = null,
 }: PostCardListProps) {
   const postIds = useMemo(() => posts.map((post) => post.id), [posts]);
-  const engagementResetKey = useMemo(
-    () => `${keyPrefix}${postIds.join(",")}`,
-    [keyPrefix, postIds]
-  );
-  const { getEngagement, patchEngagement } = useIncrementalEngagement(
+  const engagementResetKey = keyPrefix || "post-card-list";
+  const { patchEngagement } = useIncrementalEngagement(
     postIds,
     engagementResetKey
   );
@@ -42,13 +38,11 @@ export function PostCardList({
     [videoPostsProp, posts]
   );
 
-  const [openVideoId, setOpenVideoId] = useState<string | null>(null);
-
-  const handlePatch = useCallback(
-    (postId: string, patch: Partial<EngagementStatus>) => {
-      patchEngagement(postId, patch);
+  const handleOpenVideo = useCallback(
+    (postId: string) => {
+      navigateToReels(postId, playlist);
     },
-    [patchEngagement]
+    [playlist]
   );
 
   return (
@@ -59,23 +53,12 @@ export function PostCardList({
           post={post}
           patchEngagement={patchEngagement}
           onScoreUpdate={onScoreUpdate}
-          onOpenVideo={setOpenVideoId}
+          onOpenVideo={handleOpenVideo}
           onPostDeleted={onPostDeleted}
           onPostContentUpdated={onPostContentUpdated}
         />
       ))}
 
-      {openVideoId && playlist.length > 0 ? (
-        <VideoReelsViewer
-          visible
-          videoPosts={playlist}
-          initialPostId={openVideoId}
-          onClose={() => setOpenVideoId(null)}
-          onScoreUpdate={onScoreUpdate}
-          getEngagement={getEngagement}
-          patchEngagement={handlePatch}
-        />
-      ) : null}
     </PostInteractionProvider>
   );
 }

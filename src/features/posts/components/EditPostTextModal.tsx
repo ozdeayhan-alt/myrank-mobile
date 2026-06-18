@@ -12,6 +12,7 @@ import {
   POST_CAPTION_MAX_LENGTH,
   TWEET_MAX_LENGTH,
 } from "../constants";
+import { CONTENT_TYPE_LABELS } from "../constants/contentTypeLabels";
 import type { PostContentType } from "../types";
 
 type EditPostTextModalProps = {
@@ -29,7 +30,7 @@ function maxLengthForType(contentType: PostContentType): number {
 
 function placeholderForType(contentType: PostContentType): string {
   if (contentType === "tweet") {
-    return "Gönderi metnini yazın…";
+    return `${CONTENT_TYPE_LABELS.tweet} metnini yazın…`;
   }
   return "Açıklamayı yazın (opsiyonel)…";
 }
@@ -65,7 +66,7 @@ export function EditPostTextModal({
           </Text>
           <Text className="mb-4 text-sm text-gray-500">
             {contentType === "tweet"
-              ? "Tweet metnini güncelleyin."
+              ? `${CONTENT_TYPE_LABELS.tweet} metnini güncelleyin.`
               : "Medya aynı kalır; yalnızca açıklama değişir."}
           </Text>
 

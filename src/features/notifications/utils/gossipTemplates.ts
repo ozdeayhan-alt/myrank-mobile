@@ -38,7 +38,17 @@ export function formatGossipLine(
   const { type, payload } = notification;
 
   switch (type) {
-    case "post_liked":
+    case "post_liked": {
+      const delta = payload.voteDelta ?? 0;
+      if (delta > 1) {
+        return pickVariant(
+          [
+            `${name} gönderine ${delta} kez göz koymuş resmen.`,
+            `${name} gönderini ${delta} kez beğenmiş, haberin yokmuş.`,
+          ],
+          seed
+        );
+      }
       return pickVariant(
         [
           `Vallaha ${name} gönderine göz koymuş resmen.`,
@@ -47,6 +57,7 @@ export function formatGossipLine(
         ],
         seed
       );
+    }
     case "post_commented":
       return pickVariant(
         [

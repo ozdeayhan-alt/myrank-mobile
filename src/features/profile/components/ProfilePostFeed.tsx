@@ -19,6 +19,9 @@ function ProfilePostFeedInner({ authorId }: ProfilePostFeedProps) {
     removePost,
     updatePostContent,
     isRefetching,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
   } = useAuthorPosts(authorId);
 
   const items = useMemo(
@@ -49,6 +52,9 @@ function ProfilePostFeedInner({ authorId }: ProfilePostFeedProps) {
       engagementResetKey={`profile-feed-${authorId}`}
       onPostDeleted={removePost}
       onPostContentUpdated={updatePostContent}
+      hasNextPage={hasNextPage}
+      isFetchingNextPage={isFetchingNextPage}
+      onLoadMore={fetchNextPage}
       contentContainerStyle={{ paddingHorizontal: 0, paddingVertical: 0 }}
     />
   );

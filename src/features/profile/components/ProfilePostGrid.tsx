@@ -10,16 +10,11 @@ import { Image } from "expo-image";
 import { fetchPostsByAuthor } from "@/features/posts/api/fetchPostsByAuthor";
 import type { Post } from "@/features/posts/types";
 import { resolveMediaDisplayUrl, resolveVideoPosterUrl } from "@/lib/media/resolveMediaDisplayUrl";
+import { getContentTypeLabel } from "@/features/posts/constants/contentTypeLabels";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 
 type ProfilePostGridProps = {
   authorId: string;
-};
-
-const CONTENT_LABELS: Record<string, string> = {
-  tweet: "Tweet",
-  image: "Resim",
-  video: "Video",
 };
 
 export function ProfilePostGrid({ authorId }: ProfilePostGridProps) {
@@ -103,9 +98,7 @@ export function ProfilePostGrid({ authorId }: ProfilePostGridProps) {
                 {item.postScore} puan
               </Text>
               <Text className="mt-1 text-[10px] text-gray-400">
-                {item.contentType
-                  ? CONTENT_LABELS[item.contentType] ?? item.contentType
-                  : "Gönderi"}
+                {getContentTypeLabel(item.contentType)}
               </Text>
               <Text
                 className="mt-auto text-[10px] text-gray-600"

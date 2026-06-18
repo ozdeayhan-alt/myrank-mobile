@@ -5,17 +5,11 @@ import { formatActionSubLabel } from "../utils/formatActionSubLabel";
 
 type PostCardActionBarProps = {
   counts: PostCounts;
-  liked: boolean;
-  disliked: boolean;
   shareActive: boolean;
   saveActive: boolean;
   loading: boolean;
-  likeBonusPoints?: number | null;
-  dislikeBonusPoints?: number | null;
   onLikePress: () => void;
-  onLikeLongPress: () => void;
   onDislikePress: () => void;
-  onDislikeLongPress: () => void;
   onCommentPress: () => void;
   onSharePress: () => void;
   onSavePress: () => void;
@@ -23,17 +17,11 @@ type PostCardActionBarProps = {
 
 export function PostCardActionBar({
   counts,
-  liked,
-  disliked,
   shareActive,
   saveActive,
   loading,
-  likeBonusPoints,
-  dislikeBonusPoints,
   onLikePress,
-  onLikeLongPress,
   onDislikePress,
-  onDislikeLongPress,
   onCommentPress,
   onSharePress,
   onSavePress,
@@ -41,34 +29,20 @@ export function PostCardActionBar({
   return (
     <View className="flex-row flex-wrap border-b border-gray-50 px-1 py-1">
       <Pressable
-        className={`min-w-[20%] flex-1 items-center px-1 py-2 ${liked ? ui.activeRow : ""}`}
+        className="min-w-[20%] flex-1 items-center px-1 py-2"
         onPress={onLikePress}
-        onLongPress={onLikeLongPress}
-        delayLongPress={450}
         disabled={loading}
-        accessibilityHint="Basılı tutarak bonus beğeni puanı seçin"
+        accessibilityLabel="Beğen"
       >
-        <Text className={`text-sm ${liked ? ui.activeText : ui.inactiveText}`}>
-          👍
-        </Text>
-        {likeBonusPoints ? (
-          <Text className="text-[10px] text-indigo-500">+{likeBonusPoints}</Text>
-        ) : null}
+        <Text className="text-sm text-gray-600">👍</Text>
       </Pressable>
       <Pressable
-        className={`min-w-[20%] flex-1 items-center py-2 ${disliked ? ui.activeRow : ""}`}
+        className="min-w-[20%] flex-1 items-center py-2"
         onPress={onDislikePress}
-        onLongPress={onDislikeLongPress}
-        delayLongPress={450}
         disabled={loading}
-        accessibilityHint="Basılı tutarak bonus beğenmeme puanı seçin"
+        accessibilityLabel="Beğenme"
       >
-        <Text className={`text-sm ${disliked ? ui.activeText : ui.inactiveText}`}>
-          👎
-        </Text>
-        {dislikeBonusPoints ? (
-          <Text className="text-[10px] text-red-500">−{dislikeBonusPoints}</Text>
-        ) : null}
+        <Text className="text-sm text-gray-600">👎</Text>
       </Pressable>
       <Pressable
         className="min-w-[20%] flex-1 items-center py-2"

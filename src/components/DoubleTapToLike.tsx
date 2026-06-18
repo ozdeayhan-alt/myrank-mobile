@@ -2,13 +2,10 @@ import { useCallback, type ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
-import { triggerLikeHaptic } from "@/lib/likeFeedback";
 
 type DoubleTapToLikeProps = {
   children?: ReactNode;
   onLike: () => void;
-  /** true ise çift tık beğeniyi kaldırır — haptic/kalp yok */
-  liked?: boolean;
   /** Yeni beğeni anında (üst katmanda kalp animasyonu) */
   onLikeAnimated?: () => void;
   /** Tek tık (ör. feed video → reels aç) */
@@ -22,7 +19,6 @@ type DoubleTapToLikeProps = {
 export function DoubleTapToLike({
   children,
   onLike,
-  liked = false,
   onLikeAnimated,
   onSinglePress,
   style,
@@ -30,13 +26,9 @@ export function DoubleTapToLike({
   overlay = false,
 }: DoubleTapToLikeProps) {
   const handleDoubleTap = useCallback(() => {
-    const willLike = !liked;
     onLike();
-    if (willLike) {
-      triggerLikeHaptic();
-      onLikeAnimated?.();
-    }
-  }, [liked, onLike, onLikeAnimated]);
+    onLikeAnimated?.();
+  }, [onLike, onLikeAnimated]);
 
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)

@@ -18,6 +18,7 @@ import {
 import { signInWithGoogleCredential } from "../lib/googleSignIn";
 import { deleteAccount as deleteAccountApi } from "@/features/account";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { recordError } from "@/lib/crashReporting";
 import { useProfileStore } from "@/features/profile/store/useProfileStore";
 
 type AuthContextValue = {
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } catch (error) {
       console.error("Firebase Auth başlatılamadı:", error);
+      recordError(error, "AuthContext:init");
       setInitializing(false);
     }
 

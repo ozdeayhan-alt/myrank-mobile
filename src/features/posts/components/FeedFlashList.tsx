@@ -15,7 +15,7 @@ import { prefetchPostMedia } from "../utils/prefetchPostMedia";
 import { FeedPostErrorBoundary } from "./FeedPostErrorBoundary";
 import { FeedPostSkeleton } from "./FeedPostSkeleton";
 import { FeedPostRow } from "./FeedPostRow";
-import { VideoReelsViewer } from "./VideoReelsViewer";
+import { navigateToReels } from "../navigateToReels";
 import { filterVideoPosts, isVideoPost } from "../utils/videoPosts";
 
 const FEED_DRAW_DISTANCE = 500;
@@ -91,7 +91,6 @@ export function FeedFlashList({
   listKey,
   currentUserId = null,
 }: FeedFlashListProps) {
-  const [openVideoId, setOpenVideoId] = useState<string | null>(null);
   const [autoplayPostId, setAutoplayPostId] = useState<string | null>(null);
   const autoplayPostIdRef = useRef<string | null>(null);
   const itemsRef = useRef(items);
@@ -125,7 +124,7 @@ export function FeedFlashList({
     [items, videoPosts]
   );
 
-  const { getEngagement, patchEngagement } = useIncrementalEngagement(
+  const { patchEngagement } = useIncrementalEngagement(
     postIds,
     engagementResetKey
   );
@@ -190,18 +189,18 @@ export function FeedFlashList({
     }
   ).current;
 
-  const handlePatch = useCallback(
-    (postId: string, patch: Parameters<typeof patchEngagement>[1]) => {
-      patchEngagement(postId, patch);
-    },
-    [patchEngagement]
-  );
-
   const getItemType = useCallback((item: FeedListItem) => item.kind, []);
 
   const listExtraData = useMemo(
     () => ({ autoplayPostId, extraData }),
     [autoplayPostId, extraData]
+  );
+
+  const handleOpenVideo = useCallback(
+    (postId: string) => {
+      navigateToReels(postId, playlist);
+    },
+    [playlist]
   );
 
   const renderItem = useCallback(
@@ -243,7 +242,7 @@ export function FeedFlashList({
             post={item.post}
             patchEngagement={patchEngagement}
             onScoreUpdate={onScoreUpdate}
-            onOpenVideo={setOpenVideoId}
+            onOpenVideo={handleOpenVideo}
             onPostDeleted={onPostDeleted}
             onPostContentUpdated={onPostContentUpdated}
             currentUserId={currentUserId}
@@ -255,6 +254,7 @@ export function FeedFlashList({
       );
     },
     [
+      handleOpenVideo,
       patchEngagement,
       onScoreUpdate,
       onPostDeleted,
@@ -332,18 +332,6 @@ export function FeedFlashList({
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
       />
-
-      {openVideoId && playlist.length > 0 ? (
-        <VideoReelsViewer
-          visible
-          videoPosts={playlist}
-          initialPostId={openVideoId}
-          onClose={() => setOpenVideoId(null)}
-          onScoreUpdate={onScoreUpdate}
-          getEngagement={getEngagement}
-          patchEngagement={handlePatch}
-        />
-      ) : null}
     </PostInteractionProvider>
   );
 }

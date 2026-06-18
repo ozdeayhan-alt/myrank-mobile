@@ -2,12 +2,15 @@ import { memo, useCallback } from "react";
 import { Pressable, Text, View } from "react-native";
 import { ProfileAvatar } from "@/features/profile/components/ProfileAvatar";
 import { navigateToAuthorProfile } from "@/features/profile/navigateToAuthorProfile";
+import { SystemProfileBadge } from "@/components/SystemProfileBadge";
+import { isSystemProfileUserId } from "@/lib/profile/isSystemProfile";
 import {
   formatRankChange,
   formatTpChange,
   TREND_LABEL_TR,
 } from "../utils/momentum";
 import { prestigeTierFromRank } from "../utils/prestige";
+import { formatRankingCategoriesLine } from "../utils/formatRankingCategoriesLine";
 import type { RankingEntry } from "../types";
 
 const LIST_AVATAR_SIZE = 40;
@@ -91,6 +94,8 @@ function RankingEntryRowInner({
   }, [entry.userId, entry.displayName, entry.photoURL, currentUserId]);
 
   const prestigeTier = prestigeTierFromRank(entry.rank);
+  const categoriesLine = formatRankingCategoriesLine(entry.metadata);
+  const isSystemProfile = isSystemProfileUserId(entry.userId);
 
   return (
     <Pressable
@@ -112,9 +117,17 @@ function RankingEntryRowInner({
         />
 
         <View className="min-w-0 flex-1">
-          <Text className="text-sm text-gray-700" numberOfLines={1}>
-            {entry.displayName}
-          </Text>
+          <View className="flex-row flex-wrap items-center gap-1.5">
+            <Text className="shrink text-sm text-gray-700" numberOfLines={1}>
+              {entry.displayName}
+            </Text>
+            {isSystemProfile ? <SystemProfileBadge /> : null}
+          </View>
+          {categoriesLine ? (
+            <Text className="mt-0.5 text-xs text-gray-500" numberOfLines={2}>
+              {categoriesLine}
+            </Text>
+          ) : null}
           <MomentumIndicators entry={entry} />
         </View>
       </View>

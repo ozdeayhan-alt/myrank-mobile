@@ -2,12 +2,10 @@ import { memo, useCallback, useState } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 import type { EngagementStatus } from "@/features/ranking/types";
 import { SPINNER_COLOR, ui } from "@/lib/uiClasses";
-import { useBonusPressHandlers } from "../hooks/useLikePressHandlers";
 import { usePostCardOwnerActions } from "../hooks/usePostCardOwnerActions";
 import { useShareAndRepost } from "../hooks/useShareAndRepost";
 import type { Post } from "../types";
 import { isRepostPost } from "../utils/repostUtils";
-import { BonusPointsPicker } from "./LikePointsPicker";
 import { EditPostTextModal } from "./EditPostTextModal";
 import { PostCardActionBar } from "./PostCardActionBar";
 import { PostCardBody } from "./PostCardBody";
@@ -61,20 +59,8 @@ export const PostCard = memo(function PostCard({
     score,
     counts,
     loading,
-    liked,
-    disliked,
     handleLike,
     handleDislike,
-    openLikeBonusPicker,
-    closeLikeBonusPicker,
-    applyLikeBonus,
-    openDislikeBonusPicker,
-    closeDislikeBonusPicker,
-    applyDislikeBonus,
-    likeBonusPickerOpen,
-    dislikeBonusPickerOpen,
-    likeBonusPoints,
-    dislikeBonusPoints,
     handleSharePress,
     handleSave,
     applyCommentResult,
@@ -95,19 +81,14 @@ export const PostCard = memo(function PostCard({
     setHeartBurstKey((k) => k + 1);
   }, []);
 
-  const { onPress: handleLikePress, onLongPress: handleLikeLongPress } =
-    useBonusPressHandlers({
-      active: liked,
-      onToggle: handleLike,
-      onOpenBonusPicker: openLikeBonusPicker,
-    });
+  const handleLikePress = useCallback(() => {
+    handleLike();
+    triggerLikeHeart();
+  }, [handleLike, triggerLikeHeart]);
 
-  const { onPress: handleDislikePress, onLongPress: handleDislikeLongPress } =
-    useBonusPressHandlers({
-      active: disliked,
-      onToggle: handleDislike,
-      onOpenBonusPicker: openDislikeBonusPicker,
-    });
+  const handleDislikePress = useCallback(() => {
+    handleDislike();
+  }, [handleDislike]);
 
   return (
     <>
@@ -126,7 +107,6 @@ export const PostCard = memo(function PostCard({
 
         <PostCardBody
           post={displayPost}
-          liked={liked}
           heartBurstKey={heartBurstKey}
           onLike={handleLike}
           onLikeAnimated={triggerLikeHeart}
@@ -137,17 +117,11 @@ export const PostCard = memo(function PostCard({
 
         <PostCardActionBar
           counts={counts}
-          liked={liked}
-          disliked={disliked}
           shareActive={shareActive}
           saveActive={saveActive}
           loading={loading}
-          likeBonusPoints={likeBonusPoints}
-          dislikeBonusPoints={dislikeBonusPoints}
           onLikePress={handleLikePress}
-          onLikeLongPress={handleLikeLongPress}
           onDislikePress={handleDislikePress}
-          onDislikeLongPress={handleDislikeLongPress}
           onCommentPress={() =>
             openCommentSheet(post.id, applyCommentResult)
           }
@@ -161,28 +135,6 @@ export const PostCard = memo(function PostCard({
           </View>
         ) : null}
       </View>
-
-      {likeBonusPickerOpen ? (
-        <BonusPointsPicker
-          variant="like"
-          visible
-          currentBonus={likeBonusPoints}
-          submitting={loading}
-          onSelect={applyLikeBonus}
-          onClose={closeLikeBonusPicker}
-        />
-      ) : null}
-
-      {dislikeBonusPickerOpen ? (
-        <BonusPointsPicker
-          variant="dislike"
-          visible
-          currentBonus={dislikeBonusPoints}
-          submitting={loading}
-          onSelect={applyDislikeBonus}
-          onClose={closeDislikeBonusPicker}
-        />
-      ) : null}
 
       {editOpen ? (
         <EditPostTextModal
@@ -204,7 +156,6 @@ export const PostCard = memo(function PostCard({
           onOpenVideo={onOpenVideo}
         />
       ) : null}
-
     </>
   );
 });

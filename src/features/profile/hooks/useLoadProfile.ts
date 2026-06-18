@@ -4,6 +4,7 @@ import {
   fetchRemoteProfile,
   pickProfileMetadata,
 } from "../api/fetchRemoteProfile";
+import type { ParsedProfileFields } from "../api/profileDocParsing";
 import { syncPublicProfile } from "../api/syncPublicProfile";
 import { isMetadataComplete } from "../types";
 import { useProfileStore } from "../store/useProfileStore";
@@ -21,12 +22,83 @@ async function waitForProfileStoreHydration(): Promise<void> {
   });
 }
 
+function hasCachedProfileForUser(userId: string): boolean {
+  const local = useProfileStore.getState();
+  return (
+    local.profileOwnerId === userId &&
+    (local.displayName.trim().length > 0 || isMetadataComplete(local.metadata))
+  );
+}
+
+function applyCachedProfile(
+  userId: string,
+  authDisplayName?: string | null,
+  authPhotoURL?: string | null
+): void {
+  const local = useProfileStore.getState();
+  const displayName =
+    local.displayName.trim() || authDisplayName?.trim() || "";
+  const photoURL = local.photoURL.trim() || authPhotoURL?.trim() || "";
+
+  useProfileStore.getState().hydrateFromFirestore(
+    local.metadata,
+    local.totalScore,
+    displayName,
+    photoURL,
+    local.bio,
+    local.bioCategoryVisibility
+  );
+  useProfileStore.setState({ profileOwnerId: userId });
+}
+
+function applyRemoteProfile(
+  userId: string,
+  remote: ParsedProfileFields,
+  authDisplayName?: string | null,
+  authPhotoURL?: string | null
+): void {
+  const local = useProfileStore.getState();
+  const metadata = pickProfileMetadata(local.metadata, remote.metadata);
+  const displayName =
+    remote.displayName.trim() ||
+    local.displayName.trim() ||
+    authDisplayName?.trim() ||
+    "";
+  const photoURL =
+    remote.photoURL.trim() ||
+    local.photoURL.trim() ||
+    authPhotoURL?.trim() ||
+    "";
+
+  useProfileStore.getState().hydrateFromFirestore(
+    metadata,
+    remote.totalScore,
+    displayName,
+    photoURL,
+    remote.bio || local.bio,
+    remote.bioCategoryVisibility
+  );
+  useProfileStore.setState({ profileOwnerId: userId });
+
+  void syncPublicProfile(userId, {
+    displayName,
+    photoURL,
+    bio: remote.bio || local.bio,
+    bioCategoryVisibility: remote.bioCategoryVisibility,
+    metadata,
+    totalScore: remote.totalScore,
+  }).catch(() => undefined);
+
+  if (isMetadataComplete(metadata)) {
+    ensureRankingEntries().catch(() => undefined);
+  }
+}
+
 export function useLoadProfile(
   userId: string | undefined,
   authDisplayName?: string | null,
   authPhotoURL?: string | null
 ) {
-  const hydrateFromFirestore = useProfileStore((s) => s.hydrateFromFirestore);
   const setDisplayName = useProfileStore((s) => s.setDisplayName);
   const setPhotoURL = useProfileStore((s) => s.setPhotoURL);
   const setRemoteLoaded = useProfileStore((s) => s.setRemoteLoaded);
@@ -51,50 +123,24 @@ export function useLoadProfile(
         reset();
       }
 
-      setRemoteLoaded(false);
+      const hadCachedProfile = hasCachedProfileForUser(userId);
+      if (hadCachedProfile) {
+        applyCachedProfile(userId, authDisplayName, authPhotoURL);
+      } else {
+        setRemoteLoaded(false);
+      }
 
       const remote = await fetchRemoteProfile(userId);
       if (cancelled) {
         return;
       }
 
-      const local = useProfileStore.getState();
-
       if (remote) {
-        const metadata = pickProfileMetadata(local.metadata, remote.metadata);
-        const displayName =
-          remote.displayName.trim() ||
-          local.displayName.trim() ||
-          authDisplayName?.trim() ||
-          "";
-        const photoURL =
-          remote.photoURL.trim() ||
-          local.photoURL.trim() ||
-          authPhotoURL?.trim() ||
-          "";
+        applyRemoteProfile(userId, remote, authDisplayName, authPhotoURL);
+        return;
+      }
 
-        hydrateFromFirestore(
-          metadata,
-          remote.totalScore,
-          displayName,
-          photoURL,
-          remote.bio || local.bio,
-          remote.bioCategoryVisibility
-        );
-        useProfileStore.setState({ profileOwnerId: userId });
-
-        await syncPublicProfile(userId, {
-          displayName,
-          photoURL,
-          bio: remote.bio || local.bio,
-          bioCategoryVisibility: remote.bioCategoryVisibility,
-          metadata,
-          totalScore: remote.totalScore,
-        }).catch(() => undefined);
-
-        if (isMetadataComplete(metadata)) {
-          ensureRankingEntries().catch(() => undefined);
-        }
+      if (hadCachedProfile) {
         return;
       }
 
@@ -105,16 +151,9 @@ export function useLoadProfile(
         setPhotoURL(authPhotoURL.trim());
       }
 
+      const local = useProfileStore.getState();
       if (isMetadataComplete(local.metadata) && local.profileOwnerId === userId) {
-        hydrateFromFirestore(
-          local.metadata,
-          local.totalScore,
-          local.displayName,
-          local.photoURL,
-          local.bio,
-          local.bioCategoryVisibility
-        );
-        useProfileStore.setState({ profileOwnerId: userId });
+        applyCachedProfile(userId, authDisplayName, authPhotoURL);
         return;
       }
 
@@ -129,7 +168,6 @@ export function useLoadProfile(
     userId,
     authDisplayName,
     authPhotoURL,
-    hydrateFromFirestore,
     setDisplayName,
     setPhotoURL,
     setRemoteLoaded,

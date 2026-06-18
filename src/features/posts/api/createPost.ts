@@ -19,6 +19,48 @@ export type CreatePostResult = {
   mentionUserIds: string[];
 };
 
+const DEFAULT_VIDEO_WIDTH = 1280;
+const DEFAULT_VIDEO_HEIGHT = 720;
+const DEFAULT_IMAGE_WIDTH = 1080;
+const DEFAULT_IMAGE_HEIGHT = 1080;
+
+function resolveMediaDimensions(input: CreatePostInput): {
+  mediaWidth?: number;
+  mediaHeight?: number;
+} {
+  if (
+    typeof input.mediaWidth === "number" &&
+    typeof input.mediaHeight === "number" &&
+    input.mediaWidth > 0 &&
+    input.mediaHeight > 0
+  ) {
+    return {
+      mediaWidth: input.mediaWidth,
+      mediaHeight: input.mediaHeight,
+    };
+  }
+
+  if (!input.mediaURL) {
+    return {};
+  }
+
+  if (input.contentType === "video") {
+    return {
+      mediaWidth: DEFAULT_VIDEO_WIDTH,
+      mediaHeight: DEFAULT_VIDEO_HEIGHT,
+    };
+  }
+
+  if (input.contentType === "image") {
+    return {
+      mediaWidth: DEFAULT_IMAGE_WIDTH,
+      mediaHeight: DEFAULT_IMAGE_HEIGHT,
+    };
+  }
+
+  return {};
+}
+
 export async function createPost(
   authorId: string,
   input: CreatePostInput
@@ -56,6 +98,8 @@ export async function createPost(
     }
   }
 
+  const mediaDimensions = resolveMediaDimensions(input);
+
   const docRef = await addDoc(collection(getFirestoreDb(), "posts"), {
     authorId,
     authorDisplayName,
@@ -75,10 +119,7 @@ export async function createPost(
     ...(input.mediaURL ? { mediaURL: input.mediaURL } : {}),
     ...(input.hlsURL ? { hlsURL: input.hlsURL } : {}),
     ...(input.posterURL ? { posterURL: input.posterURL } : {}),
-    ...(typeof input.mediaWidth === "number" ? { mediaWidth: input.mediaWidth } : {}),
-    ...(typeof input.mediaHeight === "number"
-      ? { mediaHeight: input.mediaHeight }
-      : {}),
+    ...mediaDimensions,
     createdAt: serverTimestamp(),
   });
 

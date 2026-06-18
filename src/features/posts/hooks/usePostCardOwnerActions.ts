@@ -8,6 +8,10 @@ import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 import { deletePost } from "../api/deletePost";
 import { updatePostContent } from "../api/updatePostContent";
 import { TWEET_MAX_LENGTH } from "../constants";
+import {
+  getWhispMaxLengthMessage,
+  getWhispTextRequiredMessage,
+} from "../constants/contentTypeLabels";
 import { useFeedRefreshStore } from "../store/useFeedRefreshStore";
 import type { Post } from "../types";
 import { isRepostPost } from "../utils/repostUtils";
@@ -114,14 +118,14 @@ export function usePostCardOwnerActions({
       const contentType = post.contentType ?? "tweet";
 
       if (contentType === "tweet" && !trimmed) {
-        Alert.alert("Eksik metin", "Tweet metni boş olamaz.");
+        Alert.alert("Eksik metin", getWhispTextRequiredMessage());
         return;
       }
 
       if (contentType === "tweet" && trimmed.length > TWEET_MAX_LENGTH) {
         Alert.alert(
           "Çok uzun",
-          `Tweet en fazla ${TWEET_MAX_LENGTH} karakter olabilir.`
+          getWhispMaxLengthMessage(TWEET_MAX_LENGTH)
         );
         return;
       }

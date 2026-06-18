@@ -1,9 +1,7 @@
 import { memo, useCallback, useState } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
-import { useRouter } from "expo-router";
 import type { EngagementStatus } from "@/features/ranking/types";
 import { SPINNER_COLOR, ui } from "@/lib/uiClasses";
-import { useBonusPressHandlers } from "../hooks/useLikePressHandlers";
 import { useOpenCommentSheet } from "../hooks/useOpenCommentSheet";
 import { usePostCardOwnerActions } from "../hooks/usePostCardOwnerActions";
 import { useShareAndRepost } from "../hooks/useShareAndRepost";
@@ -38,7 +36,6 @@ export const FeedPostCell = memo(function FeedPostCell({
   currentUserId = null,
   inlineAutoplay = false,
 }: FeedPostCellProps) {
-  const router = useRouter();
   const [heartBurstKey, setHeartBurstKey] = useState(0);
   const openCommentSheet = useOpenCommentSheet();
   const isOwner = Boolean(currentUserId && post.authorId === currentUserId);
@@ -62,12 +59,8 @@ export const FeedPostCell = memo(function FeedPostCell({
     score,
     counts,
     loading,
-    liked,
-    disliked,
     handleLike,
     handleDislike,
-    likeBonusPoints,
-    dislikeBonusPoints,
     handleSharePress,
     handleSave,
     applyCommentResult,
@@ -84,27 +77,18 @@ export const FeedPostCell = memo(function FeedPostCell({
     onScoreUpdate,
   });
 
-  const openPostDetail = useCallback(() => {
-    router.push(`/post/${post.id}`);
-  }, [post.id, router]);
-
   const triggerLikeHeart = useCallback(() => {
     setHeartBurstKey((key) => key + 1);
   }, []);
 
-  const { onPress: handleLikePress, onLongPress: handleLikeLongPress } =
-    useBonusPressHandlers({
-      active: liked,
-      onToggle: handleLike,
-      onOpenBonusPicker: openPostDetail,
-    });
+  const handleLikePress = useCallback(() => {
+    handleLike();
+    triggerLikeHeart();
+  }, [handleLike, triggerLikeHeart]);
 
-  const { onPress: handleDislikePress, onLongPress: handleDislikeLongPress } =
-    useBonusPressHandlers({
-      active: disliked,
-      onToggle: handleDislike,
-      onOpenBonusPicker: openPostDetail,
-    });
+  const handleDislikePress = useCallback(() => {
+    handleDislike();
+  }, [handleDislike]);
 
   return (
     <>
@@ -123,7 +107,6 @@ export const FeedPostCell = memo(function FeedPostCell({
 
         <PostCardBody
           post={displayPost}
-          liked={liked}
           heartBurstKey={heartBurstKey}
           onLike={handleLike}
           onLikeAnimated={triggerLikeHeart}
@@ -135,17 +118,11 @@ export const FeedPostCell = memo(function FeedPostCell({
 
         <PostCardActionBar
           counts={counts}
-          liked={liked}
-          disliked={disliked}
           shareActive={shareActive}
           saveActive={saveActive}
           loading={loading}
-          likeBonusPoints={likeBonusPoints}
-          dislikeBonusPoints={dislikeBonusPoints}
           onLikePress={handleLikePress}
-          onLikeLongPress={handleLikeLongPress}
           onDislikePress={handleDislikePress}
-          onDislikeLongPress={handleDislikeLongPress}
           onCommentPress={() =>
             openCommentSheet(post.id, applyCommentResult)
           }

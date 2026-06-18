@@ -5,6 +5,10 @@ import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
 import { ShareComposer } from "@/features/posts/components/ShareComposer";
 import { ShareModal } from "@/features/posts/components/ShareModal";
 import { useFeedRefreshStore } from "@/features/posts/store/useFeedRefreshStore";
+import {
+  CONTENT_TYPE_LABELS,
+  SHARE_HUB_SUBTITLES,
+} from "@/features/posts/constants/contentTypeLabels";
 import type { PostContentType } from "@/features/posts/types";
 
 type HubOption = {
@@ -17,20 +21,20 @@ type HubOption = {
 const HUB_OPTIONS: HubOption[] = [
   {
     type: "tweet",
-    title: "Tweet",
-    subtitle: "280 karaktere kadar metin paylaş",
+    title: CONTENT_TYPE_LABELS.tweet,
+    subtitle: SHARE_HUB_SUBTITLES.tweet,
     icon: "chatbubble-outline",
   },
   {
     type: "image",
-    title: "Fotoğraf",
-    subtitle: "Galeriden görsel yükle",
+    title: CONTENT_TYPE_LABELS.image,
+    subtitle: SHARE_HUB_SUBTITLES.image,
     icon: "image-outline",
   },
   {
     type: "video",
-    title: "Video",
-    subtitle: "En fazla 33 saniyelik video",
+    title: CONTENT_TYPE_LABELS.video,
+    subtitle: SHARE_HUB_SUBTITLES.video,
     icon: "videocam-outline",
   },
 ];

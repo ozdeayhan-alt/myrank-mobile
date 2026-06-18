@@ -12,13 +12,15 @@ export {
   fetchPostsBySegmentPage,
 } from "./api/fetchPostsPage";
 export type { PostsPageResult } from "./api/fetchPostsPage";
-export { FEED_PAGE_SIZE, HOME_TOP_POSTS_LIMIT } from "./constants";
+export { FEED_PAGE_SIZE } from "./constants";
 export { PostFeedMedia } from "./components/PostFeedMedia";
 export { PostHeader } from "./components/PostHeader";
 export { VideoReelsViewer } from "./components/VideoReelsViewer";
+export { ReelsTabFeed } from "./components/ReelsTabFeed";
+export { navigateToReels } from "./navigateToReels";
 export { PostCommentsSheet } from "./components/PostCommentsSheet";
 export { PostInteractionRail } from "./components/PostInteractionRail";
-export { filterVideoPosts, mergeHomeFeedVideoPosts } from "./utils/videoPosts";
+export { filterVideoPosts } from "./utils/videoPosts";
 export { fetchPostsByAuthor } from "./api/fetchPostsByAuthor";
 export { fetchPostById } from "./api/fetchPostById";
 export { PostCard } from "./components/PostCard";

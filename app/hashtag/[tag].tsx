@@ -17,6 +17,8 @@ import { fetchPostsByHashtagPage } from "@/features/posts/api/fetchPostsByHashta
 import type { HashtagPostsPage } from "@/features/posts/api/fetchPostsByHashtagPage";
 import { filterVideoPosts } from "@/features/posts/utils/videoPosts";
 import { normalizeHashtag } from "@/features/posts/utils/parsePostContent";
+import { patchPostInPages } from "@/features/posts/utils/patchPostInCache";
+import type { PostCounts } from "@/features/ranking/types";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 
 export default function HashtagScreen() {
@@ -62,21 +64,10 @@ export default function HashtagScreen() {
   }, [queryClient, queryKey]);
 
   const updatePostScore = useCallback(
-    (postId: string, postScore: number) => {
+    (postId: string, postScore: number, counts?: PostCounts) => {
       queryClient.setQueryData<InfiniteData<HashtagPostsPage>>(
         queryKey,
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            pages: old.pages.map((page) => ({
-              ...page,
-              posts: page.posts.map((post) =>
-                post.id === postId ? { ...post, postScore } : post
-              ),
-            })),
-          };
-        }
+        (old) => patchPostInPages(old, postId, { postScore, counts })
       );
     },
     [queryClient, queryKey]

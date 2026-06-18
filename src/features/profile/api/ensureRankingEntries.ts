@@ -1,6 +1,7 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { getApiAuthToken } from "@/lib/apiAuthToken";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { rankingEnsureError } from "./rankingEnsureError";
 
 type EnsureRankingEntriesResponse = {
   ok: boolean;
@@ -8,7 +9,9 @@ type EnsureRankingEntriesResponse = {
   reason?: string;
 };
 
-export async function ensureRankingEntries(): Promise<EnsureRankingEntriesResponse> {
+export async function ensureRankingEntries(options?: {
+  profileSaved?: boolean;
+}): Promise<EnsureRankingEntriesResponse> {
   const token = await getApiAuthToken();
   const response = await fetchWithTimeout(
     `${getApiBaseUrl()}/api/profile/ensure-ranking-entries`,
@@ -29,6 +32,10 @@ export async function ensureRankingEntries(): Promise<EnsureRankingEntriesRespon
 
   if (!response.ok) {
     throw new Error(data.error ?? "Sıralama kaydı oluşturulamadı");
+  }
+
+  if (!data.ensured) {
+    throw rankingEnsureError(data.reason, options);
   }
 
   return data;

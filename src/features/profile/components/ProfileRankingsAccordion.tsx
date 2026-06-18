@@ -64,7 +64,8 @@ function ProfileRankingsAccordionInner({
     null
   );
   const [ensureWarning, setEnsureWarning] = useState<string | null>(null);
-  const { rankings, loading, error, refresh } = useProfileRankings(
+  const [ensuring, setEnsuring] = useState(false);
+  const { rankings, loading, error, refresh, isRefreshing } = useProfileRankings(
     userId,
     metadata,
     expanded
@@ -81,19 +82,24 @@ function ProfileRankingsAccordionInner({
 
   const loadWithEnsure = useCallback(async () => {
     setEnsureWarning(null);
-    if (isOwnProfile) {
-      try {
-        await ensureRankingEntries();
-      } catch (err) {
-        setEnsureWarning(
-          err instanceof Error
-            ? err.message
-            : "Sıralama kaydı sunucuda oluşturulamadı"
-        );
+    setEnsuring(true);
+    try {
+      if (isOwnProfile) {
+        try {
+          await ensureRankingEntries();
+        } catch (err) {
+          setEnsureWarning(
+            err instanceof Error
+              ? err.message
+              : "Sıralama kaydı sunucuda oluşturulamadı"
+          );
+        }
       }
+      await refresh();
+      await loadSnapshotMeta();
+    } finally {
+      setEnsuring(false);
     }
-    await refresh();
-    await loadSnapshotMeta();
   }, [isOwnProfile, refresh, loadSnapshotMeta]);
 
   useEffect(() => {
@@ -129,9 +135,12 @@ function ProfileRankingsAccordionInner({
           <Text className="text-sm text-red-700">{error}</Text>
           <Pressable
             className={`mt-3 ${ui.btnPrimarySm}`}
+            disabled={ensuring}
             onPress={() => void loadWithEnsure()}
           >
-            <Text className={ui.btnPrimaryTextSm}>Tekrar dene</Text>
+            <Text className={ui.btnPrimaryTextSm}>
+              {ensuring ? "Oluşturuluyor…" : "Tekrar dene"}
+            </Text>
           </Pressable>
         </View>
       ) : rankings.length === 0 || !hasAnyRank ? (
@@ -140,15 +149,28 @@ function ProfileRankingsAccordionInner({
             Henüz resmi sıralama kaydı yok. Gece 00:00 güncellemesinden sonra
             veya profil kaydı tamamlandıktan sonra burada görünür.
           </Text>
+          {ensureWarning ? (
+            <Text className="mt-3 text-center text-sm text-red-700">
+              {ensureWarning}
+            </Text>
+          ) : null}
           {isOwnProfile ? (
             <Pressable
-              className={`mt-3 ${ui.btnPrimarySm}`}
+              className={`mt-3 ${ui.btnPrimarySm} ${ensuring ? "opacity-60" : ""}`}
+              disabled={ensuring}
               onPress={() => void loadWithEnsure()}
             >
-              <Text className={ui.btnPrimaryTextSm}>
-                Sıralama kaydını oluştur
-              </Text>
+              {ensuring ? (
+                <ActivityIndicator color="#374151" />
+              ) : (
+                <Text className={ui.btnPrimaryTextSm}>
+                  Sıralama kaydını oluştur
+                </Text>
+              )}
             </Pressable>
+          ) : null}
+          {isRefreshing && !ensuring ? (
+            <ActivityIndicator className="mt-3" color="#374151" />
           ) : null}
         </View>
       ) : (

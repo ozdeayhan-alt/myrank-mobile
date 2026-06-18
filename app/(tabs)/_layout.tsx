@@ -1,6 +1,9 @@
 import type { ComponentProps } from "react";
+import { Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { TabBarBackground } from "@/components/TabBarBackground";
+
 type TabIconProps = {
   name: ComponentProps<typeof Ionicons>["name"];
   color: string;
@@ -20,6 +23,19 @@ export default function TabsLayout() {
         freezeOnBlur: true,
         tabBarActiveTintColor: "#111827",
         tabBarInactiveTintColor: "#9CA3AF",
+        tabBarStyle: {
+          position: "absolute",
+          backgroundColor: "transparent",
+          borderTopWidth: 0,
+          elevation: 0,
+          ...Platform.select({
+            ios: {
+              shadowOpacity: 0,
+            },
+            android: {},
+          }),
+        },
+        tabBarBackground: () => <TabBarBackground />,
       }}
     >
       <Tabs.Screen
@@ -29,6 +45,12 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => (
             <TabIcon name="home-outline" color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="reels"
+        options={{
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -56,6 +78,12 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => (
             <TabIcon name="trophy-outline" color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="user/[userId]"
+        options={{
+          href: null,
         }}
       />
       <Tabs.Screen

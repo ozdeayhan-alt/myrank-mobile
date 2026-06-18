@@ -10,7 +10,13 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "@/features/auth";
-import { showMediaSourcePicker } from "@/lib/media/pickMedia";
+import {
+  pickImageFromCamera,
+  pickImageFromLibrary,
+  pickVideoFromCamera,
+  pickVideoFromLibrary,
+} from "@/lib/media/pickMedia";
+import { getShareComposerPlaceholder } from "../constants/contentTypeLabels";
 import { SHARE_COMPOSER_OPTIONS } from "../constants/shareComposerOptions";
 import { useShareComposerSubmit } from "../hooks/useShareComposerSubmit";
 import {
@@ -77,11 +83,41 @@ export function ShareComposer({
     }
   };
 
-  const handlePickMedia = () => {
-    showMediaSourcePicker(selected === "image" ? "image" : "video", (asset) => {
-      setMediaUri(asset.uri);
-      setMediaMimeType(asset.mimeType ?? null);
-    });
+  const handleMediaAsset = (uri: string, mimeType: string | null) => {
+    setMediaUri(uri);
+    setMediaMimeType(mimeType);
+  };
+
+  const handlePickFromCamera = () => {
+    if (submitting) {
+      return;
+    }
+
+    void (async () => {
+      const asset =
+        selected === "image"
+          ? await pickImageFromCamera({ allowsEditing: false })
+          : await pickVideoFromCamera();
+      if (asset) {
+        handleMediaAsset(asset.uri, asset.mimeType ?? null);
+      }
+    })();
+  };
+
+  const handlePickFromGallery = () => {
+    if (submitting) {
+      return;
+    }
+
+    void (async () => {
+      const asset =
+        selected === "image"
+          ? await pickImageFromLibrary({ allowsEditing: false })
+          : await pickVideoFromLibrary();
+      if (asset) {
+        handleMediaAsset(asset.uri, asset.mimeType ?? null);
+      }
+    })();
   };
 
   const handleShare = useShareComposerSubmit({
@@ -185,7 +221,8 @@ export function ShareComposer({
           selected={selected}
           mediaUri={mediaUri}
           submitting={submitting}
-          onPickMedia={() => void handlePickMedia()}
+          onPickFromCamera={handlePickFromCamera}
+          onPickFromGallery={handlePickFromGallery}
         />
 
         {mentionQuery !== null ? (
@@ -201,11 +238,13 @@ export function ShareComposer({
 
         <TextInput
           className="mb-2 min-h-[120px] rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
-          placeholder={
-            selected === "tweet"
-              ? "Ne düşünüyorsun?"
-              : "Açıklama ekle (opsiyonel)…"
-          }
+          placeholder={getShareComposerPlaceholder(
+            selected === "video"
+              ? "video"
+              : selected === "image"
+                ? "image"
+                : "tweet"
+          )}
           placeholderTextColor="#9CA3AF"
           multiline
           maxLength={maxLength}

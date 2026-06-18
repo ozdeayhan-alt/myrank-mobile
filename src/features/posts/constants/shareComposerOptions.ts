@@ -1,4 +1,8 @@
 import type { PostContentType } from "../types";
+import {
+  CONTENT_TYPE_LABELS,
+  SHARE_COMPOSER_HINTS,
+} from "./contentTypeLabels";
 
 export type ShareComposerOption = {
   type: PostContentType;
@@ -10,20 +14,20 @@ export type ShareComposerOption = {
 export const SHARE_COMPOSER_OPTIONS: ShareComposerOption[] = [
   {
     type: "tweet",
-    label: "Tweet",
-    hint: "En fazla 280 karakter",
+    label: CONTENT_TYPE_LABELS.tweet,
+    hint: SHARE_COMPOSER_HINTS.tweet,
     icon: "chatbubble-outline",
   },
   {
     type: "image",
-    label: "Fotoğraf",
-    hint: "Galeriden fotoğraf seç",
+    label: CONTENT_TYPE_LABELS.image,
+    hint: SHARE_COMPOSER_HINTS.image,
     icon: "image-outline",
   },
   {
     type: "video",
-    label: "Video",
-    hint: "Galeriden video seç (max 33 sn)",
+    label: CONTENT_TYPE_LABELS.video,
+    hint: SHARE_COMPOSER_HINTS.video,
     icon: "videocam-outline",
   },
 ];
