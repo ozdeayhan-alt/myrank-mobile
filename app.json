@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.myrank.mobile",
-      "versionCode": 41,
+      "versionCode": 5,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
