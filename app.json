@@ -4,7 +4,7 @@
     "slug": "myrank-mobile",
     "owner": "myrank",
     "sdkVersion": "54.0.0",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "jsEngine": "hermes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
