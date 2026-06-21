@@ -25,12 +25,14 @@
         "NSCameraUsageDescription": "Fotoğraf ve video çekmek için kamera erişimi gerekir.",
         "NSMicrophoneUsageDescription": "Video kaydı için mikrofon erişimi gerekir.",
         "NSUserNotificationUsageDescription": "Beğeni, yorum ve mesaj bildirimlerini almak için bildirim izni gerekir.",
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
       "package": "com.myrank.mobile",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
