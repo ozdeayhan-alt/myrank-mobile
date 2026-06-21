@@ -15,6 +15,10 @@ export default function LegalLayout() {
         name="moderation"
         options={{ title: "İçerik ve Moderasyon" }}
       />
+      <Stack.Screen
+        name="child-safety"
+        options={{ title: "Çocuk Güvenliği Standartları" }}
+      />
     </Stack>
   );
 }
