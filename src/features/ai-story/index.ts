@@ -1,6 +1,7 @@
 export { StoryChipPicker } from "./components/StoryChipPicker";
 export { StoryLayerComposer } from "./components/StoryLayerComposer";
 export { StoryProgressBar } from "./components/StoryProgressBar";
+export { StoryRingsRow } from "./components/StoryRingsRow";
 export { StoryViewer } from "./components/StoryViewer";
 export { createAiStory } from "./api/createAiStory";
 export {
@@ -20,3 +21,7 @@ export {
   type AiStory,
   type StoryChip,
 } from "./constants/types";
+export {
+  groupStoriesByUser,
+  type StoryUserGroup,
+} from "./lib/groupStoriesByUser";

@@ -41,13 +41,7 @@ export function ProfileMenu() {
   const [deleting, setDeleting] = useState(false);
 
   const navigate = (
-    path:
-      | "/legal/privacy"
-      | "/legal/terms"
-      | "/legal/moderation"
-      | "/saved"
-      | "/ai-story/create"
-      | "/ai-story/feed"
+    path: "/legal/privacy" | "/legal/terms" | "/legal/moderation" | "/saved"
   ) => {
     closeMenu();
     router.push(path);
@@ -98,14 +92,6 @@ export function ProfileMenu() {
           <View className="absolute right-4 top-14 min-w-[240px] overflow-hidden rounded-2xl bg-white shadow-lg">
             <MenuItem label="Profili Düzenle" onPress={handleEdit} />
             <MenuItem label="Kaydedilenler" onPress={() => navigate("/saved")} />
-            <MenuItem
-              label="AI Story Oluştur"
-              onPress={() => navigate("/ai-story/create")}
-            />
-            <MenuItem
-              label="Story Feed"
-              onPress={() => navigate("/ai-story/feed")}
-            />
             <MenuItem
               label="Gizlilik Politikası"
               onPress={() => navigate("/legal/privacy")}

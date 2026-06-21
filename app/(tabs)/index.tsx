@@ -14,6 +14,7 @@ import {
 } from "@/components/HomeFeedModeToggle";
 import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
 import { useAuth } from "@/features/auth";
+import { StoryRingsRow } from "@/features/ai-story";
 import { useFollowingFeedInfinite } from "@/features/explore/hooks/useFollowingFeedInfinite";
 import { useHomeFeedInfinite } from "@/features/explore/hooks/useHomeFeedInfinite";
 import {
@@ -25,6 +26,7 @@ import { useHomeFeedContentStore } from "@/features/posts/store/useHomeFeedConte
 import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
 import { filterVideoPosts } from "@/features/posts/utils/videoPosts";
+import { useProfileStore } from "@/features/profile/store/useProfileStore";
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -35,6 +37,9 @@ export default function HomeScreen() {
   const contentFilter = useHomeFeedContentStore((s) => s.contentFilter);
   const setContentFilter = useHomeFeedContentStore((s) => s.setContentFilter);
   const [feedMode, setFeedMode] = useState<HomeFeedMode>("global");
+  const [storyReloadSignal, setStoryReloadSignal] = useState(0);
+  const displayName = useProfileStore((s) => s.displayName);
+  const photoURL = useProfileStore((s) => s.photoURL);
 
   const globalFeed = useHomeFeedInfinite(
     contentFilter !== "video" && feedMode === "global"
@@ -56,6 +61,7 @@ export default function HomeScreen() {
   }, [navigation, contentFilter, setContentFilter]);
 
   const handleRefresh = useCallback(() => {
+    setStoryReloadSignal((value) => value + 1);
     void activeFeed.refresh();
   }, [activeFeed]);
 
@@ -109,6 +115,12 @@ export default function HomeScreen() {
   const listHeader = useMemo(
     () => (
       <>
+        <StoryRingsRow
+          currentUserId={user?.uid ?? null}
+          currentUserDisplayName={displayName || "Sen"}
+          currentUserPhotoURL={photoURL || user?.photoURL}
+          reloadSignal={storyReloadSignal}
+        />
         <HomeFeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
         <HomeFeedContentFilter
           contentFilter={contentFilter}
@@ -116,7 +128,17 @@ export default function HomeScreen() {
         />
       </>
     ),
-    [contentFilter, feedMode, setContentFilter, setFeedMode]
+    [
+      contentFilter,
+      displayName,
+      feedMode,
+      photoURL,
+      setContentFilter,
+      setFeedMode,
+      storyReloadSignal,
+      user?.photoURL,
+      user?.uid,
+    ]
   );
 
   if (contentFilter === "video") {
