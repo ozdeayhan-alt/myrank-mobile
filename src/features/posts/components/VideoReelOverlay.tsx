@@ -5,6 +5,7 @@ import { useAuth } from "@/features/auth";
 import { LikeHeartBurst } from "@/components/LikeHeartBurst";
 import { ProfileAvatar } from "@/features/profile/components/ProfileAvatar";
 import { navigateToAuthorProfile } from "@/features/profile/navigateToAuthorProfile";
+import { isSystemProfileUserId } from "@/lib/profile/isSystemProfile";
 import {
   useEngagementStore,
   usePostEngagement,
@@ -20,8 +21,8 @@ import { useOpenCommentSheet } from "../hooks/useOpenCommentSheet";
 import { PostInteractionRail } from "./PostInteractionRail";
 import { PostScorePill } from "./PostScorePill";
 import { PostVoteCirclePair } from "./PostVoteCirclePair";
-import { RepostQuoteModal } from "./RepostQuoteModal";
-import { isRepostPost } from "../utils/repostUtils";
+import { PostShareModals } from "./PostShareModals";
+import { ReelFollowChip } from "./ReelFollowChip";
 
 const AVATAR_SIZE = 44;
 const VOTE_ABOVE_AVATAR_GAP = 10;
@@ -65,11 +66,18 @@ export function VideoReelOverlay({
     applyCommentResult,
     shareActive,
     saveActive,
+    shareSheetOpen,
+    setShareSheetOpen,
     repostOpen,
     setRepostOpen,
     handleReposted,
+    canRepost,
+    handleRepostSelect,
+    handleStorySelect,
+    handleExternalShareSelect,
   } = useShareAndRepost({
     post,
+    currentUserId: user?.uid ?? null,
     engagement,
     onEngagementPatch,
     onScoreUpdate,
@@ -88,6 +96,11 @@ export function VideoReelOverlay({
   const caption = post.content?.trim();
   const displayName = resolvePostAuthorDisplayName(post);
   const bottomBlockBottom = resolvedBottomInset + 16;
+  const isOwnReel = Boolean(user?.uid && post.authorId === user.uid);
+  const showFollowChip =
+    Boolean(user?.uid) &&
+    !isOwnReel &&
+    !isSystemProfileUserId(post.authorId);
 
   const syncVoteBarPosition = useCallback(() => {
     avatarRowRef.current?.measureInWindow((_x, y) => {
@@ -156,32 +169,39 @@ export function VideoReelOverlay({
         className="absolute left-0 right-20"
         style={{ bottom: bottomBlockBottom, paddingLeft: 16 }}
       >
-        <Pressable
+        <View
           ref={avatarRowRef}
           onLayout={syncVoteBarPosition}
           className="flex-row items-center"
-          onPress={() =>
-            navigateToAuthorProfile(post.authorId, user?.uid, {
-              displayName,
-              photoURL: resolvePostAuthorPhotoURL(post),
-            })
-          }
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={`${displayName} profilini aç`}
         >
-          <ProfileAvatar
-            size={AVATAR_SIZE}
-            photoURL={resolvePostAuthorPhotoURL(post)}
-            fallbackLetter={resolvePostAuthorInitial(post)}
-          />
-          <Text
-            className="ml-3 flex-1 text-base font-semibold text-white"
-            numberOfLines={1}
+          <Pressable
+            className="min-w-0 flex-1 flex-row items-center"
+            onPress={() =>
+              navigateToAuthorProfile(post.authorId, user?.uid, {
+                displayName,
+                photoURL: resolvePostAuthorPhotoURL(post),
+              })
+            }
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`${displayName} profilini aç`}
           >
-            {displayName}
-          </Text>
-        </Pressable>
+            <ProfileAvatar
+              size={AVATAR_SIZE}
+              photoURL={resolvePostAuthorPhotoURL(post)}
+              fallbackLetter={resolvePostAuthorInitial(post)}
+            />
+            <Text
+              className="ml-3 flex-1 text-base font-semibold text-white"
+              numberOfLines={1}
+            >
+              {displayName}
+            </Text>
+          </Pressable>
+          {showFollowChip ? (
+            <ReelFollowChip targetUserId={post.authorId} />
+          ) : null}
+        </View>
         {caption ? (
           <Text className="mt-2 text-sm text-white/95" numberOfLines={4}>
             {caption}
@@ -189,14 +209,19 @@ export function VideoReelOverlay({
         ) : null}
       </View>
 
-      {!isRepostPost(post) ? (
-        <RepostQuoteModal
-          visible={repostOpen}
-          post={post}
-          onClose={() => setRepostOpen(false)}
-          onReposted={handleReposted}
-        />
-      ) : null}
+      <PostShareModals
+        post={post}
+        shareSheetOpen={shareSheetOpen}
+        onCloseShareSheet={() => setShareSheetOpen(false)}
+        repostOpen={repostOpen}
+        onCloseRepost={() => setRepostOpen(false)}
+        canRepost={canRepost}
+        shareLoading={loading}
+        onRepostSelect={handleRepostSelect}
+        onStorySelect={handleStorySelect}
+        onExternalShare={handleExternalShareSelect}
+        onReposted={handleReposted}
+      />
     </View>
   );
 }

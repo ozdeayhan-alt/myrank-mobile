@@ -24,7 +24,10 @@ import { normalizeAvatarUrl } from "@/lib/media/normalizeAvatarUrl";
 import { parsePostMetadata } from "@/features/posts/api/parsePostMetadata";
 import type { RankingEntry, RankingTrendLabel } from "../types";
 
-const GLOBAL_FETCH_CAP = 100;
+/** Sıralama sekmesi — segmentteki tüm kayıtlar (şu an ~100; büyüme payı). */
+export const RANKING_LIST_MAX = 500;
+
+const GLOBAL_FETCH_CAP = RANKING_LIST_MAX;
 
 function parseTrendLabel(value: unknown): RankingTrendLabel {
   if (value === "rising" || value === "falling" || value === "stable") {
@@ -97,7 +100,7 @@ async function fetchRankingsFromSegment(
  */
 export async function fetchRankingEntries(
   filters: UserMetadata | null,
-  max = 50
+  max = RANKING_LIST_MAX
 ): Promise<RankingEntry[]> {
   if (!filters || !hasActiveSegmentFilters(filters)) {
     return fetchRankingsFromSegment(GLOBAL_RANKING_SEGMENT, max);

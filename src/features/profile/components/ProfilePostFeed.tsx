@@ -3,7 +3,8 @@ import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
-import { filterVideoPosts } from "@/features/posts/utils/videoPosts";
+import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
+import { PROFILE_HORIZONTAL_PADDING } from "../profileLayout";
 import { useAuthorPosts } from "../hooks/useAuthorPosts";
 
 type ProfilePostFeedProps = {
@@ -34,7 +35,7 @@ function ProfilePostFeedInner({ authorId }: ProfilePostFeedProps) {
     [posts]
   );
 
-  const videoPosts = useMemo(() => filterVideoPosts(posts), [posts]);
+  const videoPosts = useMemo(() => collectVideoPostsForPlaylist(posts), [posts]);
 
   const handleRefresh = useCallback(() => {
     void refresh();
@@ -55,7 +56,14 @@ function ProfilePostFeedInner({ authorId }: ProfilePostFeedProps) {
       hasNextPage={hasNextPage}
       isFetchingNextPage={isFetchingNextPage}
       onLoadMore={fetchNextPage}
-      contentContainerStyle={{ paddingHorizontal: 0, paddingVertical: 0 }}
+      contentContainerStyle={{
+        paddingHorizontal: PROFILE_HORIZONTAL_PADDING,
+        paddingVertical: 0,
+      }}
+      listHorizontalInset={PROFILE_HORIZONTAL_PADDING}
+      mediaEdgeBleed={false}
+      reelsSource="profile"
+      reelsAuthorId={authorId}
     />
   );
 }

@@ -1,9 +1,7 @@
-import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback } from "react";
-import { Pressable, View } from "react-native";
-import { ProfileAvatar } from "@/features/profile";
-import { useUserStoryAvailability } from "../hooks/useUserStoryAvailability";
+import { useCallback, useEffect } from "react";
+import { StoryRingAvatar } from "./StoryRingAvatar";
+import { useStoriesRingStore } from "../store/useStoriesRingStore";
 
 type ProfileStoryAvatarProps = {
   userId: string;
@@ -20,48 +18,24 @@ export function ProfileStoryAvatar({
   size = 108,
   reloadSignal = 0,
 }: ProfileStoryAvatarProps) {
-  const router = useRouter();
-  const { hasStories, hasUnseen, firstStoryId, reload } = useUserStoryAvailability(
-    userId,
-    reloadSignal
-  );
+  const reload = useStoriesRingStore((state) => state.reload);
 
   useFocusEffect(
     useCallback(() => {
-      reload();
+      void reload();
     }, [reload])
   );
 
-  const avatar = (
-    <ProfileAvatar
-      photoURL={photoURL}
-      fallbackLetter={fallbackLetter}
-      size={hasStories ? size - 6 : size}
-    />
-  );
-
-  if (!hasStories || !firstStoryId) {
-    return avatar;
-  }
+  useEffect(() => {
+    void reload();
+  }, [reload, reloadSignal]);
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Story izle"
-      onPress={() => {
-        router.push({
-          pathname: "/stories/view",
-          params: { userId, storyId: firstStoryId, scope: "singleUser" },
-        });
-      }}
-    >
-      <View
-        className={`rounded-full p-[3px] ${
-          hasUnseen ? "bg-pink-500" : "bg-gray-300"
-        }`}
-      >
-        {avatar}
-      </View>
-    </Pressable>
+    <StoryRingAvatar
+      userId={userId}
+      photoURL={photoURL}
+      fallbackLetter={fallbackLetter}
+      size={size}
+    />
   );
 }

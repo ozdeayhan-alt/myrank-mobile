@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { memo, useMemo, type ReactNode } from "react";
+import { memo, useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { ProfileHeaderButton } from "@/components/ProfileHeaderButton";
 import { ProfileUserMenuButton } from "@/features/blocks";
@@ -18,7 +18,8 @@ import { isSystemProfileUserId } from "@/lib/profile/isSystemProfile";
 import { SystemProfileBadge } from "@/components/SystemProfileBadge";
 import { ProfileStoryAvatar } from "@/features/stories/components/ProfileStoryAvatar";
 import { ProfileRankingsAccordion } from "./ProfileRankingsAccordion";
-import { ProfileSegmentRankBadge } from "./ProfileSegmentRankBadge";
+import { ProfileSegmentScoreBadge } from "./ProfileSegmentScoreBadge";
+import { ProfileVoteButtons } from "./ProfileVoteButtons";
 
 type ProfileContentHeaderProps = {
   userId: string;
@@ -29,7 +30,6 @@ type ProfileContentHeaderProps = {
   metadata: UserMetadata;
   isOwnProfile: boolean;
   rankingsReady: boolean;
-  scoreSlot: ReactNode;
   currentUserId?: string | null;
 };
 
@@ -42,7 +42,6 @@ function ProfileContentHeaderInner({
   metadata,
   isOwnProfile,
   rankingsReady,
-  scoreSlot,
   currentUserId = null,
 }: ProfileContentHeaderProps) {
   const router = useRouter();
@@ -125,15 +124,14 @@ function ProfileContentHeaderInner({
               {categoriesLine}
             </Text>
           ) : null}
-          <ProfileSegmentRankBadge
+          <ProfileSegmentScoreBadge
             userId={userId}
             metadata={metadata}
             isOwnProfile={isOwnProfile}
           />
+          <ProfileVoteButtons />
         </View>
       </View>
-
-      <View collapsable={false}>{scoreSlot}</View>
 
       {rankingsReady ? (
         <ProfileRankingsAccordion

@@ -26,9 +26,13 @@ cat > "$ROOT/android/local.properties" <<EOF
 sdk.dir=$ANDROID_HOME
 EOF
 
-echo "[prod] gradle bundleRelease..."
+# shellcheck source=scripts/apply-gradle-low-ram-tuning.sh
+source "$ROOT/scripts/apply-gradle-low-ram-tuning.sh"
+apply_gradle_low_ram_tuning "$ROOT"
+
+echo "[prod] gradle bundleRelease (arm64-v8a, max-workers=1, lint skipped)..."
 cd "$ROOT/android"
-./gradlew bundleRelease --no-daemon
+./gradlew bundleRelease "${GRADLE_LOW_RAM_ARGS[@]}"
 
 AAB="$ROOT/android/app/build/outputs/bundle/release/app-release.aab"
 PUBLIC_DIR="/root/myrankapp/public"

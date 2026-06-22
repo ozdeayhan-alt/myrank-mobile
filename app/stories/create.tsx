@@ -1,35 +1,88 @@
-import { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
-  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Image } from "expo-image";
-import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useAuth } from "@/features/auth";
+import { StoryPhotoDisplay } from "@/features/media/components/StoryPhotoDisplay";
 import {
   CAPTION_MAX_LENGTH,
   createStory,
   isVideoAsset,
+  pickStoryMediaAsset,
   showStoryMediaPicker,
   uploadStoryMedia,
 } from "@/features/stories";
+import { useStoriesRingStore } from "@/features/stories/store/useStoriesRingStore";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 import * as ImagePicker from "expo-image-picker";
+
+function StoryVideoPreview({ uri }: { uri: string }) {
+  const { width, height } = useWindowDimensions();
+  const player = useVideoPlayer(uri, (instance) => {
+    instance.loop = true;
+    instance.muted = true;
+    instance.play();
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={{ width, height }}
+      contentFit="cover"
+      nativeControls={false}
+    />
+  );
+}
 
 export default function CreateStoryScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [asset, setAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [loadingMedia, setLoadingMedia] = useState(true);
   const [caption, setCaption] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const openedPickerRef = useRef(false);
 
-  const handlePick = () => {
+  useEffect(() => {
+    if (openedPickerRef.current) {
+      return;
+    }
+    openedPickerRef.current = true;
+
+    let cancelled = false;
+    void (async () => {
+      const picked = await pickStoryMediaAsset();
+      if (cancelled) {
+        return;
+      }
+      if (!picked) {
+        router.back();
+        return;
+      }
+      setAsset(picked);
+      setLoadingMedia(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  const handleChangeMedia = () => {
     showStoryMediaPicker((picked) => setAsset(picked));
   };
 
@@ -54,6 +107,7 @@ export default function CreateStoryScreen() {
         posterURL: uploaded.posterURL ?? null,
         caption: caption.trim() || null,
       });
+      await useStoriesRingStore.getState().reload();
       router.replace({
         pathname: "/stories/view",
         params: {
@@ -69,67 +123,79 @@ export default function CreateStoryScreen() {
     }
   };
 
+  if (loadingMedia || !asset) {
+    return (
+      <View className="flex-1 items-center justify-center bg-black">
+        <ActivityIndicator color="#fff" size="large" />
+      </View>
+    );
+  }
+
+  const isVideo = isVideoAsset(asset);
+
   return (
-    <TabScreenSafeArea className="flex-1 bg-white">
-      <ScrollView className="flex-1 px-5 pt-4" keyboardShouldPersistTaps="handled">
-        <Text className="mb-1 text-2xl font-bold text-gray-900">Story</Text>
-        <Text className="mb-6 text-sm text-gray-500">
-          Fotoğraf veya video paylaş. 24 saat görünür.
-        </Text>
+    <View className="flex-1 bg-black">
+      {isVideo ? (
+        <StoryVideoPreview uri={asset.uri} />
+      ) : (
+        <StoryPhotoDisplay uri={asset.uri} style={StyleSheet.absoluteFillObject} />
+      )}
 
-        <Pressable
-          onPress={handlePick}
-          className="mb-4 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-gray-50"
-          style={{ height: 360 }}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="absolute inset-x-0 bottom-0"
+        pointerEvents="box-none"
+      >
+        <View
+          className="px-4 pt-3"
+          style={{ paddingBottom: Math.max(insets.bottom, 12) }}
         >
-          {asset ? (
-            isVideoAsset(asset) ? (
-              <View className="items-center">
-                <Text className="text-4xl">🎬</Text>
-                <Text className="mt-2 text-sm text-gray-600">Video seçildi</Text>
-              </View>
+          <TextInput
+            value={caption}
+            onChangeText={setCaption}
+            maxLength={CAPTION_MAX_LENGTH}
+            placeholder="Bir şeyler yaz..."
+            placeholderTextColor="rgba(255,255,255,0.55)"
+            className="mb-3 rounded-2xl border border-white/20 bg-black/45 px-4 py-3 text-base text-white"
+          />
+          <Pressable
+            disabled={submitting}
+            onPress={handleShare}
+            className={`items-center rounded-full py-3.5 ${
+              submitting ? "bg-white/35" : "bg-white"
+            }`}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#111" />
             ) : (
-              <Image
-                source={{ uri: asset.uri }}
-                style={{ width: "100%", height: 360 }}
-                contentFit="cover"
-              />
-            )
-          ) : (
-            <Text className="text-base font-medium text-gray-500">
-              Fotoğraf veya video seç
-            </Text>
-          )}
-        </Pressable>
+              <Text className="text-base font-semibold text-gray-900">
+                Hikayene ekle
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
 
-        <Text className="mb-2 text-sm font-semibold text-gray-700">
-          Opsiyonel caption
-        </Text>
-        <TextInput
-          value={caption}
-          onChangeText={setCaption}
-          maxLength={CAPTION_MAX_LENGTH}
-          placeholder="Kısa bir not..."
-          className="mb-2 rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-900"
-        />
-        <Text className="mb-6 text-xs text-gray-400">
-          {caption.length}/{CAPTION_MAX_LENGTH}
-        </Text>
-
+      <View
+        className="absolute left-0 right-0 flex-row items-center justify-between px-4"
+        style={{ top: insets.top + 8 }}
+        pointerEvents="box-none"
+      >
         <Pressable
-          disabled={!asset || submitting}
-          onPress={handleShare}
-          className={`mb-8 items-center rounded-xl py-4 ${
-            asset && !submitting ? "bg-gray-900" : "bg-gray-300"
-          }`}
+          onPress={() => router.back()}
+          className="h-10 w-10 items-center justify-center rounded-full bg-black/45"
+          accessibilityLabel="Kapat"
         >
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="text-base font-semibold text-white">Paylaş</Text>
-          )}
+          <Ionicons name="close" size={24} color="#fff" />
         </Pressable>
-      </ScrollView>
-    </TabScreenSafeArea>
+        <Pressable
+          onPress={handleChangeMedia}
+          className="h-10 w-10 items-center justify-center rounded-full bg-black/45"
+          accessibilityLabel="Medyayı değiştir"
+        >
+          <Ionicons name="images-outline" size={22} color="#fff" />
+        </Pressable>
+      </View>
+    </View>
   );
 }

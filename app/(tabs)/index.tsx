@@ -23,9 +23,11 @@ import {
 } from "@/features/posts/components/FeedFlashList";
 import { ReelsTabFeed } from "@/features/posts/components/ReelsTabFeed";
 import { useHomeFeedContentStore } from "@/features/posts/store/useHomeFeedContentStore";
+import { useReelsNavigationStore } from "@/features/posts/store/useReelsNavigationStore";
 import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
 import { filterVideoPosts } from "@/features/posts/utils/videoPosts";
+import { useStoriesRingStore } from "@/features/stories/store/useStoriesRingStore";
 import { useProfileStore } from "@/features/profile/store/useProfileStore";
 
 export default function HomeScreen() {
@@ -36,6 +38,14 @@ export default function HomeScreen() {
 
   const contentFilter = useHomeFeedContentStore((s) => s.contentFilter);
   const setContentFilter = useHomeFeedContentStore((s) => s.setContentFilter);
+
+  const handleContentFilterChange = useCallback(
+    (filter: Parameters<typeof setContentFilter>[0]) => {
+      useReelsNavigationStore.getState().clearNavigation();
+      setContentFilter(filter);
+    },
+    [setContentFilter]
+  );
   const [feedMode, setFeedMode] = useState<HomeFeedMode>("global");
   const [storyReloadSignal, setStoryReloadSignal] = useState(0);
   const displayName = useProfileStore((s) => s.displayName);
@@ -62,6 +72,7 @@ export default function HomeScreen() {
 
   const handleRefresh = useCallback(() => {
     setStoryReloadSignal((value) => value + 1);
+    void useStoriesRingStore.getState().reload();
     void activeFeed.refresh();
   }, [activeFeed]);
 
@@ -118,11 +129,11 @@ export default function HomeScreen() {
         <HomeFeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
         <HomeFeedContentFilter
           contentFilter={contentFilter}
-          onContentFilterChange={setContentFilter}
+          onContentFilterChange={handleContentFilterChange}
         />
       </View>
     ),
-    [contentFilter, feedMode, setContentFilter, setFeedMode]
+    [contentFilter, feedMode, handleContentFilterChange, setFeedMode]
   );
 
   const feedListContentStyle = useMemo(

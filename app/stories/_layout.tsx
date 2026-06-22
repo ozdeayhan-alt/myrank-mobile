@@ -9,7 +9,14 @@ export default function StoriesLayout() {
         headerTitleStyle: { fontWeight: "600" },
       }}
     >
-      <Stack.Screen name="create" options={{ title: "Story paylaş" }} />
+      <Stack.Screen
+        name="create"
+        options={{ title: "", headerShown: false, presentation: "fullScreenModal" }}
+      />
+      <Stack.Screen
+        name="share-from-post"
+        options={{ title: "", headerShown: false, presentation: "fullScreenModal" }}
+      />
       <Stack.Screen
         name="view"
         options={{ title: "", headerShown: false, presentation: "fullScreenModal" }}

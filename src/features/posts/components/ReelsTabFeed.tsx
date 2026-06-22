@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   NativeScrollEvent,
@@ -14,12 +14,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { HomeFeedMode } from "@/components/HomeFeedModeToggle";
 import { useTabBarContentInset } from "@/hooks/useTabBarContentInset";
 import { useIncrementalEngagement } from "@/features/ranking/hooks/useIncrementalEngagement";
+import { useAuthorPosts } from "@/features/profile/hooks/useAuthorPosts";
 import { PostInteractionProvider } from "../context/PostInteractionContext";
 import { CONTENT_TYPE_LABELS } from "../constants/contentTypeLabels";
 import { useReelsFeedInfinite } from "../hooks/useReelsFeedInfinite";
 import { useReelsNavigationStore } from "../store/useReelsNavigationStore";
 import type { Post } from "../types";
-import { indexOfVideoPost } from "../utils/videoPosts";
+import {
+  collectVideoPostsForPlaylist,
+  indexOfVideoPost,
+} from "../utils/videoPosts";
 import { useReelsActiveIndexStore } from "../store/useReelsActiveIndexStore";
 import { ReelRow } from "./ReelRow";
 
@@ -28,11 +32,7 @@ const VIEWABILITY_CONFIG = {
   minimumViewTime: 0,
 };
 
-function mergeSeedPosts(seedPosts: Post[] | null, feedPosts: Post[]): Post[] {
-  if (!seedPosts || seedPosts.length === 0) {
-    return feedPosts;
-  }
-
+function appendUniqueFeedPosts(seedPosts: Post[], feedPosts: Post[]): Post[] {
   const seen = new Set<string>();
   const merged: Post[] = [];
 
@@ -84,25 +84,70 @@ export function ReelsTabFeed({
 
   const targetPostId = useReelsNavigationStore((s) => s.targetPostId);
   const seedPosts = useReelsNavigationStore((s) => s.seedPosts);
+  const playlistSource = useReelsNavigationStore((s) => s.playlistSource);
+  const authorId = useReelsNavigationStore((s) => s.authorId);
   const clearNavigation = useReelsNavigationStore((s) => s.clearNavigation);
+
+  const isProfilePlaylist = playlistSource === "profile" && Boolean(authorId);
 
   const {
     videoPosts: feedVideoPosts,
-    loading,
-    error,
-    refresh,
+    loading: feedLoading,
+    error: feedError,
+    refresh: feedRefresh,
     updatePostScore,
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-    isRefetching,
-    engagementResetKey,
-  } = useReelsFeedInfinite(screenFocused, feedMode);
+    hasNextPage: feedHasNextPage,
+    isFetchingNextPage: feedIsFetchingNextPage,
+    fetchNextPage: feedFetchNextPage,
+    isRefetching: feedIsRefetching,
+    engagementResetKey: feedEngagementResetKey,
+  } = useReelsFeedInfinite(screenFocused && !isProfilePlaylist, feedMode);
 
-  const videoPosts = useMemo(
-    () => mergeSeedPosts(seedPosts, feedVideoPosts),
-    [seedPosts, feedVideoPosts]
+  const {
+    posts: authorPosts,
+    loading: authorLoading,
+    error: authorError,
+    refresh: authorRefresh,
+    hasNextPage: authorHasNextPage,
+    isFetchingNextPage: authorIsFetchingNextPage,
+    fetchNextPage: authorFetchNextPage,
+    isRefetching: authorIsRefetching,
+  } = useAuthorPosts(authorId ?? "");
+
+  const authorVideoPosts = useMemo(
+    () => collectVideoPostsForPlaylist(authorPosts),
+    [authorPosts]
   );
+
+  const videoPosts = useMemo(() => {
+    if (isProfilePlaylist) {
+      if (authorVideoPosts.length > 0) {
+        return authorVideoPosts;
+      }
+      return seedPosts ?? [];
+    }
+
+    if (seedPosts && seedPosts.length > 0) {
+      return appendUniqueFeedPosts(seedPosts, feedVideoPosts);
+    }
+
+    return feedVideoPosts;
+  }, [authorVideoPosts, feedVideoPosts, isProfilePlaylist, seedPosts]);
+
+  const loading = isProfilePlaylist ? authorLoading : feedLoading;
+  const error = isProfilePlaylist ? authorError : feedError;
+  const refresh = isProfilePlaylist ? authorRefresh : feedRefresh;
+  const hasNextPage = isProfilePlaylist ? authorHasNextPage : feedHasNextPage;
+  const isFetchingNextPage = isProfilePlaylist
+    ? authorIsFetchingNextPage
+    : feedIsFetchingNextPage;
+  const fetchNextPage = isProfilePlaylist
+    ? authorFetchNextPage
+    : feedFetchNextPage;
+  const isRefetching = isProfilePlaylist ? authorIsRefetching : feedIsRefetching;
+  const engagementResetKey = isProfilePlaylist
+    ? `reels-profile-${authorId}`
+    : feedEngagementResetKey;
 
   const postIds = useMemo(() => videoPosts.map((post) => post.id), [videoPosts]);
   useIncrementalEngagement(postIds, engagementResetKey);
@@ -117,13 +162,32 @@ export function ReelsTabFeed({
     }, [resetActiveIndex])
   );
 
+  const resolveTargetIndex = useCallback(() => {
+    if (!targetPostId || videoPosts.length === 0) {
+      return -1;
+    }
+    return indexOfVideoPost(videoPosts, targetPostId);
+  }, [targetPostId, videoPosts]);
+
+  useLayoutEffect(() => {
+    const index = resolveTargetIndex();
+    if (index < 0) {
+      return;
+    }
+    activeIndexRef.current = index;
+    setActiveIndex(index);
+  }, [resolveTargetIndex, setActiveIndex]);
+
   useEffect(() => {
     if (!targetPostId || videoPosts.length === 0) {
       return;
     }
 
-    const index = indexOfVideoPost(videoPosts, targetPostId);
+    const index = resolveTargetIndex();
     if (index < 0) {
+      if (isProfilePlaylist && authorLoading) {
+        return;
+      }
       clearNavigation();
       return;
     }
@@ -141,13 +205,13 @@ export function ReelsTabFeed({
 
       listRef.current?.scrollToIndex({ index, animated: false });
 
-      if (attempt >= 5) {
+      if (attempt >= 8) {
         clearNavigation();
       }
     };
 
     attemptScroll(0);
-    for (let attempt = 1; attempt <= 5; attempt += 1) {
+    for (let attempt = 1; attempt <= 8; attempt += 1) {
       timeouts.push(setTimeout(() => attemptScroll(attempt), 50 * attempt));
     }
 
@@ -157,16 +221,31 @@ export function ReelsTabFeed({
         clearTimeout(timeoutId);
       }
     };
-  }, [targetPostId, videoPosts, clearNavigation, setActiveIndex]);
+  }, [
+    authorLoading,
+    clearNavigation,
+    isProfilePlaylist,
+    resolveTargetIndex,
+    setActiveIndex,
+    targetPostId,
+    videoPosts,
+  ]);
 
   const initialScrollIndex = useMemo(() => {
     if (!targetPostId) {
       return undefined;
     }
 
-    const index = indexOfVideoPost(videoPosts, targetPostId);
+    const index = resolveTargetIndex();
     return index >= 0 ? index : undefined;
-  }, [targetPostId, videoPosts]);
+  }, [resolveTargetIndex, targetPostId]);
+
+  const listKey = useMemo(() => {
+    if (!targetPostId) {
+      return `reels-${playlistSource ?? "browse"}-${feedMode}`;
+    }
+    return `reels-nav-${targetPostId}`;
+  }, [feedMode, playlistSource, targetPostId]);
 
   const setActiveIndexFromOffset = useCallback(
     (offsetY: number) => {
@@ -219,7 +298,7 @@ export function ReelsTabFeed({
 
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage();
+      fetchNextPage();
     }
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
@@ -302,6 +381,7 @@ export function ReelsTabFeed({
         style={fullscreen ? undefined : { paddingTop: insets.top }}
       >
         <FlashList
+          key={listKey}
           ref={listRef}
           data={videoPosts}
           keyExtractor={(item) => item.id}

@@ -41,7 +41,7 @@ export function RepostQuoteModal({
   const [error, setError] = useState<string | null>(null);
 
   const embedded = resolveEmbeddedOriginalPost(post) ?? post;
-  const sheetMaxHeight = Math.round(windowHeight * 0.9);
+  const sheetMaxHeight = Math.round(windowHeight * 0.92);
 
   useEffect(() => {
     if (visible) {
@@ -75,35 +75,59 @@ export function RepostQuoteModal({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
       >
-        <View className="flex-1 justify-end bg-black/40">
+        <View className="flex-1 justify-end bg-black/45">
           <View
             className="overflow-hidden rounded-t-3xl bg-white"
             style={{ maxHeight: sheetMaxHeight }}
           >
-            <View className="px-6 pb-2 pt-6">
-              <Text className="mb-1 text-xl font-bold text-gray-900">
+            <View className="items-center pb-2 pt-3">
+              <View className="h-1 w-10 rounded-full bg-gray-300" />
+            </View>
+
+            <View className="flex-row items-center justify-between border-b border-gray-100 px-4 pb-3">
+              <Pressable
+                onPress={onClose}
+                disabled={submitting}
+                className="min-w-[64px] py-1"
+                accessibilityLabel="İptal"
+              >
+                <Text className="text-base font-medium text-gray-600">İptal</Text>
+              </Pressable>
+              <Text className="text-base font-semibold text-gray-900">
                 Akışa paylaş
               </Text>
-              <Text className="text-sm text-gray-500">
-                İsteğe bağlı alıntı metni ekleyebilirsiniz.
-              </Text>
+              <Pressable
+                onPress={() => void handleSubmit()}
+                disabled={submitting}
+                className="min-w-[64px] items-end py-1"
+                accessibilityLabel="Paylaş"
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color={SPINNER_COLOR} />
+                ) : (
+                  <Text className="text-base font-semibold text-gray-900">
+                    Paylaş
+                  </Text>
+                )}
+              </Pressable>
             </View>
 
             <ScrollView
-              className="flex-shrink px-6"
+              className="flex-shrink px-4"
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator
-              contentContainerStyle={{ paddingBottom: 8 }}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingTop: 12, paddingBottom: 8 }}
             >
               <TextInput
-                className="mb-3 min-h-[96px] rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
-                placeholder="Düşüncenizi yazın..."
+                className="mb-1 min-h-[72px] px-1 py-2 text-base text-gray-900"
+                placeholder="Bir şeyler ekle..."
                 placeholderTextColor="#9CA3AF"
                 multiline
                 value={caption}
                 onChangeText={setCaption}
                 maxLength={REPOST_CAPTION_MAX_LENGTH}
                 editable={!submitting}
+                textAlignVertical="top"
               />
               <Text className="mb-4 text-right text-xs text-gray-400">
                 {caption.length}/{REPOST_CAPTION_MAX_LENGTH}
@@ -116,34 +140,13 @@ export function RepostQuoteModal({
               />
 
               {error ? (
-                <View className="mb-2 rounded-xl bg-red-50 px-4 py-3">
+                <View className="mt-3 rounded-xl bg-red-50 px-4 py-3">
                   <Text className="text-sm text-red-700">{error}</Text>
                 </View>
               ) : null}
             </ScrollView>
 
-            <SafeAreaView edges={["bottom"]} className="border-t border-gray-100 bg-white">
-              <View className="px-6 pb-2 pt-3">
-                <Pressable
-                  className={`mb-3 ${ui.btnPrimary} ${submitting ? "opacity-60" : ""}`}
-                  onPress={() => void handleSubmit()}
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <ActivityIndicator color={SPINNER_COLOR} />
-                  ) : (
-                    <Text className={ui.btnPrimaryText}>Paylaş</Text>
-                  )}
-                </Pressable>
-                <Pressable
-                  className="items-center py-2"
-                  onPress={onClose}
-                  disabled={submitting}
-                >
-                  <Text className="font-medium text-gray-500">İptal</Text>
-                </Pressable>
-              </View>
-            </SafeAreaView>
+            <SafeAreaView edges={["bottom"]} className="bg-white" />
           </View>
         </View>
       </KeyboardAvoidingView>

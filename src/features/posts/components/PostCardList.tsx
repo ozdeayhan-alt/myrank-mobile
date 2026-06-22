@@ -3,7 +3,8 @@ import { useIncrementalEngagement } from "@/features/ranking/hooks/useIncrementa
 import { PostInteractionProvider } from "../context/PostInteractionContext";
 import type { Post } from "../types";
 import { navigateToReels } from "../navigateToReels";
-import { filterVideoPosts, findVideoPostForOpen } from "../utils/videoPosts";
+import type { ReelsPlaylistSource } from "../store/useReelsNavigationStore";
+import { collectVideoPostsForPlaylist, findVideoPostForOpen } from "../utils/videoPosts";
 import { FeedPostRow } from "./FeedPostRow";
 
 type PostCardListProps = {
@@ -15,6 +16,8 @@ type PostCardListProps = {
   onPostDeleted?: (postId: string) => void;
   onPostContentUpdated?: (postId: string, content: string) => void;
   currentUserId?: string | null;
+  reelsSource?: ReelsPlaylistSource;
+  reelsAuthorId?: string;
 };
 
 export function PostCardList({
@@ -25,6 +28,8 @@ export function PostCardList({
   onPostDeleted,
   onPostContentUpdated,
   currentUserId = null,
+  reelsSource = "discover",
+  reelsAuthorId,
 }: PostCardListProps) {
   const postIds = useMemo(() => posts.map((post) => post.id), [posts]);
   const engagementResetKey = keyPrefix || "post-card-list";
@@ -34,16 +39,19 @@ export function PostCardList({
   );
 
   const playlist = useMemo(
-    () => videoPostsProp ?? filterVideoPosts(posts),
+    () => videoPostsProp ?? collectVideoPostsForPlaylist(posts),
     [videoPostsProp, posts]
   );
 
   const handleOpenVideo = useCallback(
     (postId: string) => {
       const anchorPost = findVideoPostForOpen(posts, postId);
-      navigateToReels(postId, playlist, anchorPost);
+      navigateToReels(postId, playlist, anchorPost, {
+        source: reelsSource,
+        ...(reelsAuthorId ? { authorId: reelsAuthorId } : {}),
+      });
     },
-    [playlist, posts]
+    [playlist, posts, reelsAuthorId, reelsSource]
   );
 
   return (

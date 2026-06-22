@@ -5,15 +5,15 @@ import { SPINNER_COLOR, ui } from "@/lib/uiClasses";
 import { useOpenCommentSheet } from "../hooks/useOpenCommentSheet";
 import { usePostCardOwnerActions } from "../hooks/usePostCardOwnerActions";
 import { useShareAndRepost } from "../hooks/useShareAndRepost";
+import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 import type { Post } from "../types";
-import { isRepostPost } from "../utils/repostUtils";
 import { EditPostTextModal } from "./EditPostTextModal";
 import { PostCardActionBar } from "./PostCardActionBar";
 import { PostCardBody } from "./PostCardBody";
 import { PostHeader } from "./PostHeader";
-import { RepostQuoteModal } from "./RepostQuoteModal";
+import { PostShareModals } from "./PostShareModals";
 
-type FeedPostCellProps = {
+type FeedPostCellProps = PostFeedMediaLayoutOptions & {
   post: Post;
   engagement: EngagementStatus;
   patchEngagement: (patch: Partial<EngagementStatus>) => void;
@@ -35,6 +35,8 @@ export const FeedPostCell = memo(function FeedPostCell({
   onPostContentUpdated,
   currentUserId = null,
   inlineAutoplay = false,
+  listHorizontalInset,
+  mediaEdgeBleed,
 }: FeedPostCellProps) {
   const [heartBurstKey, setHeartBurstKey] = useState(0);
   const openCommentSheet = useOpenCommentSheet();
@@ -66,9 +68,15 @@ export const FeedPostCell = memo(function FeedPostCell({
     applyCommentResult,
     shareActive,
     saveActive,
+    shareSheetOpen,
+    setShareSheetOpen,
     repostOpen,
     setRepostOpen,
     handleReposted,
+    canRepost,
+    handleRepostSelect,
+    handleStorySelect,
+    handleExternalShareSelect,
   } = useShareAndRepost({
     post,
     currentUserId,
@@ -114,6 +122,8 @@ export const FeedPostCell = memo(function FeedPostCell({
           currentUserId={currentUserId}
           mediaImagePriority="high"
           inlineAutoplay={inlineAutoplay}
+          listHorizontalInset={listHorizontalInset}
+          mediaEdgeBleed={mediaEdgeBleed}
         />
 
         <PostCardActionBar
@@ -148,15 +158,20 @@ export const FeedPostCell = memo(function FeedPostCell({
         />
       ) : null}
 
-      {!isRepostPost(post) && repostOpen ? (
-        <RepostQuoteModal
-          visible
-          post={post}
-          onClose={() => setRepostOpen(false)}
-          onReposted={handleReposted}
-          onOpenVideo={onOpenVideo}
-        />
-      ) : null}
+      <PostShareModals
+        post={post}
+        shareSheetOpen={shareSheetOpen}
+        onCloseShareSheet={() => setShareSheetOpen(false)}
+        repostOpen={repostOpen}
+        onCloseRepost={() => setRepostOpen(false)}
+        canRepost={canRepost}
+        shareLoading={loading}
+        onRepostSelect={handleRepostSelect}
+        onStorySelect={handleStorySelect}
+        onExternalShare={handleExternalShareSelect}
+        onReposted={handleReposted}
+        onOpenVideo={onOpenVideo}
+      />
     </>
   );
 });

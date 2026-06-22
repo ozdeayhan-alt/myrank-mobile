@@ -1,10 +1,11 @@
 import { memo, useCallback } from "react";
 import { usePostEngagement } from "@/features/ranking/store/useEngagementStore";
 import type { EngagementStatus } from "@/features/ranking/types";
+import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 import type { Post } from "../types";
 import { FeedPostCell } from "./FeedPostCell";
 
-type FeedPostRowProps = {
+type FeedPostRowProps = PostFeedMediaLayoutOptions & {
   post: Post;
   patchEngagement: (
     postId: string,
@@ -27,6 +28,8 @@ export const FeedPostRow = memo(function FeedPostRow({
   onPostContentUpdated,
   currentUserId = null,
   inlineAutoplay = false,
+  listHorizontalInset,
+  mediaEdgeBleed,
 }: FeedPostRowProps) {
   const engagement = usePostEngagement(post.id);
 
@@ -48,6 +51,8 @@ export const FeedPostRow = memo(function FeedPostRow({
       onPostContentUpdated={onPostContentUpdated}
       currentUserId={currentUserId}
       inlineAutoplay={inlineAutoplay}
+      listHorizontalInset={listHorizontalInset}
+      mediaEdgeBleed={mediaEdgeBleed}
     />
   );
 });

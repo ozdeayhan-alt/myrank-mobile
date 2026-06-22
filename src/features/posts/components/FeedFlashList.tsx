@@ -10,13 +10,16 @@ import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useIncrementalEngagement } from "@/features/ranking/hooks/useIncrementalEngagement";
 import { isFeedInlineAutoplayEnabled } from "@/lib/feedInlineAutoplayEnabled";
 import { PostInteractionProvider } from "../context/PostInteractionContext";
+import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 import type { Post } from "../types";
 import { prefetchPostMedia } from "../utils/prefetchPostMedia";
 import { FeedPostErrorBoundary } from "./FeedPostErrorBoundary";
 import { FeedPostSkeleton } from "./FeedPostSkeleton";
 import { FeedPostRow } from "./FeedPostRow";
 import { navigateToReels } from "../navigateToReels";
+import type { ReelsPlaylistSource } from "../store/useReelsNavigationStore";
 import {
+  collectVideoPostsForPlaylist,
   filterVideoPosts,
   findVideoPostForOpen,
   isVideoPost,
@@ -45,7 +48,7 @@ export type FeedListItem =
       post: Post;
     };
 
-type FeedFlashListProps = {
+type FeedFlashListProps = PostFeedMediaLayoutOptions & {
   items: FeedListItem[];
   videoPosts: Post[];
   loading: boolean;
@@ -66,6 +69,8 @@ type FeedFlashListProps = {
   extraData?: unknown;
   listKey?: string;
   currentUserId?: string | null;
+  reelsSource?: ReelsPlaylistSource;
+  reelsAuthorId?: string;
 };
 
 const viewabilityConfig = {
@@ -94,6 +99,10 @@ export function FeedFlashList({
   extraData,
   listKey,
   currentUserId = null,
+  listHorizontalInset,
+  mediaEdgeBleed,
+  reelsSource = "discover",
+  reelsAuthorId,
 }: FeedFlashListProps) {
   const [autoplayPostId, setAutoplayPostId] = useState<string | null>(null);
   const autoplayPostIdRef = useRef<string | null>(null);
@@ -117,7 +126,7 @@ export function FeedFlashList({
     () =>
       videoPosts.length > 0
         ? videoPosts
-        : filterVideoPosts(
+        : collectVideoPostsForPlaylist(
             items
               .filter(
                 (item): item is Extract<FeedListItem, { kind: "post" }> =>
@@ -214,9 +223,12 @@ export function FeedFlashList({
   const handleOpenVideo = useCallback(
     (postId: string) => {
       const anchorPost = findVideoPostForOpen(feedPosts, postId);
-      navigateToReels(postId, playlist, anchorPost);
+      navigateToReels(postId, playlist, anchorPost, {
+        source: reelsSource,
+        ...(reelsAuthorId ? { authorId: reelsAuthorId } : {}),
+      });
     },
-    [feedPosts, playlist]
+    [feedPosts, playlist, reelsAuthorId, reelsSource]
   );
 
   const renderItem = useCallback(
@@ -265,6 +277,8 @@ export function FeedFlashList({
             inlineAutoplay={
               inlineAutoplayEnabled && autoplayPostId === item.post.id
             }
+            listHorizontalInset={listHorizontalInset}
+            mediaEdgeBleed={mediaEdgeBleed}
           />
         </FeedPostErrorBoundary>
       );
@@ -278,6 +292,8 @@ export function FeedFlashList({
       currentUserId,
       autoplayPostId,
       inlineAutoplayEnabled,
+      listHorizontalInset,
+      mediaEdgeBleed,
     ]
   );
 

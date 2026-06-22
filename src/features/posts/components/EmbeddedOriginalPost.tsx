@@ -8,11 +8,13 @@ import {
   resolvePostAuthorInitial,
   resolvePostAuthorPhotoURL,
 } from "../utils/resolvePostAuthor";
+import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
+import { isRepostPost } from "../utils/repostUtils";
 import { PostFeedMedia } from "./PostFeedMedia";
 import { getContentTypeLabel } from "../constants/contentTypeLabels";
 import { isVideoPost } from "../utils/videoPosts";
 
-type EmbeddedOriginalPostProps = {
+type EmbeddedOriginalPostProps = PostFeedMediaLayoutOptions & {
   post: Post;
   onOpenVideo?: (postId: string) => void;
   variant?: "feed" | "compact";
@@ -32,6 +34,8 @@ export function EmbeddedOriginalPost({
   onOpenVideo,
   variant = "feed",
   currentUserId = null,
+  listHorizontalInset,
+  mediaEdgeBleed,
 }: EmbeddedOriginalPostProps) {
   const compact = variant === "compact";
   const router = useRouter();
@@ -94,7 +98,12 @@ export function EmbeddedOriginalPost({
         </View>
       ) : null}
 
-      <PostFeedMedia post={post} variant={variant} />
+      <PostFeedMedia
+        post={post}
+        variant={variant}
+        listHorizontalInset={listHorizontalInset}
+        mediaEdgeBleed={mediaEdgeBleed}
+      />
 
       {bodyText && post.contentType !== "tweet" ? (
         <View className="px-3 py-2">

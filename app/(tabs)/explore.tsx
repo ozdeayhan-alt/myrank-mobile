@@ -17,7 +17,7 @@ import {
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
 import { hasActiveSegmentFilters } from "@/features/posts/api/matchesSegmentFilters";
-import { filterVideoPosts } from "@/features/posts/utils/videoPosts";
+import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
 import {
   ExploreSearchBar,
   useUserSearch,
@@ -136,7 +136,7 @@ export default function ExploreScreen() {
     [posts]
   );
 
-  const videoPosts = useMemo(() => filterVideoPosts(posts), [posts]);
+  const videoPosts = useMemo(() => collectVideoPostsForPlaylist(posts), [posts]);
 
   const handleRefresh = useCallback(() => {
     void refresh();

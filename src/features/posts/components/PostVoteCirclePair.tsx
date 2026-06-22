@@ -11,6 +11,7 @@ type PostVoteCirclePairProps = {
   disabled?: boolean;
   /** feed kartı | reels overlay */
   variant?: "feed" | "reels";
+  voteDiameter?: number;
 };
 
 export function PostVoteCirclePair({
@@ -18,8 +19,11 @@ export function PostVoteCirclePair({
   onDown,
   disabled = false,
   variant = "feed",
+  voteDiameter,
 }: PostVoteCirclePairProps) {
-  const diameter = variant === "reels" ? REELS_VOTE_DIAMETER : FEED_VOTE_DIAMETER;
+  const diameter =
+    voteDiameter ??
+    (variant === "reels" ? REELS_VOTE_DIAMETER : FEED_VOTE_DIAMETER);
   const ghost = variant === "reels";
 
   return (

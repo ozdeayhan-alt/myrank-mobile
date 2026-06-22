@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
+import { FeedImagePreview } from "@/features/media/components/FeedImagePreview";
 import type { PostContentType } from "../types";
 import { ShareVideoPreview } from "./ShareVideoPreview";
 
@@ -77,18 +77,10 @@ export function ShareComposerMediaSection({
 
   return (
     <View className="mb-4">
-      {mediaUri && isImage ? (
-        <View className="mb-3 overflow-hidden rounded-2xl border border-gray-200">
-          <Image
-            source={{ uri: mediaUri }}
-            style={{ width: "100%", height: 220 }}
-            contentFit="cover"
-          />
-        </View>
-      ) : null}
+      {mediaUri && isImage ? <FeedImagePreview uri={mediaUri} /> : null}
 
       {mediaUri && selected === "video" ? (
-        <View className="mb-3 overflow-hidden rounded-2xl border border-gray-200">
+        <View className="mb-3">
           <ShareVideoPreview uri={mediaUri} />
         </View>
       ) : null}

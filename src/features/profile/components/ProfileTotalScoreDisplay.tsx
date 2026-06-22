@@ -1,7 +1,8 @@
-import { memo, useEffect } from "react";
-import { View } from "react-native";
+import { memo, useEffect, useMemo } from "react";
+import { useWindowDimensions, View } from "react-native";
 import { PROFILE_METRIC_CARD_MIN_HEIGHT } from "@/components/ProfileMetricCard";
 import { useRankingLadder } from "../hooks/useRankingLadder";
+import { getProfileSegmentGaugeLayout } from "../profileLayout";
 import type { GaugeVoteMode } from "../lib/gaugeVoteModeStorage";
 import type { VoteFlashDirection } from "./ProfileVoteProvider";
 import { ProfileTotalScoreGauge } from "./ProfileTotalScoreGauge";
@@ -22,6 +23,12 @@ function ProfileTotalScoreDisplayInner({
   voteFlash = null,
   gaugeVoteMode = null,
 }: ProfileTotalScoreDisplayProps) {
+  const { width: screenWidth, fontScale } = useWindowDimensions();
+  const layout = useMemo(
+    () => getProfileSegmentGaugeLayout(screenWidth, fontScale),
+    [screenWidth, fontScale]
+  );
+
   const { snapshotScore, aheadRungs, behindRungs, loading, ready, requestFullLadder } =
     useRankingLadder(userId);
 
@@ -42,6 +49,8 @@ function ProfileTotalScoreDisplayInner({
         snapshotScore={snapshotScore}
         aheadRungs={aheadRungs}
         behindRungs={behindRungs}
+        layout={layout}
+        variant="card"
         loadingTarget={loading}
         snapshotReady={ready}
         voteFlash={voteFlash}

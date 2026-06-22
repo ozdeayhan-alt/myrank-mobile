@@ -48,6 +48,14 @@ export default function ProfileScreen() {
   }
 
   if (!profileReady) {
+    if (complete) {
+      return (
+        <TabScreenSafeArea className="flex-1 bg-white">
+          <ProfileLoadingSkeleton />
+        </TabScreenSafeArea>
+      );
+    }
+
     return (
       <TabScreenSafeArea className="flex-1 bg-white">
         <ProfileForm

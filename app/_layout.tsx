@@ -17,6 +17,7 @@ import {
 } from "@/lib/crashReporting";
 import { CommentSheetHost } from "@/features/posts/components/CommentSheetHost";
 import { PushNotificationHandler } from "@/features/push";
+import { StoriesRingBootstrap } from "@/features/stories/components/StoriesRingBootstrap";
 import { QueryProvider } from "@/providers/QueryProvider";
 import {
   isMetadataComplete,
@@ -137,6 +138,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     <>
       <CrashReportingBootstrap />
       <PushNotificationHandler />
+      <StoriesRingBootstrap />
       <CommentSheetHost />
       {children}
     </>

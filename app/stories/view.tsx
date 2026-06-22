@@ -10,6 +10,7 @@ import {
 } from "@/features/stories";
 import { resolveStoryRingPlaylist } from "@/features/stories/lib/buildStoryRingPlaylist";
 import { markStorySeen } from "@/features/stories/lib/storySeenStorage";
+import { useStoriesRingStore } from "@/features/stories/store/useStoriesRingStore";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 
 export default function StoryViewScreen() {
@@ -29,7 +30,9 @@ export default function StoryViewScreen() {
   }, [router]);
 
   const handleStoryViewed = useCallback((storyId: string) => {
-    void markStorySeen(storyId);
+    void markStorySeen(storyId).then(() => {
+      void useStoriesRingStore.getState().reload();
+    });
   }, []);
 
   const load = useCallback(async () => {

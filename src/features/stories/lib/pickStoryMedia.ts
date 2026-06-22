@@ -71,6 +71,23 @@ async function pickStoryVideoFromCamera(): Promise<ImagePicker.ImagePickerAsset 
   return result.assets[0];
 }
 
+/** Galeriden tek seferde foto veya video seç (story composer açılışı). */
+export async function pickStoryMediaAsset(): Promise<ImagePicker.ImagePickerAsset | null> {
+  if (!(await requestMediaLibraryPermission())) {
+    return null;
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.All,
+    videoMaxDuration: STORY_VIDEO_MAX_DURATION_SECONDS,
+    allowsEditing: false,
+    quality: 0.85,
+  });
+  if (result.canceled || !result.assets[0]) {
+    return null;
+  }
+  return result.assets[0];
+}
+
 export function showStoryMediaPicker(
   onSelect: (asset: ImagePicker.ImagePickerAsset) => void
 ): void {

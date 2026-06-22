@@ -1,7 +1,8 @@
 import { Pressable, Text, View } from "react-native";
 import { formatRelativeTime } from "@/features/notifications/utils/formatRelativeTime";
-import { ProfileAvatar } from "@/features/profile/components/ProfileAvatar";
 import { navigateToAuthorProfile } from "@/features/profile/navigateToAuthorProfile";
+import { StoryRingAvatar } from "@/features/stories/components/StoryRingAvatar";
+import { isSystemProfileUserId } from "@/lib/profile/isSystemProfile";
 import type { Post } from "../types";
 import {
   resolvePostAuthorDisplayName,
@@ -9,6 +10,7 @@ import {
   resolvePostAuthorPhotoURL,
 } from "../utils/resolvePostAuthor";
 import { getContentTypeLabel } from "../constants/contentTypeLabels";
+import { PostFollowPlusButton } from "./PostFollowPlusButton";
 import { PostScorePill } from "./PostScorePill";
 
 const FEED_AVATAR_SIZE = 40;
@@ -31,6 +33,20 @@ function resolveSecondaryLabel(post: Post): string | null {
   return resolveContentTypeLabel(post.contentType);
 }
 
+function shouldShowPostFollowPlus(
+  post: Post,
+  isOwner: boolean,
+  currentUserId: string | null
+): boolean {
+  if (!currentUserId || isOwner) {
+    return false;
+  }
+  if (isSystemProfileUserId(post.authorId)) {
+    return false;
+  }
+  return post.contentType === "tweet" || post.contentType === "image";
+}
+
 type PostHeaderProps = {
   post: Post;
   score: number;
@@ -51,6 +67,7 @@ export function PostHeader({
   const displayName = resolvePostAuthorDisplayName(post);
   const photoURL = resolvePostAuthorPhotoURL(post);
   const secondaryLabel = resolveSecondaryLabel(post);
+  const showFollowPlus = shouldShowPostFollowPlus(post, isOwner, currentUserId);
 
   const openAuthorProfile = () => {
     navigateToAuthorProfile(post.authorId, currentUserId ?? undefined, {
@@ -62,18 +79,13 @@ export function PostHeader({
   return (
     <View className="flex-row items-center justify-between px-4 pb-2.5 pt-3.5">
       <View className="mr-3 flex-1 flex-row items-center">
-        <Pressable
-          onPress={openAuthorProfile}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={`${displayName} profilini aç`}
-        >
-          <ProfileAvatar
-            size={FEED_AVATAR_SIZE}
-            photoURL={photoURL}
-            fallbackLetter={resolvePostAuthorInitial(post)}
-          />
-        </Pressable>
+        <StoryRingAvatar
+          userId={post.authorId}
+          photoURL={photoURL}
+          fallbackLetter={resolvePostAuthorInitial(post)}
+          size={FEED_AVATAR_SIZE}
+          onPressWithoutStory={openAuthorProfile}
+        />
         <Pressable
           className="ml-3 flex-1"
           onPress={openAuthorProfile}
@@ -89,6 +101,9 @@ export function PostHeader({
         </Pressable>
       </View>
       <View className="flex-row items-center gap-2">
+        {showFollowPlus ? (
+          <PostFollowPlusButton targetUserId={post.authorId} />
+        ) : null}
         {isOwner ? (
           <Pressable
             onPress={onOwnerMenuPress}

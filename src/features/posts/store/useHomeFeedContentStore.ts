@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import type { Post } from "../types";
 import type { HomeContentFilter } from "../utils/filterPostsByContentType";
-import { useReelsNavigationStore } from "./useReelsNavigationStore";
+import {
+  type ReelsPlaylistSource,
+  useReelsNavigationStore,
+} from "./useReelsNavigationStore";
 
 export type HomeFeedContentFilter = HomeContentFilter | null;
 
@@ -15,7 +18,14 @@ export const useHomeFeedContentStore = create<HomeFeedContentState>((set) => ({
   setContentFilter: (contentFilter) => set({ contentFilter }),
 }));
 
-export function openHomeVideoReels(postId: string, seedPosts?: Post[]): void {
-  useReelsNavigationStore.getState().setNavigation(postId, seedPosts);
+export function openHomeVideoReels(
+  postId: string,
+  seedPosts?: Post[],
+  options?: {
+    source?: ReelsPlaylistSource;
+    authorId?: string;
+  }
+): void {
+  useReelsNavigationStore.getState().setNavigation(postId, seedPosts, options);
   useHomeFeedContentStore.getState().setContentFilter("video");
 }

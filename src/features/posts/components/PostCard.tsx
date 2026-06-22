@@ -5,13 +5,12 @@ import { SPINNER_COLOR, ui } from "@/lib/uiClasses";
 import { usePostCardOwnerActions } from "../hooks/usePostCardOwnerActions";
 import { useShareAndRepost } from "../hooks/useShareAndRepost";
 import type { Post } from "../types";
-import { isRepostPost } from "../utils/repostUtils";
 import { EditPostTextModal } from "./EditPostTextModal";
 import { PostCardActionBar } from "./PostCardActionBar";
 import { PostCardBody } from "./PostCardBody";
 import { useOpenCommentSheet } from "../hooks/useOpenCommentSheet";
 import { PostHeader } from "./PostHeader";
-import { RepostQuoteModal } from "./RepostQuoteModal";
+import { PostShareModals } from "./PostShareModals";
 
 type PostCardProps = {
   post: Post;
@@ -66,9 +65,15 @@ export const PostCard = memo(function PostCard({
     applyCommentResult,
     shareActive,
     saveActive,
+    shareSheetOpen,
+    setShareSheetOpen,
     repostOpen,
     setRepostOpen,
     handleReposted,
+    canRepost,
+    handleRepostSelect,
+    handleStorySelect,
+    handleExternalShareSelect,
   } = useShareAndRepost({
     post,
     currentUserId,
@@ -147,15 +152,20 @@ export const PostCard = memo(function PostCard({
         />
       ) : null}
 
-      {!isRepostPost(post) && repostOpen ? (
-        <RepostQuoteModal
-          visible
-          post={post}
-          onClose={() => setRepostOpen(false)}
-          onReposted={handleReposted}
-          onOpenVideo={onOpenVideo}
-        />
-      ) : null}
+      <PostShareModals
+        post={post}
+        shareSheetOpen={shareSheetOpen}
+        onCloseShareSheet={() => setShareSheetOpen(false)}
+        repostOpen={repostOpen}
+        onCloseRepost={() => setRepostOpen(false)}
+        canRepost={canRepost}
+        shareLoading={loading}
+        onRepostSelect={handleRepostSelect}
+        onStorySelect={handleStorySelect}
+        onExternalShare={handleExternalShareSelect}
+        onReposted={handleReposted}
+        onOpenVideo={onOpenVideo}
+      />
     </>
   );
 });

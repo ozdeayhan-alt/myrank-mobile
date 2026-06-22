@@ -170,7 +170,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...config.android,
       package: "com.myrank.mobile",
       googleServicesFile: "./google-services.json",
-      softwareKeyboardLayoutMode: "resize",
+      softwareKeyboardLayoutMode: "pan",
       ...( { usesCleartextTraffic: !apiUsesHttps } as ExpoConfig["android"] ),
       blockedPermissions: [
         ...new Set([

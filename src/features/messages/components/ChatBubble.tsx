@@ -1,8 +1,12 @@
 import { Text, View } from "react-native";
 import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
+import { ProfileAvatar } from "@/features/profile/components/ProfileAvatar";
 import type { ChatMessage } from "../types";
 import { messageTheme } from "../theme";
+
+const CHAT_AVATAR_SIZE = 28;
+const CHAT_AVATAR_GAP = 6;
 
 function formatTime(date: Date | null): string {
   if (!date) return "";
@@ -15,6 +19,9 @@ function formatTime(date: Date | null): string {
 type ChatBubbleProps = {
   message: ChatMessage;
   isMine: boolean;
+  avatarPhotoURL?: string;
+  avatarFallbackLetter?: string;
+  showAvatar?: boolean;
 };
 
 function ChatVideoBubble({ uri }: { uri: string; posterURL?: string }) {
@@ -33,13 +40,43 @@ function ChatVideoBubble({ uri }: { uri: string; posterURL?: string }) {
   );
 }
 
-export function ChatBubble({ message, isMine }: ChatBubbleProps) {
+export function ChatBubble({
+  message,
+  isMine,
+  avatarPhotoURL,
+  avatarFallbackLetter = "?",
+  showAvatar = true,
+}: ChatBubbleProps) {
   const isMedia = message.type === "image" || message.type === "video";
 
+  const avatarSlot = (
+    <View
+      style={{
+        width: CHAT_AVATAR_SIZE,
+        marginRight: isMine ? 0 : CHAT_AVATAR_GAP,
+        marginLeft: isMine ? CHAT_AVATAR_GAP : 0,
+        alignSelf: "flex-end",
+      }}
+    >
+      {showAvatar ? (
+        <ProfileAvatar
+          size={CHAT_AVATAR_SIZE}
+          photoURL={avatarPhotoURL}
+          fallbackLetter={avatarFallbackLetter}
+        />
+      ) : null}
+    </View>
+  );
+
   return (
-    <View className={`mb-2 max-w-[82%] ${isMine ? "self-end" : "self-start"}`}>
+    <View
+      className={`flex-row ${showAvatar ? "mb-2" : "mb-0.5"} max-w-[88%] ${
+        isMine ? "self-end" : "self-start"
+      }`}
+    >
+      {!isMine ? avatarSlot : null}
       <View
-        className="rounded-2xl px-3 py-2"
+        className="shrink rounded-2xl px-3 py-2"
         style={{
           backgroundColor: isMine
             ? messageTheme.sentBubble
@@ -98,6 +135,7 @@ export function ChatBubble({ message, isMine }: ChatBubbleProps) {
           </Text>
         )}
       </View>
+      {isMine ? avatarSlot : null}
     </View>
   );
 }

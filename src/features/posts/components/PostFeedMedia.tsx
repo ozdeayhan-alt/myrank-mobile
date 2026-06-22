@@ -1,3 +1,4 @@
+import { FeedGlowImage } from "@/features/media/components/FeedGlowImage";
 import { memo, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Image } from "expo-image";
@@ -6,6 +7,10 @@ import {
   resolveMediaDisplayUrl,
 } from "@/lib/media/resolveMediaDisplayUrl";
 import { useMediaAspectRatio } from "../hooks/useMediaAspectRatio";
+import {
+  DEFAULT_FEED_MEDIA_LAYOUT,
+  type PostFeedMediaLayoutOptions,
+} from "../constants/feedMediaLayout";
 import type { Post } from "../types";
 import {
   DEFAULT_VIDEO_ASPECT_RATIO,
@@ -16,9 +21,6 @@ import {
 import { isVideoPost } from "../utils/videoPosts";
 import { PostFeedInlineVideo } from "./PostFeedInlineVideo";
 
-/** Parent ScrollView content uses px-4 — medyayı kenardan kenara göster */
-const FEED_HORIZONTAL_INSET = 16;
-
 const COMPACT_MEDIA_HEIGHT = 160;
 
 type ImagePriority = "low" | "normal" | "high";
@@ -28,39 +30,6 @@ type ImageCacheProps = {
   recyclingKey: string;
   priority: ImagePriority;
 };
-
-function GlowFeedImage({
-  uri,
-  cacheProps,
-}: {
-  uri: string;
-  cacheProps: ImageCacheProps;
-}) {
-  return (
-    <View className="h-full w-full overflow-hidden bg-neutral-950">
-      <Image
-        source={{ uri }}
-        style={StyleSheet.absoluteFillObject}
-        contentFit="cover"
-        blurRadius={42}
-        priority="low"
-        cachePolicy={cacheProps.cachePolicy}
-        recyclingKey={`${cacheProps.recyclingKey}-bg`}
-      />
-      <View
-        pointerEvents="none"
-        style={StyleSheet.absoluteFillObject}
-        className="bg-black/40"
-      />
-      <Image
-        source={{ uri }}
-        style={{ width: "100%", height: "100%" }}
-        contentFit="contain"
-        {...cacheProps}
-      />
-    </View>
-  );
-}
 
 function storedAspectRatio(post: Post): number | null {
   if (
@@ -127,7 +96,7 @@ function VideoPosterImage({
   );
 }
 
-type PostFeedMediaProps = {
+type PostFeedMediaProps = PostFeedMediaLayoutOptions & {
   post: Post;
   variant?: "feed" | "compact";
   imagePriority?: ImagePriority;
@@ -147,9 +116,12 @@ function PostFeedMediaLayout({
   imagePriority = "normal",
   fixedHeight,
   inlineAutoplay = false,
+  listHorizontalInset = DEFAULT_FEED_MEDIA_LAYOUT.listHorizontalInset,
+  mediaEdgeBleed = DEFAULT_FEED_MEDIA_LAYOUT.mediaEdgeBleed,
 }: PostFeedMediaLayoutProps) {
   const { width: screenWidth } = useWindowDimensions();
   const compact = variant === "compact";
+  const bleed = !compact && mediaEdgeBleed && listHorizontalInset > 0;
 
   const imageCacheProps = useMemo(
     () => ({
@@ -166,7 +138,11 @@ function PostFeedMediaLayout({
     return null;
   }
 
-  const containerWidth = compact ? screenWidth - 48 : screenWidth;
+  const containerWidth = compact
+    ? screenWidth - 48
+    : bleed
+      ? screenWidth
+      : Math.max(0, screenWidth - listHorizontalInset * 2);
   const isVideo = post.contentType === "video" && isVideoPost(post);
   const compactMaxHeight = compact ? COMPACT_MEDIA_HEIGHT : undefined;
   const layout =
@@ -186,11 +162,16 @@ function PostFeedMediaLayout({
 
   const outerStyle = compact
     ? { width: "100%" as const }
-    : {
-        width: layout.containerWidth,
-        marginLeft: -FEED_HORIZONTAL_INSET,
-        marginRight: -FEED_HORIZONTAL_INSET,
-      };
+    : bleed
+      ? {
+          width: layout.containerWidth,
+          marginLeft: -listHorizontalInset,
+          marginRight: -listHorizontalInset,
+        }
+      : {
+          width: "100%" as const,
+          alignItems: "center" as const,
+        };
 
   const frameStyle = {
     width: layout.width,
@@ -201,7 +182,11 @@ function PostFeedMediaLayout({
     return (
       <View style={outerStyle}>
         <View style={frameStyle}>
-          <GlowFeedImage uri={displayMediaURL} cacheProps={imageCacheProps} />
+          <FeedGlowImage
+            uri={displayMediaURL}
+            recyclingKey={imageCacheProps.recyclingKey}
+            priority={imageCacheProps.priority}
+          />
         </View>
       </View>
     );
@@ -253,6 +238,8 @@ function PostFeedMediaDynamic({
   imagePriority = "normal",
   placeholderHeight,
   inlineAutoplay = false,
+  listHorizontalInset,
+  mediaEdgeBleed,
 }: PostFeedMediaProps) {
   const imageAspectRatio = useMediaAspectRatio(
     post.contentType === "image" ? post.mediaURL : undefined,
@@ -281,6 +268,8 @@ function PostFeedMediaDynamic({
       imagePriority={imagePriority}
       fixedHeight={placeholderHeight}
       inlineAutoplay={inlineAutoplay}
+      listHorizontalInset={listHorizontalInset}
+      mediaEdgeBleed={mediaEdgeBleed}
     />
   );
 }
@@ -291,6 +280,8 @@ function PostFeedMediaInner({
   imagePriority = "normal",
   placeholderHeight,
   inlineAutoplay = false,
+  listHorizontalInset,
+  mediaEdgeBleed,
 }: PostFeedMediaProps) {
   const isImage = post.contentType === "image";
 
@@ -302,6 +293,8 @@ function PostFeedMediaInner({
         imagePriority={imagePriority}
         placeholderHeight={placeholderHeight}
         inlineAutoplay={inlineAutoplay}
+        listHorizontalInset={listHorizontalInset}
+        mediaEdgeBleed={mediaEdgeBleed}
       />
     );
   }
@@ -317,6 +310,8 @@ function PostFeedMediaInner({
         imagePriority={imagePriority}
         fixedHeight={placeholderHeight}
         inlineAutoplay={inlineAutoplay}
+        listHorizontalInset={listHorizontalInset}
+        mediaEdgeBleed={mediaEdgeBleed}
       />
     );
   }
@@ -329,6 +324,8 @@ function PostFeedMediaInner({
         aspectRatio={storedRatio}
         imagePriority={imagePriority}
         inlineAutoplay={inlineAutoplay}
+        listHorizontalInset={listHorizontalInset}
+        mediaEdgeBleed={mediaEdgeBleed}
       />
     );
   }
@@ -340,6 +337,8 @@ function PostFeedMediaInner({
       imagePriority={imagePriority}
       placeholderHeight={placeholderHeight}
       inlineAutoplay={inlineAutoplay}
+      listHorizontalInset={listHorizontalInset}
+      mediaEdgeBleed={mediaEdgeBleed}
     />
   );
 }

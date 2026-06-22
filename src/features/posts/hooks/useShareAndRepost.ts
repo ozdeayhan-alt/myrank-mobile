@@ -1,9 +1,8 @@
 import { useCallback, useState } from "react";
-import { Alert } from "react-native";
+import { useRouter } from "expo-router";
 import { useFeedRefreshStore } from "../store/useFeedRefreshStore";
 import type { Post } from "../types";
 import { canRepostPost } from "../utils/repostUtils";
-import { openShareOptions } from "../utils/openShareOptions";
 import { usePostInteractions } from "./usePostInteractions";
 import type { EngagementStatus } from "@/features/ranking/types";
 
@@ -22,7 +21,9 @@ export function useShareAndRepost({
   onEngagementPatch,
   onScoreUpdate,
 }: UseShareAndRepostOptions) {
+  const router = useRouter();
   const bumpFeed = useFeedRefreshStore((s) => s.bump);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [repostOpen, setRepostOpen] = useState(false);
 
   const interactions = usePostInteractions({
@@ -36,24 +37,42 @@ export function useShareAndRepost({
   const canRepost = canRepostPost(post, currentUserId ?? undefined);
 
   const handleSharePress = useCallback(() => {
-    openShareOptions({
-      canRepost,
-      onRepost: () => setRepostOpen(true),
-      onExternalShare: interactions.handleExternalShare,
+    setShareSheetOpen(true);
+  }, []);
+
+  const handleRepostSelect = useCallback(() => {
+    setShareSheetOpen(false);
+    setRepostOpen(true);
+  }, []);
+
+  const handleStorySelect = useCallback(() => {
+    setShareSheetOpen(false);
+    router.push({
+      pathname: "/stories/share-from-post",
+      params: { postId: post.id },
     });
-  }, [canRepost, interactions.handleExternalShare]);
+  }, [post.id, router]);
+
+  const handleExternalShareSelect = useCallback(() => {
+    setShareSheetOpen(false);
+    void interactions.handleExternalShare();
+  }, [interactions.handleExternalShare]);
 
   const handleReposted = useCallback(() => {
     bumpFeed();
-    Alert.alert("Başarılı", "Gönderi akışınıza paylaşıldı.");
   }, [bumpFeed]);
 
   return {
     ...interactions,
     handleSharePress,
+    shareSheetOpen,
+    setShareSheetOpen,
     repostOpen,
     setRepostOpen,
     handleReposted,
     canRepost,
+    handleRepostSelect,
+    handleStorySelect,
+    handleExternalShareSelect,
   };
 }

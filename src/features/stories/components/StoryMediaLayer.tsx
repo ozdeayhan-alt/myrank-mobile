@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { StoryPhotoDisplay } from "@/features/media/components/StoryPhotoDisplay";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEventListener } from "expo";
 import { useEffect, useState } from "react";
@@ -124,11 +125,7 @@ export function StoryMediaLayer({
           />
         </>
       ) : (
-        <Image
-          source={{ uri: story.mediaURL }}
-          style={StyleSheet.absoluteFillObject}
-          contentFit="cover"
-        />
+        <StoryPhotoDisplay uri={story.mediaURL} style={StyleSheet.absoluteFillObject} />
       )}
 
       <LinearGradient

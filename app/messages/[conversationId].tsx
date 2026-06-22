@@ -2,18 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Text,
   View,
 } from "react-native";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { Stack, useLocalSearchParams } from "expo-router";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/features/auth";
 import { markConversationRead } from "@/features/messages/api/markConversationRead";
 import { sendMessage as sendMessageApi } from "@/features/messages/api/sendMessage";
@@ -23,26 +17,32 @@ import { CHAT_COMPOSER_HEIGHT } from "@/features/messages/constants";
 import { useConversationMessages } from "@/features/messages/hooks/useConversationMessages";
 import type { ChatMessage } from "@/features/messages/types";
 import { messageTheme } from "@/features/messages/theme";
+import { useProfileStore } from "@/features/profile/store/useProfileStore";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 import { useKeyboardBottomOffset } from "@/lib/useKeyboardHeight";
 import { SPINNER_COLOR } from "@/lib/uiClasses";
 
 export default function ConversationScreen() {
   const { user } = useAuth();
-  const { conversationId, title } = useLocalSearchParams<{
+  const { conversationId, title, photoURL } = useLocalSearchParams<{
     conversationId: string;
     title?: string;
     photoURL?: string;
   }>();
-  const headerHeight = useHeaderHeight();
+  const myDisplayName = useProfileStore((s) => s.displayName);
+  const myPhotoURL = useProfileStore((s) => s.photoURL);
   const insets = useSafeAreaInsets();
   const keyboardOffset = useKeyboardBottomOffset();
   const listRef = useRef<FlashListRef<ChatMessage>>(null);
   const [sending, setSending] = useState(false);
 
-  const composerBottomInset =
+  const composerBottom =
     keyboardOffset > 0 ? keyboardOffset : insets.bottom;
-  const listBottomPadding = CHAT_COMPOSER_HEIGHT + composerBottomInset;
+  const listBottomPadding = CHAT_COMPOSER_HEIGHT + composerBottom;
+
+  const otherPhotoURL = photoURL?.trim() || undefined;
+  const otherFallbackLetter = title?.trim().slice(0, 1).toUpperCase() || "?";
+  const myFallbackLetter = myDisplayName.trim().slice(0, 1).toUpperCase() || "?";
 
   const scrollToLatest = useCallback((animated = true) => {
     requestAnimationFrame(() => {
@@ -67,7 +67,7 @@ export default function ConversationScreen() {
   }, [messages.length, scrollToLatest]);
 
   useEffect(() => {
-    if (Platform.OS !== "android" || keyboardOffset === 0) return;
+    if (keyboardOffset === 0) return;
     const timer = setTimeout(() => scrollToLatest(true), 150);
     return () => clearTimeout(timer);
   }, [keyboardOffset, scrollToLatest]);
@@ -93,13 +93,39 @@ export default function ConversationScreen() {
 
   const headerTitle = title?.trim() || "Sohbet";
 
-  const androidListContentStyle = useMemo(
+  const listContentStyle = useMemo(
     () => ({
       paddingHorizontal: 12,
       paddingTop: 12,
       paddingBottom: 12 + listBottomPadding,
     }),
     [listBottomPadding]
+  );
+
+  const renderMessage = useCallback(
+    ({ item, index }: { item: ChatMessage; index: number }) => {
+      const isMine = item.senderId === user?.uid;
+      const prev = index > 0 ? messages[index - 1] : null;
+      const showAvatar = !prev || prev.senderId !== item.senderId;
+
+      return (
+        <ChatBubble
+          message={item}
+          isMine={isMine}
+          showAvatar={showAvatar}
+          avatarPhotoURL={isMine ? myPhotoURL : otherPhotoURL}
+          avatarFallbackLetter={isMine ? myFallbackLetter : otherFallbackLetter}
+        />
+      );
+    },
+    [
+      messages,
+      user?.uid,
+      myPhotoURL,
+      myFallbackLetter,
+      otherPhotoURL,
+      otherFallbackLetter,
+    ]
   );
 
   const messageList = loading ? (
@@ -117,13 +143,9 @@ export default function ConversationScreen() {
       ref={listRef}
       data={messages}
       keyExtractor={(item) => item.id}
-      style={Platform.OS === "android" ? { flex: 1 } : undefined}
+      style={{ flex: 1 }}
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={
-        Platform.OS === "android"
-          ? androidListContentStyle
-          : { paddingHorizontal: 12, paddingVertical: 12 }
-      }
+      contentContainerStyle={listContentStyle}
       ListEmptyComponent={
         <View className="items-center py-16">
           <Text className="text-center text-sm text-gray-500">
@@ -131,18 +153,8 @@ export default function ConversationScreen() {
           </Text>
         </View>
       }
-      renderItem={({ item }) => (
-        <ChatBubble message={item} isMine={item.senderId === user?.uid} />
-      )}
+      renderItem={renderMessage}
       onContentSizeChange={() => scrollToLatest(false)}
-    />
-  );
-
-  const composer = (
-    <ChatComposer
-      sending={sending}
-      onSend={handleSend}
-      onFocus={handleComposerFocus}
     />
   );
 
@@ -158,30 +170,16 @@ export default function ConversationScreen() {
         }}
       />
 
-      {Platform.OS === "ios" ? (
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior="padding"
-          keyboardVerticalOffset={headerHeight}
-        >
-          {messageList}
-          <SafeAreaView edges={["bottom"]}>{composer}</SafeAreaView>
-        </KeyboardAvoidingView>
-      ) : (
-        <View className="flex-1">
-          {messageList}
-          <View
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: composerBottomInset,
-            }}
-          >
-            {composer}
-          </View>
+      <View className="flex-1">
+        {messageList}
+        <View style={{ paddingBottom: composerBottom }}>
+          <ChatComposer
+            sending={sending}
+            onSend={handleSend}
+            onFocus={handleComposerFocus}
+          />
         </View>
-      )}
+      </View>
     </View>
   );
 }

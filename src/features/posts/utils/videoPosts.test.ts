@@ -1,5 +1,6 @@
 import type { Post } from "../types";
 import {
+  collectVideoPostsForPlaylist,
   ensureVideoInPlaylist,
   filterVideoPosts,
   findVideoPostForOpen,
@@ -105,5 +106,36 @@ describe("filterVideoPosts", () => {
     ];
 
     expect(filterVideoPosts(posts).map((post) => post.id)).toEqual(["direct"]);
+  });
+});
+
+describe("collectVideoPostsForPlaylist", () => {
+  it("includes embedded video from repost cards", () => {
+    const posts: Post[] = [
+      {
+        id: "repost",
+        authorId: "u1",
+        postScore: 0,
+        likeCount: 0,
+        dislikeCount: 0,
+        shareCount: 0,
+        saveCount: 0,
+        commentCount: 0,
+        contentType: "repost",
+        content: "",
+        originalSnapshot: {
+          authorId: "u2",
+          contentType: "video",
+          mediaURL: "https://example.com/v.mp4",
+        },
+        originalPostId: "orig",
+      },
+      videoPost("direct"),
+    ];
+
+    expect(collectVideoPostsForPlaylist(posts).map((post) => post.id)).toEqual([
+      "orig",
+      "direct",
+    ]);
   });
 });

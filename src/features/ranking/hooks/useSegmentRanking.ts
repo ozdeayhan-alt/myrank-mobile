@@ -4,13 +4,16 @@ import { getFilterSegmentLabel } from "@/features/filters/utils/segmentLabel";
 import type { UserMetadata } from "@/features/profile/types";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 import { enrichRankingPhotos } from "../api/enrichRankingPhotos";
-import { fetchRankingEntries } from "../api/fetchRankingEntries";
+import {
+  fetchRankingEntries,
+  RANKING_LIST_MAX,
+} from "../api/fetchRankingEntries";
 
 export const segmentRankingQueryKey = (filters: UserMetadata | null) =>
   ["ranking", "segment", getFilterSegmentLabel(filters)] as const;
 
 async function fetchSegmentRanking(filters: UserMetadata | null) {
-  const rows = await fetchRankingEntries(filters, 50);
+  const rows = await fetchRankingEntries(filters, RANKING_LIST_MAX);
   return enrichRankingPhotos(rows);
 }
 

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { fetchStoriesFeed } from "../api/fetchStoriesFeed";
-import { getSeenStoryIds } from "../lib/storySeenStorage";
+import { useCallback, useEffect } from "react";
+import { useAuthorStoryRing } from "./useAuthorStoryRing";
+import { useStoriesRingStore } from "../store/useStoriesRingStore";
 import type { Story } from "../constants/types";
 
 export type UserStoryAvailability = {
@@ -12,68 +12,30 @@ export type UserStoryAvailability = {
   reload: () => void;
 };
 
-function sortStories(stories: Story[]): Story[] {
-  return [...stories].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
-}
-
 export function useUserStoryAvailability(
   userId: string | null | undefined,
   reloadSignal = 0
 ): UserStoryAvailability {
-  const [stories, setStories] = useState<Story[]>([]);
-  const [seenStoryIds, setSeenStoryIds] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(Boolean(userId));
-  const [tick, setTick] = useState(0);
+  const ring = useAuthorStoryRing(userId);
+  const loading = useStoriesRingStore((state) => state.loading);
+  const groups = useStoriesRingStore((state) => state.groups);
+  const reloadStore = useStoriesRingStore((state) => state.reload);
 
   const reload = useCallback(() => {
-    setTick((value) => value + 1);
-  }, []);
+    void reloadStore();
+  }, [reloadStore]);
 
   useEffect(() => {
-    if (!userId) {
-      setStories([]);
-      setSeenStoryIds(new Set());
-      setLoading(false);
-      return;
-    }
+    void reloadStore();
+  }, [reloadSignal, reloadStore]);
 
-    let cancelled = false;
-    setLoading(true);
-
-    void (async () => {
-      try {
-        const [feed, seenIds] = await Promise.all([
-          fetchStoriesFeed(),
-          getSeenStoryIds(),
-        ]);
-        if (cancelled) {
-          return;
-        }
-        setStories(sortStories(feed.filter((story) => story.userId === userId)));
-        setSeenStoryIds(seenIds);
-      } catch {
-        if (!cancelled) {
-          setStories([]);
-          setSeenStoryIds(new Set());
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, reloadSignal, tick]);
-
-  const hasUnseen = stories.some((story) => !seenStoryIds.has(story.id));
+  const stories =
+    userId != null
+      ? (groups.find((group) => group.userId === userId)?.stories ?? [])
+      : [];
 
   return {
-    hasStories: stories.length > 0,
-    hasUnseen,
-    firstStoryId: stories[0]?.id ?? null,
+    ...ring,
     stories,
     loading,
     reload,

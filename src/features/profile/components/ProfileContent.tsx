@@ -8,7 +8,7 @@ import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
-import { filterVideoPosts } from "@/features/posts/utils/videoPosts";
+import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
 import type { UserMetadata } from "../types";
 import type { BioCategoryVisibility } from "../utils/bioCategoryVisibility";
 import { isMetadataComplete } from "../types";
@@ -19,8 +19,6 @@ import { publicProfileQueryKey } from "../hooks/usePublicProfile";
 import { useProfileStore } from "../store/useProfileStore";
 import { ProfileContentHeader } from "./ProfileContentHeader";
 import { ProfileVoteProvider } from "./ProfileVoteProvider";
-import { ProfileScoreRow } from "./ProfileScoreRow";
-import { ProfileVoteButtons } from "./ProfileVoteButtons";
 import { PROFILE_HORIZONTAL_PADDING } from "../profileLayout";
 
 type ProfileContentProps = {
@@ -82,7 +80,7 @@ function ProfileFeedBody({
     [posts]
   );
 
-  const videoPosts = useMemo(() => filterVideoPosts(posts), [posts]);
+  const videoPosts = useMemo(() => collectVideoPostsForPlaylist(posts), [posts]);
 
   const handleRefresh = useCallback(() => {
     const tasks: Promise<unknown>[] = [refresh()];
@@ -106,25 +104,17 @@ function ProfileFeedBody({
 
   const listHeader = useMemo(
     () => (
-      <View style={{ paddingHorizontal: PROFILE_HORIZONTAL_PADDING }}>
-        <ProfileContentHeader
-          userId={userId}
-          displayName={displayName}
-          photoURL={photoURL}
-          bio={bio}
-          bioCategoryVisibility={bioCategoryVisibility}
-          metadata={metadata}
-          isOwnProfile={isOwnProfile}
-          rankingsReady={rankingsReady}
-          scoreSlot={
-            <>
-              <ProfileScoreRow userId={userId} />
-              <ProfileVoteButtons />
-            </>
-          }
-          currentUserId={currentUserId}
-        />
-      </View>
+      <ProfileContentHeader
+        userId={userId}
+        displayName={displayName}
+        photoURL={photoURL}
+        bio={bio}
+        bioCategoryVisibility={bioCategoryVisibility}
+        metadata={metadata}
+        isOwnProfile={isOwnProfile}
+        rankingsReady={rankingsReady}
+        currentUserId={currentUserId}
+      />
     ),
     [
       userId,
@@ -141,6 +131,7 @@ function ProfileFeedBody({
 
   const contentContainerStyle = useMemo(
     () => ({
+      paddingHorizontal: PROFILE_HORIZONTAL_PADDING,
       paddingBottom: 32,
     }),
     []
@@ -166,6 +157,10 @@ function ProfileFeedBody({
       hasNextPage={hasNextPage}
       isFetchingNextPage={isFetchingNextPage}
       onLoadMore={fetchNextPage}
+      listHorizontalInset={PROFILE_HORIZONTAL_PADDING}
+      mediaEdgeBleed={false}
+      reelsSource="profile"
+      reelsAuthorId={userId}
     />
   );
 }

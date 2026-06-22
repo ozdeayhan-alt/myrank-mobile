@@ -1,7 +1,6 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -9,10 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { fetchStoriesFeed } from "../api/fetchStoriesFeed";
-import { groupStoriesByUser } from "../lib/groupStoriesByUser";
-import { getSeenStoryIds } from "../lib/storySeenStorage";
-import type { StoryUserGroup } from "../lib/groupStoriesByUser";
+import { useStoriesRingStore } from "../store/useStoriesRingStore";
 
 type StoryRingsRowProps = {
   currentUserId: string | null;
@@ -102,38 +98,16 @@ export function StoryRingsRow({
   reloadSignal = 0,
 }: StoryRingsRowProps) {
   const router = useRouter();
-  const [groups, setGroups] = useState<StoryUserGroup[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (!currentUserId) {
-      setGroups([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const [stories, seenStoryIds] = await Promise.all([
-        fetchStoriesFeed(),
-        getSeenStoryIds(),
-      ]);
-      setGroups(groupStoriesByUser(stories, seenStoryIds));
-    } catch {
-      setGroups([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUserId]);
+  const groups = useStoriesRingStore((state) => state.groups);
+  const loading = useStoriesRingStore((state) => state.loading);
+  const reload = useStoriesRingStore((state) => state.reload);
 
   useEffect(() => {
-    void load();
-  }, [load, reloadSignal]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load])
-  );
+    if (!currentUserId) {
+      return;
+    }
+    void reload();
+  }, [currentUserId, reload, reloadSignal]);
 
   const selfGroup = useMemo(
     () => groups.find((group) => group.userId === currentUserId) ?? null,

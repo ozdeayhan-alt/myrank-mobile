@@ -1,8 +1,35 @@
 import {
   getProfileScoreCardWidth,
+  getProfileSegmentGaugeLayout,
   getProfileVoteControlLayout,
   PROFILE_HORIZONTAL_PADDING,
 } from "./profileLayout";
+
+describe("getProfileSegmentGaugeLayout", () => {
+  it("scales gauge up on wide screens with clamp", () => {
+    const layout = getProfileSegmentGaugeLayout(412);
+
+    expect(layout.gaugeWidth).toBeLessThanOrEqual(240);
+    expect(layout.gaugeWidth).toBeGreaterThanOrEqual(168);
+    expect(layout.gaugeHeight).toBe(Math.round(layout.gaugeWidth * 0.6));
+    expect(layout.containerWidth).toBe(getProfileScoreCardWidth(412));
+  });
+
+  it("adapts on Samsung A12 width (~360dp)", () => {
+    const layout = getProfileSegmentGaugeLayout(360);
+
+    expect(layout.gaugeWidth).toBeGreaterThanOrEqual(168);
+    expect(layout.gaugeWidth).toBeLessThanOrEqual(layout.containerWidth);
+    expect(layout.rankFontSize).toBeGreaterThanOrEqual(26);
+  });
+
+  it("respects large font scale without overflowing content", () => {
+    const layout = getProfileSegmentGaugeLayout(360, 1.3);
+
+    expect(layout.gaugeWidth).toBeLessThanOrEqual(240);
+    expect(layout.rankFontSize).toBeGreaterThan(26);
+  });
+});
 
 describe("getProfileVoteControlLayout", () => {
   it("uses max diameters on wide screens", () => {

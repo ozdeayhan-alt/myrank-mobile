@@ -2,9 +2,10 @@ import Svg, { Rect } from "react-native-svg";
 
 type FollowPlusIconProps = {
   size: number;
+  color?: string;
 };
 
-export function FollowPlusIcon({ size }: FollowPlusIconProps) {
+export function FollowPlusIcon({ size, color = "#ffffff" }: FollowPlusIconProps) {
   const span = size * 0.58;
   const bar = size * 0.2;
   const radius = bar / 2;
@@ -20,7 +21,7 @@ export function FollowPlusIcon({ size }: FollowPlusIconProps) {
         height={bar}
         rx={radius}
         ry={radius}
-        fill="#ffffff"
+        fill={color}
       />
       <Rect
         x={mid}
@@ -29,7 +30,7 @@ export function FollowPlusIcon({ size }: FollowPlusIconProps) {
         height={span}
         rx={radius}
         ry={radius}
-        fill="#ffffff"
+        fill={color}
       />
     </Svg>
   );

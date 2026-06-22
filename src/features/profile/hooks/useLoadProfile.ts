@@ -6,6 +6,7 @@ import {
   pickProfileMetadata,
 } from "../api/fetchRemoteProfile";
 import type { ParsedProfileFields } from "../api/profileDocParsing";
+import { ensureProfileSavedOnServer } from "../api/ensureProfileSavedOnServer";
 import { syncPublicProfile } from "../api/syncPublicProfile";
 import { isMetadataComplete } from "../types";
 import { useProfileStore } from "../store/useProfileStore";
@@ -81,7 +82,12 @@ function applyCachedProfile(
     local.bio,
     local.bioCategoryVisibility
   );
-  useProfileStore.setState({ profileOwnerId: userId });
+  useProfileStore.setState({
+    profileOwnerId: userId,
+    ...(isMetadataComplete(local.metadata)
+      ? { profileSavedOnServer: true }
+      : {}),
+  });
 }
 
 function applyAuthBootstrap(
@@ -148,6 +154,42 @@ function applyRemoteProfile(
   }
 }
 
+function reconcileProfileSavedOnServer(
+  remote: { fromUsers: boolean; profile: ParsedProfileFields } | null,
+  hadCachedProfile: boolean
+): void {
+  const local = useProfileStore.getState();
+  const localComplete = isMetadataComplete(local.metadata);
+
+  if (remote) {
+    const savedOnServer =
+      remote.fromUsers && isMetadataComplete(remote.profile.metadata);
+    if (savedOnServer) {
+      useProfileStore.getState().setProfileSavedOnServer(true);
+      return;
+    }
+    if (localComplete && (hadCachedProfile || local.profileSavedOnServer)) {
+      useProfileStore.getState().setProfileSavedOnServer(true);
+      void ensureProfileSavedOnServer().catch(() => {
+        useProfileStore.getState().setProfileSavedOnServer(false);
+      });
+      return;
+    }
+    useProfileStore.getState().setProfileSavedOnServer(false);
+    return;
+  }
+
+  if (hadCachedProfile && localComplete) {
+    useProfileStore.getState().setProfileSavedOnServer(true);
+    void ensureProfileSavedOnServer().catch(() => {
+      useProfileStore.getState().setProfileSavedOnServer(false);
+    });
+    return;
+  }
+
+  useProfileStore.getState().setProfileSavedOnServer(false);
+}
+
 export function useLoadProfile(
   userId: string | undefined,
   authDisplayName?: string | null,
@@ -200,13 +242,11 @@ export function useLoadProfile(
 
       if (remote) {
         applyRemoteProfile(userId, remote.profile, displayName, photoURL);
-        const savedOnServer =
-          remote.fromUsers && isMetadataComplete(remote.profile.metadata);
-        useProfileStore.getState().setProfileSavedOnServer(savedOnServer);
+        reconcileProfileSavedOnServer(remote, hadCachedProfile);
         return;
       }
 
-      useProfileStore.getState().setProfileSavedOnServer(false);
+      reconcileProfileSavedOnServer(null, hadCachedProfile);
 
       if (hadCachedProfile) {
         setRemoteLoaded(true);

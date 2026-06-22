@@ -132,6 +132,7 @@ export const useProfileStore = create<ProfileState>()(
         bio: state.bio,
         bioCategoryVisibility: state.bioCategoryVisibility,
         profileOwnerId: state.profileOwnerId,
+        profileSavedOnServer: state.profileSavedOnServer,
       }),
     }
   )

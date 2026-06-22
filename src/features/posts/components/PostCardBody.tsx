@@ -13,8 +13,9 @@ import { isVideoPost } from "../utils/videoPosts";
 import { EmbeddedOriginalPost } from "./EmbeddedOriginalPost";
 import { PostFeedMedia } from "./PostFeedMedia";
 import { RichPostText } from "./RichPostText";
+import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 
-type PostCardBodyProps = {
+type PostCardBodyProps = PostFeedMediaLayoutOptions & {
   post: Post;
   heartBurstKey: number;
   onLike: () => void;
@@ -34,6 +35,8 @@ export function PostCardBody({
   currentUserId = null,
   mediaImagePriority = "normal",
   inlineAutoplay = false,
+  listHorizontalInset,
+  mediaEdgeBleed,
 }: PostCardBodyProps) {
   const embeddedOriginal = resolveEmbeddedOriginalPost(post);
   const repostAttribution =
@@ -67,6 +70,8 @@ export function PostCardBody({
               post={embeddedOriginal}
               onOpenVideo={onOpenVideo}
               currentUserId={currentUserId}
+              listHorizontalInset={listHorizontalInset}
+              mediaEdgeBleed={mediaEdgeBleed}
             />
           ) : null}
         </>
@@ -92,6 +97,8 @@ export function PostCardBody({
               post={post}
               imagePriority={mediaImagePriority}
               inlineAutoplay={inlineAutoplay}
+              listHorizontalInset={listHorizontalInset}
+              mediaEdgeBleed={mediaEdgeBleed}
             />
           </View>
 
