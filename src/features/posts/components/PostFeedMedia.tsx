@@ -1,7 +1,10 @@
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Image } from "expo-image";
-import { resolveMediaDisplayUrl, resolveVideoPosterUrl } from "@/lib/media/resolveMediaDisplayUrl";
+import {
+  listVideoPosterCandidateUrls,
+  resolveMediaDisplayUrl,
+} from "@/lib/media/resolveMediaDisplayUrl";
 import { useMediaAspectRatio } from "../hooks/useMediaAspectRatio";
 import type { Post } from "../types";
 import {
@@ -82,6 +85,45 @@ function PlayOverlay() {
         <Text className="text-2xl text-white">▶</Text>
       </View>
     </View>
+  );
+}
+
+function VideoPosterImage({
+  post,
+  cacheProps,
+}: {
+  post: Post;
+  cacheProps: ImageCacheProps;
+}) {
+  const candidates = useMemo(
+    () => listVideoPosterCandidateUrls(post),
+    [post.id, post.posterURL, post.mediaURL]
+  );
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    setIndex(0);
+  }, [candidates]);
+
+  const uri = candidates[index];
+
+  if (!uri) {
+    return <View className="h-full w-full bg-gray-900" />;
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={{ width: "100%", height: "100%" }}
+      contentFit="cover"
+      {...cacheProps}
+      recyclingKey={`${cacheProps.recyclingKey}-poster-${index}`}
+      onError={() => {
+        setIndex((current) =>
+          current + 1 < candidates.length ? current + 1 : current
+        );
+      }}
+    />
   );
 }
 
@@ -169,7 +211,7 @@ function PostFeedMediaLayout({
     return null;
   }
 
-  const posterUri = resolveVideoPosterUrl(post);
+  const posterCandidates = listVideoPosterCandidateUrls(post);
 
   if (inlineAutoplay) {
     return (
@@ -189,14 +231,9 @@ function PostFeedMediaLayout({
   return (
     <View style={outerStyle} className="items-center bg-black">
       <View style={frameStyle} className="bg-black">
-        {posterUri ? (
+        {posterCandidates.length > 0 ? (
           <>
-            <Image
-              source={{ uri: posterUri }}
-              style={{ width: "100%", height: "100%" }}
-              contentFit="cover"
-              {...imageCacheProps}
-            />
+            <VideoPosterImage post={post} cacheProps={imageCacheProps} />
             <PlayOverlay />
           </>
         ) : (

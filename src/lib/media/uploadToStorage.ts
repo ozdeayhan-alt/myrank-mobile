@@ -32,6 +32,7 @@ function assertStoragePathAllowed(storagePath: string, userId: string): void {
     `posts/${userId}/`,
     `profiles/${userId}/`,
     `messages/${userId}/`,
+    `stories/${userId}/`,
   ];
 
   if (!allowedPrefixes.some((prefix) => storagePath.startsWith(prefix))) {

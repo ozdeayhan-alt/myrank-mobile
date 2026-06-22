@@ -3,7 +3,7 @@ import { useIncrementalEngagement } from "@/features/ranking/hooks/useIncrementa
 import { PostInteractionProvider } from "../context/PostInteractionContext";
 import type { Post } from "../types";
 import { navigateToReels } from "../navigateToReels";
-import { filterVideoPosts } from "../utils/videoPosts";
+import { filterVideoPosts, findVideoPostForOpen } from "../utils/videoPosts";
 import { FeedPostRow } from "./FeedPostRow";
 
 type PostCardListProps = {
@@ -40,9 +40,10 @@ export function PostCardList({
 
   const handleOpenVideo = useCallback(
     (postId: string) => {
-      navigateToReels(postId, playlist);
+      const anchorPost = findVideoPostForOpen(posts, postId);
+      navigateToReels(postId, playlist, anchorPost);
     },
-    [playlist]
+    [playlist, posts]
   );
 
   return (

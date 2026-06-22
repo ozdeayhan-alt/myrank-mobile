@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { shouldRefreshAvatarFromProfile } from "@/lib/media/normalizeAvatarUrl";
 import { ensureRankingEntries } from "../api/ensureRankingEntries";
 import {
   fetchRemoteProfile,
@@ -9,17 +10,49 @@ import { syncPublicProfile } from "../api/syncPublicProfile";
 import { isMetadataComplete } from "../types";
 import { useProfileStore } from "../store/useProfileStore";
 
+const HYDRATION_TIMEOUT_MS = 2500;
+
+function pickProfilePhotoURL(
+  remote: string,
+  local: string,
+  authPhotoURL?: string | null
+): string {
+  const remoteTrim = remote.trim();
+  const localTrim = local.trim();
+  const authTrim = authPhotoURL?.trim() ?? "";
+
+  if (remoteTrim) {
+    return remoteTrim;
+  }
+  if (localTrim && !shouldRefreshAvatarFromProfile(localTrim)) {
+    return localTrim;
+  }
+  if (authTrim) {
+    return authTrim;
+  }
+  return localTrim;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 async function waitForProfileStoreHydration(): Promise<void> {
   if (useProfileStore.persist.hasHydrated()) {
     return;
   }
 
-  await new Promise<void>((resolve) => {
-    const unsub = useProfileStore.persist.onFinishHydration(() => {
-      unsub();
-      resolve();
-    });
-  });
+  await Promise.race([
+    new Promise<void>((resolve) => {
+      const unsub = useProfileStore.persist.onFinishHydration(() => {
+        unsub();
+        resolve();
+      });
+    }),
+    delay(HYDRATION_TIMEOUT_MS),
+  ]);
 }
 
 function hasCachedProfileForUser(userId: string): boolean {
@@ -38,7 +71,7 @@ function applyCachedProfile(
   const local = useProfileStore.getState();
   const displayName =
     local.displayName.trim() || authDisplayName?.trim() || "";
-  const photoURL = local.photoURL.trim() || authPhotoURL?.trim() || "";
+  const photoURL = pickProfilePhotoURL("", local.photoURL, authPhotoURL);
 
   useProfileStore.getState().hydrateFromFirestore(
     local.metadata,
@@ -49,6 +82,27 @@ function applyCachedProfile(
     local.bioCategoryVisibility
   );
   useProfileStore.setState({ profileOwnerId: userId });
+}
+
+function applyAuthBootstrap(
+  userId: string,
+  authDisplayName?: string | null,
+  authPhotoURL?: string | null
+): void {
+  const local = useProfileStore.getState();
+  const displayName =
+    local.displayName.trim() || authDisplayName?.trim() || "";
+  const photoURL = pickProfilePhotoURL("", local.photoURL, authPhotoURL);
+
+  useProfileStore.getState().hydrateFromFirestore(
+    local.metadata,
+    local.totalScore,
+    displayName,
+    photoURL,
+    local.bio,
+    local.bioCategoryVisibility
+  );
+  useProfileStore.setState({ profileOwnerId: userId, isRemoteLoaded: true });
 }
 
 function applyRemoteProfile(
@@ -64,11 +118,11 @@ function applyRemoteProfile(
     local.displayName.trim() ||
     authDisplayName?.trim() ||
     "";
-  const photoURL =
-    remote.photoURL.trim() ||
-    local.photoURL.trim() ||
-    authPhotoURL?.trim() ||
-    "";
+  const photoURL = pickProfilePhotoURL(
+    remote.photoURL,
+    local.photoURL,
+    authPhotoURL
+  );
 
   useProfileStore.getState().hydrateFromFirestore(
     metadata,
@@ -104,6 +158,11 @@ export function useLoadProfile(
   const setRemoteLoaded = useProfileStore((s) => s.setRemoteLoaded);
   const reset = useProfileStore((s) => s.reset);
 
+  const authDisplayNameRef = useRef(authDisplayName);
+  const authPhotoURLRef = useRef(authPhotoURL);
+  authDisplayNameRef.current = authDisplayName;
+  authPhotoURLRef.current = authPhotoURL;
+
   useEffect(() => {
     if (!userId) {
       reset();
@@ -111,6 +170,8 @@ export function useLoadProfile(
     }
 
     let cancelled = false;
+    const displayName = authDisplayNameRef.current;
+    const photoURL = authPhotoURLRef.current;
 
     (async () => {
       await waitForProfileStoreHydration();
@@ -125,7 +186,9 @@ export function useLoadProfile(
 
       const hadCachedProfile = hasCachedProfileForUser(userId);
       if (hadCachedProfile) {
-        applyCachedProfile(userId, authDisplayName, authPhotoURL);
+        applyCachedProfile(userId, displayName, photoURL);
+      } else if (displayName?.trim() || photoURL?.trim()) {
+        applyAuthBootstrap(userId, displayName, photoURL);
       } else {
         setRemoteLoaded(false);
       }
@@ -136,24 +199,30 @@ export function useLoadProfile(
       }
 
       if (remote) {
-        applyRemoteProfile(userId, remote, authDisplayName, authPhotoURL);
+        applyRemoteProfile(userId, remote.profile, displayName, photoURL);
+        const savedOnServer =
+          remote.fromUsers && isMetadataComplete(remote.profile.metadata);
+        useProfileStore.getState().setProfileSavedOnServer(savedOnServer);
         return;
       }
+
+      useProfileStore.getState().setProfileSavedOnServer(false);
 
       if (hadCachedProfile) {
+        setRemoteLoaded(true);
         return;
       }
 
-      if (authDisplayName?.trim()) {
-        setDisplayName(authDisplayName.trim());
+      if (displayName?.trim()) {
+        setDisplayName(displayName.trim());
       }
-      if (authPhotoURL?.trim()) {
-        setPhotoURL(authPhotoURL.trim());
+      if (photoURL?.trim()) {
+        setPhotoURL(photoURL.trim());
       }
 
       const local = useProfileStore.getState();
       if (isMetadataComplete(local.metadata) && local.profileOwnerId === userId) {
-        applyCachedProfile(userId, authDisplayName, authPhotoURL);
+        applyCachedProfile(userId, displayName, photoURL);
         return;
       }
 
@@ -164,13 +233,5 @@ export function useLoadProfile(
     return () => {
       cancelled = true;
     };
-  }, [
-    userId,
-    authDisplayName,
-    authPhotoURL,
-    setDisplayName,
-    setPhotoURL,
-    setRemoteLoaded,
-    reset,
-  ]);
+  }, [userId, setDisplayName, setPhotoURL, setRemoteLoaded, reset]);
 }

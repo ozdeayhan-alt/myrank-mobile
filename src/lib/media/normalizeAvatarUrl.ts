@@ -36,6 +36,13 @@ export function normalizeAvatarUrl(url: string | undefined | null): string {
   return trimmed;
 }
 
+/** Avatar, poster, feed medyası — legacy bucket normalizasyonu. */
+export function normalizeFirebaseStorageUrl(
+  url: string | undefined | null
+): string {
+  return normalizeAvatarUrl(url);
+}
+
 export function isLegacyStoragePhotoUrl(url: string | undefined | null): boolean {
   const trimmed = url?.trim() ?? "";
   return trimmed.includes(LEGACY_STORAGE_BUCKET);

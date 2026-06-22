@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -117,17 +117,20 @@ export function ProfileForm({ onSaved, variant = "onboarding" }: ProfileFormProp
   );
   const setSyncing = useProfileStore((s) => s.setSyncing);
   const isSyncing = useProfileStore((s) => s.isSyncing);
+  const profileSavedOnServer = useProfileStore((s) => s.profileSavedOnServer);
+  const setProfileSavedOnServer = useProfileStore((s) => s.setProfileSavedOnServer);
 
   const [activeField, setActiveField] = useState<FilterFieldKey | null>(null);
+  const autoSaveStartedRef = useRef(false);
+
+  const isEdit = variant === "edit";
+  const activeConfig = getFieldConfig(activeField);
 
   useEffect(() => {
     if (!displayName.trim() && user?.displayName?.trim()) {
       setDisplayName(user.displayName.trim());
     }
   }, [displayName, setDisplayName, user?.displayName]);
-
-  const isEdit = variant === "edit";
-  const activeConfig = getFieldConfig(activeField);
 
   const handleApplyField = (value: string | number | null) => {
     if (!activeField) return;
@@ -182,13 +185,48 @@ export function ProfileForm({ onSaved, variant = "onboarding" }: ProfileFormProp
           bioCategoryVisibility
         );
       useProfileStore.setState({ profileOwnerId: user.uid });
+      setProfileSavedOnServer(true);
       onSaved?.();
     } catch (error) {
+      autoSaveStartedRef.current = false;
       Alert.alert("Hata", getUserFacingErrorMessage(error));
     } finally {
       setSyncing(false);
     }
   };
+
+  useEffect(() => {
+    if (variant !== "onboarding") {
+      return;
+    }
+    if (profileSavedOnServer || isSyncing || autoSaveStartedRef.current) {
+      return;
+    }
+    if (!user?.uid || !user.email?.trim()) {
+      return;
+    }
+
+    const trimmedName = displayName.trim();
+    if (!trimmedName) {
+      return;
+    }
+
+    const draft = normalizeUserMetadata(metadata);
+    if (!isMetadataComplete(draft)) {
+      return;
+    }
+
+    autoSaveStartedRef.current = true;
+    void handleSave();
+  }, [
+    displayName,
+    isSyncing,
+    metadata,
+    profileSavedOnServer,
+    user?.email,
+    user?.uid,
+    variant,
+  ]);
 
   return (
     <KeyboardAvoidingView

@@ -16,7 +16,7 @@ import {
 } from "../profileLayout";
 import { isSystemProfileUserId } from "@/lib/profile/isSystemProfile";
 import { SystemProfileBadge } from "@/components/SystemProfileBadge";
-import { ProfileAvatar } from "./ProfileAvatar";
+import { ProfileStoryAvatar } from "@/features/stories/components/ProfileStoryAvatar";
 import { ProfileRankingsAccordion } from "./ProfileRankingsAccordion";
 import { ProfileSegmentRankBadge } from "./ProfileSegmentRankBadge";
 
@@ -96,7 +96,8 @@ function ProfileContentHeaderInner({
         )}
         <View className="items-center">
           <View className="mb-2">
-            <ProfileAvatar
+            <ProfileStoryAvatar
+              userId={userId}
               photoURL={photoURL}
               fallbackLetter={displayName}
               size={108}

@@ -176,7 +176,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ...new Set([
           ...(config.android?.blockedPermissions ?? []),
           "android.permission.SYSTEM_ALERT_WINDOW",
-          "android.permission.READ_EXTERNAL_STORAGE",
           "android.permission.WRITE_EXTERNAL_STORAGE",
         ]),
       ],
@@ -202,6 +201,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "expo-splash-screen",
       "expo-video",
       "react-native-compressor",
+      "./plugins/withAndroidLegacyStoragePermission",
     ],
     extra: {
       ...(typeof config.extra === "object" && config.extra !== null

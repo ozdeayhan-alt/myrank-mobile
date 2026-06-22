@@ -16,7 +16,11 @@ import { FeedPostErrorBoundary } from "./FeedPostErrorBoundary";
 import { FeedPostSkeleton } from "./FeedPostSkeleton";
 import { FeedPostRow } from "./FeedPostRow";
 import { navigateToReels } from "../navigateToReels";
-import { filterVideoPosts, isVideoPost } from "../utils/videoPosts";
+import {
+  filterVideoPosts,
+  findVideoPostForOpen,
+  isVideoPost,
+} from "../utils/videoPosts";
 
 const FEED_DRAW_DISTANCE = 500;
 /** Görünür satırın önündeki medya (video manifest/segment dahil) ısıtma adedi */
@@ -196,11 +200,23 @@ export function FeedFlashList({
     [autoplayPostId, extraData]
   );
 
+  const feedPosts = useMemo(
+    () =>
+      items
+        .filter(
+          (item): item is Extract<FeedListItem, { kind: "post" }> =>
+            item.kind === "post"
+        )
+        .map((item) => item.post),
+    [items]
+  );
+
   const handleOpenVideo = useCallback(
     (postId: string) => {
-      navigateToReels(postId, playlist);
+      const anchorPost = findVideoPostForOpen(feedPosts, postId);
+      navigateToReels(postId, playlist, anchorPost);
     },
-    [playlist]
+    [feedPosts, playlist]
   );
 
   const renderItem = useCallback(

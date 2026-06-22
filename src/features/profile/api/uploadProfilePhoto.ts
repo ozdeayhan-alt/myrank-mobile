@@ -4,6 +4,7 @@ import { updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { getFirebaseAuth, getFirestoreDb } from "@/lib/firebase";
 import { useProfileStore } from "../store/useProfileStore";
+import { ensureProfileSavedOnServer } from "./ensureProfileSavedOnServer";
 import { syncPublicProfile } from "./syncPublicProfile";
 
 const USERS_COLLECTION = "users";
@@ -13,6 +14,8 @@ export async function uploadProfilePhoto(
   localUri: string,
   _mimeType?: string | null
 ): Promise<string> {
+  await ensureProfileSavedOnServer();
+
   const prepared = await prepareImageForUpload(localUri, "avatar");
   const downloadURL = await uploadFileToStorage(
     `profiles/${userId}/avatar.jpg`,

@@ -21,6 +21,7 @@ export { useProfileMenuStore } from "./store/useProfileMenuStore";
 export { getProfile, getEmptyMetadata, type LoadedProfile } from "./api/getProfile";
 export { saveProfile } from "./api/saveProfile";
 export { ensureRankingEntries } from "./api/ensureRankingEntries";
+export { ensureProfileSavedOnServer } from "./api/ensureProfileSavedOnServer";
 export { uploadProfilePhoto } from "./api/uploadProfilePhoto";
 export { useLoadProfile } from "./hooks/useLoadProfile";
 export { usePublicProfile, publicProfileQueryKey } from "./hooks/usePublicProfile";

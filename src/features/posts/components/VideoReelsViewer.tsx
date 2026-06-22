@@ -41,10 +41,10 @@ export function VideoReelsViewer({
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlashListRef<Post>>(null);
-  const initialIndex = useMemo(
-    () => indexOfVideoPost(videoPosts, initialPostId),
-    [videoPosts, initialPostId]
-  );
+  const initialIndex = useMemo(() => {
+    const index = indexOfVideoPost(videoPosts, initialPostId);
+    return index >= 0 ? index : 0;
+  }, [videoPosts, initialPostId]);
   const postIds = useMemo(() => videoPosts.map((post) => post.id), [videoPosts]);
 
   useIncrementalEngagement(

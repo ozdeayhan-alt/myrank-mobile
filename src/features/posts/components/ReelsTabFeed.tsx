@@ -123,15 +123,50 @@ export function ReelsTabFeed({
     }
 
     const index = indexOfVideoPost(videoPosts, targetPostId);
+    if (index < 0) {
+      clearNavigation();
+      return;
+    }
+
     activeIndexRef.current = index;
     setActiveIndex(index);
 
-    requestAnimationFrame(() => {
-      listRef.current?.scrollToIndex({ index, animated: false });
-    });
+    let cancelled = false;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
 
-    clearNavigation();
+    const attemptScroll = (attempt: number) => {
+      if (cancelled) {
+        return;
+      }
+
+      listRef.current?.scrollToIndex({ index, animated: false });
+
+      if (attempt >= 5) {
+        clearNavigation();
+      }
+    };
+
+    attemptScroll(0);
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      timeouts.push(setTimeout(() => attemptScroll(attempt), 50 * attempt));
+    }
+
+    return () => {
+      cancelled = true;
+      for (const timeoutId of timeouts) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [targetPostId, videoPosts, clearNavigation, setActiveIndex]);
+
+  const initialScrollIndex = useMemo(() => {
+    if (!targetPostId) {
+      return undefined;
+    }
+
+    const index = indexOfVideoPost(videoPosts, targetPostId);
+    return index >= 0 ? index : undefined;
+  }, [targetPostId, videoPosts]);
 
   const setActiveIndexFromOffset = useCallback(
     (offsetY: number) => {
@@ -271,6 +306,7 @@ export function ReelsTabFeed({
           data={videoPosts}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          initialScrollIndex={initialScrollIndex}
           ListEmptyComponent={listEmpty}
           ListFooterComponent={listFooter}
           pagingEnabled

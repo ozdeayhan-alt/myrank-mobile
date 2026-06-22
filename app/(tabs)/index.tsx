@@ -5,7 +5,7 @@ import {
 } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
+import { View, type StyleProp, type ViewStyle } from "react-native";
 import type { FlashListRef } from "@shopify/flash-list";
 import { HomeFeedContentFilter } from "@/components/HomeFeedContentFilter";
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/components/HomeFeedModeToggle";
 import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
 import { useAuth } from "@/features/auth";
-import { StoryRingsRow } from "@/features/ai-story";
+import { StoryRingsRow } from "@/features/stories";
 import { useFollowingFeedInfinite } from "@/features/explore/hooks/useFollowingFeedInfinite";
 import { useHomeFeedInfinite } from "@/features/explore/hooks/useHomeFeedInfinite";
 import {
@@ -114,31 +114,24 @@ export default function HomeScreen() {
 
   const listHeader = useMemo(
     () => (
-      <>
-        <StoryRingsRow
-          currentUserId={user?.uid ?? null}
-          currentUserDisplayName={displayName || "Sen"}
-          currentUserPhotoURL={photoURL || user?.photoURL}
-          reloadSignal={storyReloadSignal}
-        />
+      <View>
         <HomeFeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
         <HomeFeedContentFilter
           contentFilter={contentFilter}
           onContentFilterChange={setContentFilter}
         />
-      </>
+      </View>
     ),
-    [
-      contentFilter,
-      displayName,
-      feedMode,
-      photoURL,
-      setContentFilter,
-      setFeedMode,
-      storyReloadSignal,
-      user?.photoURL,
-      user?.uid,
-    ]
+    [contentFilter, feedMode, setContentFilter, setFeedMode]
+  );
+
+  const feedListContentStyle = useMemo(
+    (): StyleProp<ViewStyle> => ({
+      paddingHorizontal: 16,
+      paddingTop: 0,
+      paddingBottom: 16,
+    }),
+    []
   );
 
   if (contentFilter === "video") {
@@ -158,22 +151,35 @@ export default function HomeScreen() {
 
   return (
     <TabScreenSafeArea className="flex-1 bg-gray-50">
-      <FeedFlashList
-        items={feedItems}
-        videoPosts={videoPosts}
-        loading={loading}
-        error={error}
-        emptyMessage={emptyMessage}
-        onRefresh={handleRefresh}
-        onScoreUpdate={activeFeed.updatePostScore}
-        ListHeaderComponent={listHeader}
-        hasNextPage={activeFeed.hasNextPage}
-        isFetchingNextPage={activeFeed.isFetchingNextPage}
-        onLoadMore={activeFeed.fetchNextPage}
-        isRefetching={activeFeed.isRefetching}
-        listRef={listRef}
-        currentUserId={user?.uid ?? null}
-      />
+      <View className="min-h-0 flex-1">
+        <View className="shrink-0 px-4 pb-2 pt-1" collapsable={false}>
+          <StoryRingsRow
+            currentUserId={user?.uid ?? null}
+            currentUserDisplayName={displayName || "Sen"}
+            currentUserPhotoURL={photoURL || user?.photoURL}
+            reloadSignal={storyReloadSignal}
+          />
+        </View>
+        <View className="min-h-0 flex-1">
+          <FeedFlashList
+            items={feedItems}
+            videoPosts={videoPosts}
+            loading={loading}
+            error={error}
+            emptyMessage={emptyMessage}
+            onRefresh={handleRefresh}
+            onScoreUpdate={activeFeed.updatePostScore}
+            ListHeaderComponent={listHeader}
+            hasNextPage={activeFeed.hasNextPage}
+            isFetchingNextPage={activeFeed.isFetchingNextPage}
+            onLoadMore={activeFeed.fetchNextPage}
+            isRefetching={activeFeed.isRefetching}
+            listRef={listRef}
+            currentUserId={user?.uid ?? null}
+            contentContainerStyle={feedListContentStyle}
+          />
+        </View>
+      </View>
     </TabScreenSafeArea>
   );
 }

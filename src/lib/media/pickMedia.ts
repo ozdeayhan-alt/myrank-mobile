@@ -1,24 +1,61 @@
-import { Alert } from "react-native";
+import { Alert, Linking, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
 export const VIDEO_MAX_DURATION_SECONDS = 33;
 
+function canUseAndroidPhotoPickerWithoutPermission(): boolean {
+  return Platform.OS === "android" && Platform.Version >= 33;
+}
+
+function showPermissionAlert(message: string): void {
+  Alert.alert("İzin gerekli", message, [
+    { text: "Vazgeç", style: "cancel" },
+    {
+      text: "Ayarlara git",
+      onPress: () => {
+        void Linking.openSettings();
+      },
+    },
+  ]);
+}
+
 export async function requestMediaLibraryPermission(): Promise<boolean> {
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== "granted") {
-    Alert.alert("İzin gerekli", "Galeriye erişim izni vermeniz gerekiyor.");
-    return false;
+  const existing = await ImagePicker.getMediaLibraryPermissionsAsync();
+  if (existing.granted) {
+    return true;
   }
-  return true;
+
+  const result = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (result.granted) {
+    return true;
+  }
+
+  // Android 13+: sistem fotoğraf seçici genelde izin gerektirmez.
+  if (canUseAndroidPhotoPickerWithoutPermission()) {
+    return true;
+  }
+
+  showPermissionAlert(
+    "Galeriye erişim izni vermeniz gerekiyor. Ayarlardan MyRank → İzinler → Dosyalar ve medya (veya Fotoğraflar ve videolar) bölümünden izin verebilirsiniz."
+  );
+  return false;
 }
 
 export async function requestCameraPermission(): Promise<boolean> {
-  const { status } = await ImagePicker.requestCameraPermissionsAsync();
-  if (status !== "granted") {
-    Alert.alert("İzin gerekli", "Kamera erişim izni vermeniz gerekiyor.");
-    return false;
+  const existing = await ImagePicker.getCameraPermissionsAsync();
+  if (existing.granted) {
+    return true;
   }
-  return true;
+
+  const result = await ImagePicker.requestCameraPermissionsAsync();
+  if (result.granted) {
+    return true;
+  }
+
+  showPermissionAlert(
+    "Kamera erişim izni vermeniz gerekiyor. Ayarlardan MyRank → İzinler → Kamera bölümünden izin verebilirsiniz."
+  );
+  return false;
 }
 
 export async function pickImageFromLibrary(

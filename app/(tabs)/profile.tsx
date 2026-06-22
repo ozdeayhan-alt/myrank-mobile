@@ -16,9 +16,11 @@ export default function ProfileScreen() {
   const metadata = useProfileStore((s) => s.metadata);
   const isRemoteLoaded = useProfileStore((s) => s.isRemoteLoaded);
   const isSyncing = useProfileStore((s) => s.isSyncing);
+  const profileSavedOnServer = useProfileStore((s) => s.profileSavedOnServer);
   const setEditHandler = useProfileMenuStore((s) => s.setEditHandler);
 
   const complete = isMetadataComplete(metadata);
+  const profileReady = complete && profileSavedOnServer;
 
   useEffect(() => {
     setEditHandler(() => setEditing(true));
@@ -45,7 +47,7 @@ export default function ProfileScreen() {
     );
   }
 
-  if (!complete) {
+  if (!profileReady) {
     return (
       <TabScreenSafeArea className="flex-1 bg-white">
         <ProfileForm

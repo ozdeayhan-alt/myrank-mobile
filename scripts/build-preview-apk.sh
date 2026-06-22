@@ -31,6 +31,7 @@ cp -f "$APK" "$PREVIEW_APK"
 PUBLIC_DIR="/root/myrankapp/public"
 mkdir -p "$PUBLIC_DIR"
 ln -sfn "$PREVIEW_APK" "$PUBLIC_DIR/myrank-preview.apk"
+bash /root/myrankapp/scripts/sync-download-apks.sh
 
 echo "[preview] Done: $PREVIEW_APK"
 echo "[preview] Download: https://myrank.com.tr/download/myrank-preview.apk"

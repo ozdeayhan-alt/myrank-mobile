@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-export default function AiStoryLayout() {
+export default function StoriesLayout() {
   return (
     <Stack
       screenOptions={{
@@ -9,8 +9,7 @@ export default function AiStoryLayout() {
         headerTitleStyle: { fontWeight: "600" },
       }}
     >
-      <Stack.Screen name="create" options={{ title: "AI Story Oluştur" }} />
-      <Stack.Screen name="feed" options={{ title: "Story'ler" }} />
+      <Stack.Screen name="create" options={{ title: "Story paylaş" }} />
       <Stack.Screen
         name="view"
         options={{ title: "", headerShown: false, presentation: "fullScreenModal" }}

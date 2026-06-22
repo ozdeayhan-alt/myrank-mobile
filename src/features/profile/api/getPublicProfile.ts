@@ -1,5 +1,5 @@
 import { doc } from "firebase/firestore";
-import { readFirestoreDoc } from "@/lib/firebase/readFirestoreDoc";
+import { readFirestoreDocFromServer } from "@/lib/firebase/readFirestoreDoc";
 import { getFirestoreDb } from "@/lib/firebase";
 import { parseProfileFields, type ParsedProfileFields } from "./profileDocParsing";
 
@@ -10,7 +10,7 @@ export type PublicProfile = ParsedProfileFields;
 export async function getPublicProfile(
   userId: string
 ): Promise<PublicProfile | null> {
-  const snapshot = await readFirestoreDoc(
+  const snapshot = await readFirestoreDocFromServer(
     doc(getFirestoreDb(), PUBLIC_PROFILES_COLLECTION, userId)
   );
 

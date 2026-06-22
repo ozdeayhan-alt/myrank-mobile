@@ -1,5 +1,5 @@
 import { doc } from "firebase/firestore";
-import { readFirestoreDoc } from "@/lib/firebase/readFirestoreDoc";
+import { readFirestoreDocFromServer } from "@/lib/firebase/readFirestoreDoc";
 import { getFirestoreDb } from "@/lib/firebase";
 import { EMPTY_METADATA, type UserMetadata } from "../types";
 import {
@@ -12,7 +12,7 @@ const USERS_COLLECTION = "users";
 export type LoadedProfile = ParsedProfileFields;
 
 export async function getProfile(userId: string): Promise<LoadedProfile | null> {
-  const snapshot = await readFirestoreDoc(
+  const snapshot = await readFirestoreDocFromServer(
     doc(getFirestoreDb(), USERS_COLLECTION, userId)
   );
 

@@ -8,5 +8,5 @@ export function getPersistBuster(): string {
     Constants.expoConfig?.ios?.buildNumber?.toString() ??
     "0";
 
-  return `feed-v7-${appVersion}-${versionCode}`;
+  return `feed-v11-${appVersion}-${versionCode}`;
 }

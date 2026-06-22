@@ -23,6 +23,8 @@ type ProfileState = {
   profileOwnerId: string | null;
   isRemoteLoaded: boolean;
   isSyncing: boolean;
+  /** Firestore users/{uid} kaydı mevcut ve metadata sunucuda tam. */
+  profileSavedOnServer: boolean;
   setMetadata: (partial: Partial<UserMetadata>) => void;
   setDisplayName: (displayName: string) => void;
   setPhotoURL: (photoURL: string) => void;
@@ -39,6 +41,7 @@ type ProfileState = {
   setTotalScore: (totalScore: number) => void;
   setRemoteLoaded: (loaded: boolean) => void;
   setSyncing: (syncing: boolean) => void;
+  setProfileSavedOnServer: (saved: boolean) => void;
   reset: () => void;
   isComplete: () => boolean;
 };
@@ -55,6 +58,7 @@ export const useProfileStore = create<ProfileState>()(
       profileOwnerId: null,
       isRemoteLoaded: false,
       isSyncing: false,
+      profileSavedOnServer: false,
 
       setMetadata: (partial) =>
         set((state) => ({
@@ -100,6 +104,8 @@ export const useProfileStore = create<ProfileState>()(
 
       setSyncing: (syncing) => set({ isSyncing: syncing }),
 
+      setProfileSavedOnServer: (saved) => set({ profileSavedOnServer: saved }),
+
       reset: () =>
         set({
           metadata: { ...EMPTY_METADATA },
@@ -111,6 +117,7 @@ export const useProfileStore = create<ProfileState>()(
           profileOwnerId: null,
           isRemoteLoaded: false,
           isSyncing: false,
+          profileSavedOnServer: false,
         }),
 
       isComplete: () => isMetadataComplete(get().metadata),

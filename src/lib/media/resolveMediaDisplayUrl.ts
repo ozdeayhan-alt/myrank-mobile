@@ -1,4 +1,5 @@
 import type { Post } from "@/features/posts/types";
+import { normalizeFirebaseStorageUrl } from "@/lib/media/normalizeAvatarUrl";
 
 const FIREBASE_STORAGE_HOSTS = new Set([
   "firebasestorage.googleapis.com",
@@ -45,18 +46,19 @@ function resolveMediaUrl(
     return undefined;
   }
 
+  const normalizedInput = normalizeFirebaseStorageUrl(trimmed);
   const useProxy = options.useProxy !== false;
   const keepToken = options.keepToken === true;
 
   try {
-    const parsed = new URL(trimmed);
+    const parsed = new URL(normalizedInput);
     const normalized = keepToken ? parsed : stripFirebaseDownloadToken(parsed);
     if (useProxy) {
       return applyMediaProxy(normalized).toString();
     }
     return normalized.toString();
   } catch {
-    return trimmed;
+    return normalizedInput;
   }
 }
 
@@ -118,6 +120,19 @@ export function derivePosterObjectPathFromMediaUrl(
   }
 }
 
+function extractObjectPathFromFirebaseUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/\/o\/(.+)$/);
+    if (!match?.[1]) {
+      return null;
+    }
+    return decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+}
+
 function extractBucketFromFirebaseUrl(mediaUrl: string): string | null {
   try {
     const parsed = new URL(mediaUrl);
@@ -154,14 +169,121 @@ export function derivePosterUrlFromMediaUrl(
   return buildPublicFirebaseMediaUrl(bucket, posterPath);
 }
 
+/** Profil avatar — token, tokensız, proxy ve public URL fallback zinciri. */
+export function listAvatarDisplayCandidateUrls(
+  url: string | undefined | null
+): string[] {
+  const normalized = normalizeFirebaseStorageUrl(url?.trim() ?? "");
+  if (!normalized) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+
+  pushUnique(seen, candidates, resolvePosterDisplayUrl(normalized));
+  pushUnique(
+    seen,
+    candidates,
+    resolveMediaUrl(normalized, { useProxy: false, keepToken: false })
+  );
+  pushUnique(
+    seen,
+    candidates,
+    resolveMediaUrl(normalized, { useProxy: true, keepToken: false })
+  );
+  pushUnique(
+    seen,
+    candidates,
+    resolveMediaUrl(normalized, { useProxy: true, keepToken: true })
+  );
+
+  const bucket = extractBucketFromFirebaseUrl(normalized);
+  const objectPath = extractObjectPathFromFirebaseUrl(normalized);
+  if (bucket && objectPath) {
+    const publicUrl = buildPublicFirebaseMediaUrl(bucket, objectPath);
+    pushUnique(seen, candidates, publicUrl);
+    pushUnique(
+      seen,
+      candidates,
+      resolveMediaUrl(publicUrl, { useProxy: true, keepToken: false })
+    );
+  }
+
+  return candidates;
+}
+
 /** Feed/reels poster: önce posterURL, yoksa mediaURL'den türet. */
 export function resolveVideoPosterUrl(
   post: Pick<Post, "posterURL" | "mediaURL">
 ): string | undefined {
-  const fromField = resolvePosterDisplayUrl(post.posterURL);
-  if (fromField) {
-    return fromField;
+  const candidates = listVideoPosterCandidateUrls(post);
+  return candidates[0];
+}
+
+/** Poster yükleme hatasında denenecek URL listesi (sıralı). */
+export function listVideoPosterCandidateUrls(
+  post: Pick<Post, "posterURL" | "mediaURL">
+): string[] {
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+
+  const pushPosterVariants = (raw?: string | null) => {
+    const normalized = normalizeFirebaseStorageUrl(raw?.trim() ?? "");
+    if (!normalized) {
+      return;
+    }
+
+    pushUnique(seen, candidates, resolvePosterDisplayUrl(normalized));
+    pushUnique(seen, candidates, resolveMediaDisplayUrl(normalized));
+    pushUnique(
+      seen,
+      candidates,
+      resolveMediaUrl(normalized, { useProxy: false, keepToken: false })
+    );
+    pushUnique(
+      seen,
+      candidates,
+      resolveMediaUrl(normalized, { useProxy: true, keepToken: true })
+    );
+
+    const bucket = extractBucketFromFirebaseUrl(normalized);
+    const objectPath = extractObjectPathFromFirebaseUrl(normalized);
+    if (bucket && objectPath) {
+      const publicUrl = buildPublicFirebaseMediaUrl(bucket, objectPath);
+      pushUnique(seen, candidates, publicUrl);
+      pushUnique(
+        seen,
+        candidates,
+        resolveMediaUrl(publicUrl, { useProxy: true, keepToken: false })
+      );
+    }
+  };
+
+  pushPosterVariants(post.posterURL);
+  pushUnique(seen, candidates, derivePosterUrlFromMediaUrl(post.mediaURL));
+
+  const normalizedMedia = normalizeFirebaseStorageUrl(post.mediaURL);
+  if (normalizedMedia && normalizedMedia !== post.mediaURL?.trim()) {
+    pushUnique(seen, candidates, derivePosterUrlFromMediaUrl(normalizedMedia));
   }
 
-  return derivePosterUrlFromMediaUrl(post.mediaURL);
+  const derived = derivePosterUrlFromMediaUrl(post.mediaURL);
+  pushUnique(seen, candidates, resolveMediaDisplayUrl(derived));
+  pushUnique(
+    seen,
+    candidates,
+    resolveMediaUrl(derived, { useProxy: true, keepToken: false })
+  );
+
+  return candidates;
+}
+
+function pushUnique(seen: Set<string>, candidates: string[], value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed || seen.has(trimmed)) {
+    return;
+  }
+  seen.add(trimmed);
+  candidates.push(trimmed);
 }

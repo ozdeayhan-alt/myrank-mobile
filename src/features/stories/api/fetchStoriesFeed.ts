@@ -1,12 +1,12 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { getApiAuthToken } from "@/lib/apiAuthToken";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
-import type { AiStory } from "../constants/types";
+import type { Story } from "../constants/types";
 
-export async function fetchAiStoriesFeed(limit = 30): Promise<AiStory[]> {
+export async function fetchStoriesFeed(limit = 30): Promise<Story[]> {
   const token = await getApiAuthToken();
   const response = await fetchWithTimeout(
-    `${getApiBaseUrl()}/api/ai-stories/feed?limit=${limit}`,
+    `${getApiBaseUrl()}/api/stories/feed?limit=${limit}`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
@@ -17,13 +17,13 @@ export async function fetchAiStoriesFeed(limit = 30): Promise<AiStory[]> {
     throw new Error(data.error ?? "Story feed alınamadı");
   }
 
-  return (data.stories ?? []) as AiStory[];
+  return (data.stories ?? []) as Story[];
 }
 
-export async function fetchAiStoryById(storyId: string): Promise<AiStory> {
+export async function fetchStoryById(storyId: string): Promise<Story> {
   const token = await getApiAuthToken();
   const response = await fetchWithTimeout(
-    `${getApiBaseUrl()}/api/ai-stories/${encodeURIComponent(storyId)}`,
+    `${getApiBaseUrl()}/api/stories/${encodeURIComponent(storyId)}`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
@@ -34,5 +34,5 @@ export async function fetchAiStoryById(storyId: string): Promise<AiStory> {
     throw new Error(data.error ?? "Story bulunamadı");
   }
 
-  return data.story as AiStory;
+  return data.story as Story;
 }

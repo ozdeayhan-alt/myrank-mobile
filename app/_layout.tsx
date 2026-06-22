@@ -46,6 +46,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   const metadata = useProfileStore((s) => s.metadata);
   const isRemoteLoaded = useProfileStore((s) => s.isRemoteLoaded);
+  const profileSavedOnServer = useProfileStore((s) => s.profileSavedOnServer);
 
   useLoadProfile(user?.uid, user?.displayName, user?.photoURL);
 
@@ -57,6 +58,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       (segments.includes("profile") || segments.includes("user"))) ||
     segments[0] === "user";
   const metadataComplete = isMetadataComplete(metadata);
+  const profileReady = metadataComplete && profileSavedOnServer;
 
   const isBootstrapping = initializing || !navigationReady;
 
@@ -73,7 +75,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (user && isRemoteLoaded && !metadataComplete && !inProfileRoute) {
+    if (user && isRemoteLoaded && !profileReady && !inProfileRoute) {
       router.replace("/(tabs)/profile");
     }
   }, [
@@ -83,7 +85,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     inLegalGroup,
     inProfileRoute,
     isRemoteLoaded,
-    metadataComplete,
+    profileReady,
     router,
   ]);
 
@@ -123,7 +125,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (user && isRemoteLoaded && !metadataComplete && !inProfileRoute) {
+  if (user && isRemoteLoaded && !profileReady && !inProfileRoute) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#374151" />
@@ -152,7 +154,7 @@ export default function RootLayout() {
                 <Stack.Screen name="index" />
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="legal" options={{ headerShown: false }} />
-                <Stack.Screen name="ai-story" options={{ headerShown: false }} />
+                <Stack.Screen name="stories" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen
                   name="saved"

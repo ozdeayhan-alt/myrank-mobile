@@ -1,4 +1,4 @@
-import { normalizeAvatarUrl } from "@/lib/media/normalizeAvatarUrl";
+import { normalizeAvatarUrl, shouldRefreshAvatarFromProfile } from "@/lib/media/normalizeAvatarUrl";
 
 export type UserMetadata = {
   country: string;
@@ -41,10 +41,18 @@ export function resolvePhotoURL(
   firestorePhoto?: string | null,
   authPhoto?: string | null
 ): string {
-  const trimmed = firestorePhoto?.trim();
-  if (trimmed) return normalizeAvatarUrl(trimmed);
-  const authTrimmed = authPhoto?.trim();
-  if (authTrimmed) return normalizeAvatarUrl(authTrimmed);
+  const firestoreTrimmed = firestorePhoto?.trim() ?? "";
+  const authTrimmed = authPhoto?.trim() ?? "";
+
+  if (firestoreTrimmed && !shouldRefreshAvatarFromProfile(firestoreTrimmed)) {
+    return normalizeAvatarUrl(firestoreTrimmed);
+  }
+  if (authTrimmed) {
+    return normalizeAvatarUrl(authTrimmed);
+  }
+  if (firestoreTrimmed) {
+    return normalizeAvatarUrl(firestoreTrimmed);
+  }
   return "";
 }
 

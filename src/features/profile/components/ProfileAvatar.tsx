@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   Text,
   View,
@@ -7,7 +7,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Image } from "expo-image";
-import { normalizeAvatarUrl } from "@/lib/media/normalizeAvatarUrl";
+import { listAvatarDisplayCandidateUrls } from "@/lib/media/resolveMediaDisplayUrl";
 import {
   PRESTIGE_RING,
   type PrestigeTier,
@@ -69,33 +69,46 @@ function ProfileAvatarInner({
 }: ProfileAvatarProps) {
   const letter = fallbackLetter[0]?.toUpperCase() ?? "?";
   const ring = prestigeTier ? PRESTIGE_RING[prestigeTier] : null;
-  const displayUrl = normalizeAvatarUrl(photoURL);
-  const [imageFailed, setImageFailed] = useState(false);
+  const candidates = useMemo(
+    () => listAvatarDisplayCandidateUrls(photoURL),
+    [photoURL]
+  );
+  const [index, setIndex] = useState(0);
+  const [allFailed, setAllFailed] = useState(false);
 
   useEffect(() => {
-    setImageFailed(false);
-  }, [displayUrl]);
+    setIndex(0);
+    setAllFailed(false);
+  }, [candidates]);
 
-  const avatarContent =
-    displayUrl && !imageFailed ? (
-      <Image
-        source={{ uri: displayUrl }}
-        style={[
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-          },
-          imageStyle,
-        ]}
-        contentFit="cover"
-        cachePolicy="memory-disk"
-        recyclingKey={displayUrl}
-        onError={() => setImageFailed(true)}
-      />
-    ) : (
-      <LetterAvatar letter={letter} size={size} style={style} />
-    );
+  const displayUrl = candidates[index];
+  const showImage = Boolean(displayUrl) && !allFailed;
+
+  const avatarContent = showImage ? (
+    <Image
+      source={{ uri: displayUrl }}
+      style={[
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+        },
+        imageStyle,
+      ]}
+      contentFit="cover"
+      cachePolicy="memory-disk"
+      recyclingKey={`${displayUrl}-${index}`}
+      onError={() => {
+        if (index + 1 < candidates.length) {
+          setIndex((current) => current + 1);
+          return;
+        }
+        setAllFailed(true);
+      }}
+    />
+  ) : (
+    <LetterAvatar letter={letter} size={size} style={style} />
+  );
 
   if (!ring) {
     return avatarContent;

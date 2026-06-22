@@ -5,14 +5,19 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useEffect } from "react";
-import { STORY_DURATION_MS } from "../constants/types";
+import { STORY_IMAGE_DURATION_MS } from "../constants/types";
 
 type StoryProgressBarProps = {
   active: boolean;
   completed: boolean;
+  durationMs?: number;
 };
 
-export function StoryProgressBar({ active, completed }: StoryProgressBarProps) {
+export function StoryProgressBar({
+  active,
+  completed,
+  durationMs = STORY_IMAGE_DURATION_MS,
+}: StoryProgressBarProps) {
   const progress = useSharedValue(completed ? 1 : 0);
 
   useEffect(() => {
@@ -25,8 +30,8 @@ export function StoryProgressBar({ active, completed }: StoryProgressBarProps) {
       return;
     }
     progress.value = 0;
-    progress.value = withTiming(1, { duration: STORY_DURATION_MS });
-  }, [active, completed, progress]);
+    progress.value = withTiming(1, { duration: durationMs });
+  }, [active, completed, durationMs, progress]);
 
   const fillStyle = useAnimatedStyle(() => ({
     width: `${Math.max(0, Math.min(1, progress.value)) * 100}%`,

@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { useAuth } from "@/features/auth";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 import { pickImageFromLibrary } from "@/lib/media/pickMedia";
+import { ensureProfileSavedOnServer } from "../api/ensureProfileSavedOnServer";
 import { uploadProfilePhoto } from "../api/uploadProfilePhoto";
 import { resolveDisplayName, resolvePhotoURL } from "../types";
 import { useProfileStore } from "../store/useProfileStore";
@@ -17,6 +18,7 @@ export function EditProfile({ onSaved }: EditProfileProps) {
   const { user } = useAuth();
   const storedDisplayName = useProfileStore((s) => s.displayName);
   const storedPhotoURL = useProfileStore((s) => s.photoURL);
+  const profileSavedOnServer = useProfileStore((s) => s.profileSavedOnServer);
   const setPhotoURL = useProfileStore((s) => s.setPhotoURL);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -34,6 +36,7 @@ export function EditProfile({ onSaved }: EditProfileProps) {
 
     setUploadingPhoto(true);
     try {
+      await ensureProfileSavedOnServer();
       const downloadURL = await uploadProfilePhoto(
         user.uid,
         asset.uri,
@@ -53,15 +56,17 @@ export function EditProfile({ onSaved }: EditProfileProps) {
       <View className="items-center border-b border-gray-100 px-6 py-6">
         <ProfileAvatar photoURL={photoURL} fallbackLetter={name} />
         <Pressable
-          className={`mt-4 rounded-xl bg-gray-100 px-5 py-3 ${uploadingPhoto ? "opacity-60" : ""}`}
+          className={`mt-4 rounded-xl bg-gray-100 px-5 py-3 ${uploadingPhoto || !profileSavedOnServer ? "opacity-60" : ""}`}
           onPress={handleChangePhoto}
-          disabled={uploadingPhoto}
+          disabled={uploadingPhoto || !profileSavedOnServer}
         >
           {uploadingPhoto ? (
             <ActivityIndicator color="#374151" />
           ) : (
             <Text className="text-sm font-semibold text-gray-800">
-              Fotoğrafı Değiştir
+              {profileSavedOnServer
+                ? "Fotoğrafı Değiştir"
+                : "Profil kaydediliyor…"}
             </Text>
           )}
         </Pressable>

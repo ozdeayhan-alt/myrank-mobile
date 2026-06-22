@@ -50,6 +50,7 @@ cp -f "$APK" "$DEV_APK"
 PUBLIC_DIR="/root/myrankapp/public"
 mkdir -p "$PUBLIC_DIR"
 ln -sfn "$DEV_APK" "$PUBLIC_DIR/myrank-dev.apk"
+bash /root/myrankapp/scripts/sync-download-apks.sh
 
 echo "[dev] Done: $DEV_APK"
 echo "[dev] Download: https://myrank.com.tr/download/myrank-dev.apk"

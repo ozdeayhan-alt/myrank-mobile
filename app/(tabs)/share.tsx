@@ -108,17 +108,15 @@ export default function ShareScreen() {
           ))}
           <Pressable
             className="flex-row items-center rounded-2xl border border-gray-200 bg-white px-4 py-4 shadow-sm active:bg-gray-50"
-            onPress={() => router.push("/ai-story/create")}
+            onPress={() => router.push("/stories/create")}
           >
             <View className="mr-4 h-12 w-12 items-center justify-center rounded-xl bg-gray-100">
-              <Ionicons name="sparkles-outline" size={24} color="#111827" />
+              <Ionicons name="ellipse-outline" size={24} color="#111827" />
             </View>
             <View className="flex-1">
-              <Text className="text-base font-semibold text-gray-900">
-                AI Story
-              </Text>
+              <Text className="text-base font-semibold text-gray-900">Story</Text>
               <Text className="mt-0.5 text-sm text-gray-500">
-                Mood seç, 24 saatlik sinematik story oluştur
+                Fotoğraf veya video — 24 saat görünür
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
