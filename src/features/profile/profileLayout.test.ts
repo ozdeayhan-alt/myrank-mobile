@@ -36,8 +36,8 @@ describe("getProfileVoteControlLayout", () => {
     const layout = getProfileVoteControlLayout(412);
 
     expect(layout.stacked).toBe(false);
-    expect(layout.voteDiameter).toBe(72);
-    expect(layout.sideDiameter).toBe(64);
+    expect(layout.voteDiameter).toBe(66);
+    expect(layout.sideDiameter).toBe(58);
   });
 
   it("scales down on narrow screens like Samsung A12 (~360dp)", () => {
@@ -51,7 +51,7 @@ describe("getProfileVoteControlLayout", () => {
 
     expect(layout.stacked).toBe(false);
     expect(rowWidth).toBeLessThanOrEqual(contentWidth);
-    expect(layout.voteDiameter).toBeLessThanOrEqual(72);
+    expect(layout.voteDiameter).toBeLessThanOrEqual(66);
   });
 
   it("fits very narrow content width without overlapping side buttons", () => {

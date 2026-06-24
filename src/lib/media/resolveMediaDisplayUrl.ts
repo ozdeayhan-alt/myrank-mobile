@@ -1,5 +1,6 @@
 import type { Post } from "@/features/posts/types";
 import { normalizeFirebaseStorageUrl } from "@/lib/media/normalizeAvatarUrl";
+import { isMp4ProxyEnabled } from "@/lib/mp4ProxyEnabled";
 
 const FIREBASE_STORAGE_HOSTS = new Set([
   "firebasestorage.googleapis.com",
@@ -81,13 +82,31 @@ export function resolvePosterDisplayUrl(
   return resolveMediaUrl(url, { useProxy: false, keepToken: true });
 }
 
+function isMp4StreamUrl(url: string): boolean {
+  return /\.mp4(?:[?#]|$)/i.test(url) || /_fast\.mp4/i.test(url);
+}
+
+function isHlsStreamUrl(url: string): boolean {
+  return /\.m3u8(?:[?#]|$)/i.test(url) || /master\.m3u8/i.test(url);
+}
+
 /**
- * MP4 / HLS oynatma ve prefetch — doğrudan Firebase (proxy HLS segmentlerini bozar).
+ * MP4 / HLS oynatma ve prefetch.
+ * MP4 pilot: proxy açıksa yalnızca MP4 edge cache üzerinden; HLS doğrudan Firebase.
  */
 export function resolveVideoStreamUrl(
   url: string | undefined
 ): string | undefined {
-  return resolveMediaUrl(url, { useProxy: false });
+  const trimmed = url?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (isMp4ProxyEnabled() && isMp4StreamUrl(trimmed) && !isHlsStreamUrl(trimmed)) {
+    return resolveMediaUrl(trimmed, { useProxy: true, keepToken: false });
+  }
+
+  return resolveMediaUrl(trimmed, { useProxy: false });
 }
 
 /** mediaURL'den poster object path türet: …/123_fast.mp4 → …/123_poster.jpg */

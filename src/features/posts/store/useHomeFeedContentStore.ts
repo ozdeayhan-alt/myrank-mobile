@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { UserMetadata } from "@/features/profile/types";
 import type { Post } from "../types";
 import type { HomeContentFilter } from "../utils/filterPostsByContentType";
 import {
@@ -24,6 +25,7 @@ export function openHomeVideoReels(
   options?: {
     source?: ReelsPlaylistSource;
     authorId?: string;
+    exploreFilters?: UserMetadata | null;
   }
 ): void {
   useReelsNavigationStore.getState().setNavigation(postId, seedPosts, options);

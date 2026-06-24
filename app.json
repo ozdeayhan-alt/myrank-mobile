@@ -4,7 +4,7 @@
     "slug": "myrank-mobile",
     "owner": "myrank",
     "sdkVersion": "54.0.0",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "jsEngine": "hermes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -32,7 +32,7 @@
     },
     "android": {
       "package": "com.myrank.mobile",
-      "versionCode": 12,
+      "versionCode": 13,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

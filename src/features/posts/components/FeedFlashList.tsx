@@ -7,6 +7,7 @@ import {
   type ViewToken,
 } from "react-native";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
+import type { UserMetadata } from "@/features/profile/types";
 import { useIncrementalEngagement } from "@/features/ranking/hooks/useIncrementalEngagement";
 import { isFeedInlineAutoplayEnabled } from "@/lib/feedInlineAutoplayEnabled";
 import { PostInteractionProvider } from "../context/PostInteractionContext";
@@ -71,6 +72,7 @@ type FeedFlashListProps = PostFeedMediaLayoutOptions & {
   currentUserId?: string | null;
   reelsSource?: ReelsPlaylistSource;
   reelsAuthorId?: string;
+  exploreFilters?: UserMetadata | null;
 };
 
 const viewabilityConfig = {
@@ -101,8 +103,9 @@ export function FeedFlashList({
   currentUserId = null,
   listHorizontalInset,
   mediaEdgeBleed,
-  reelsSource = "discover",
+  reelsSource = "home",
   reelsAuthorId,
+  exploreFilters,
 }: FeedFlashListProps) {
   const [autoplayPostId, setAutoplayPostId] = useState<string | null>(null);
   const autoplayPostIdRef = useRef<string | null>(null);
@@ -226,9 +229,10 @@ export function FeedFlashList({
       navigateToReels(postId, playlist, anchorPost, {
         source: reelsSource,
         ...(reelsAuthorId ? { authorId: reelsAuthorId } : {}),
+        ...(reelsSource === "explore" ? { exploreFilters: exploreFilters ?? null } : {}),
       });
     },
-    [feedPosts, playlist, reelsAuthorId, reelsSource]
+    [exploreFilters, feedPosts, playlist, reelsAuthorId, reelsSource]
   );
 
   const renderItem = useCallback(

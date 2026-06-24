@@ -16,6 +16,7 @@ import { invalidateServerFeedCache } from "@/features/posts/api/invalidateServer
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 
 const HOME_RECENT_KEY = ["feed", "home", "recent"] as const;
+const HOME_FEED_STALE_MS = 5 * 60_000;
 
 export function useHomeFeedInfinite(enabled = true) {
   const queryClient = useQueryClient();
@@ -28,7 +29,8 @@ export function useHomeFeedInfinite(enabled = true) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.cursor : undefined,
-    staleTime: 60_000,
+    staleTime: HOME_FEED_STALE_MS,
+    refetchOnMount: true,
     enabled,
   });
 

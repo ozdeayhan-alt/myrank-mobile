@@ -7,6 +7,7 @@ import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
 import { ExploreFeedChrome } from "@/features/explore/components/ExploreFeedChrome";
 import { useExploreFeedInfinite } from "@/features/explore/hooks/useExploreFeedInfinite";
 import {
+  DEFAULT_COUNTRY_FILTERS,
   FilterChipsBar,
   FilterModal,
   formatFilterDisplayTitle,
@@ -59,7 +60,7 @@ export default function ExploreScreen() {
     applyField,
     resetToGlobal,
     resetToProfile,
-  } = useMetadataFilters();
+  } = useMetadataFilters({ initialFilters: DEFAULT_COUNTRY_FILTERS });
 
   const showSearchUI = searchPanelOpen || isSearchActive;
 
@@ -200,6 +201,8 @@ export default function ExploreScreen() {
             engagementResetKey={engagementResetKey}
             listRef={listRef}
             currentUserId={user?.uid ?? null}
+            reelsSource="explore"
+            exploreFilters={filters}
           />
         </View>
       )}

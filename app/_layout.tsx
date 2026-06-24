@@ -17,6 +17,7 @@ import {
 } from "@/lib/crashReporting";
 import { CommentSheetHost } from "@/features/posts/components/CommentSheetHost";
 import { PushNotificationHandler } from "@/features/push";
+import { HomeFeedPrefetch } from "@/features/explore/components/HomeFeedPrefetch";
 import { StoriesRingBootstrap } from "@/features/stories/components/StoriesRingBootstrap";
 import { QueryProvider } from "@/providers/QueryProvider";
 import {
@@ -46,7 +47,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const navigationState = useRootNavigationState();
 
   const metadata = useProfileStore((s) => s.metadata);
-  const isRemoteLoaded = useProfileStore((s) => s.isRemoteLoaded);
+  const isProfileBootstrapSettled = useProfileStore(
+    (s) => s.isProfileBootstrapSettled
+  );
   const profileSavedOnServer = useProfileStore((s) => s.profileSavedOnServer);
 
   useLoadProfile(user?.uid, user?.displayName, user?.photoURL);
@@ -76,7 +79,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (user && isRemoteLoaded && !profileReady && !inProfileRoute) {
+    if (
+      user &&
+      isProfileBootstrapSettled &&
+      !profileReady &&
+      !inProfileRoute
+    ) {
       router.replace("/(tabs)/profile");
     }
   }, [
@@ -85,7 +93,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     inAuthGroup,
     inLegalGroup,
     inProfileRoute,
-    isRemoteLoaded,
+    isProfileBootstrapSettled,
     profileReady,
     router,
   ]);
@@ -118,19 +126,30 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (user && !isRemoteLoaded) {
+  if (user && !isProfileBootstrapSettled && !inLegalGroup) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#374151" />
-      </View>
+      <>
+        <HomeFeedPrefetch />
+        <View className="flex-1 items-center justify-center bg-white">
+          <ActivityIndicator size="large" color="#374151" />
+        </View>
+      </>
     );
   }
 
-  if (user && isRemoteLoaded && !profileReady && !inProfileRoute) {
+  if (
+    user &&
+    isProfileBootstrapSettled &&
+    !profileReady &&
+    !inProfileRoute
+  ) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#374151" />
-      </View>
+      <>
+        <HomeFeedPrefetch />
+        <View className="flex-1 items-center justify-center bg-white">
+          <ActivityIndicator size="large" color="#374151" />
+        </View>
+      </>
     );
   }
 
@@ -138,6 +157,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     <>
       <CrashReportingBootstrap />
       <PushNotificationHandler />
+      <HomeFeedPrefetch />
       <StoriesRingBootstrap />
       <CommentSheetHost />
       {children}

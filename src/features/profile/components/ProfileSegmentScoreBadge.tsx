@@ -1,9 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import { memo, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  Pressable,
   Text,
   useWindowDimensions,
   View,
@@ -20,8 +17,6 @@ const SEGMENT_RANK_DEFER_MS = 350;
 const LOADING_COLOR = "#6b7280";
 const HASH_COLOR = "#6b7280";
 const HASH_OPACITY = 0.75;
-const LABEL_COLOR = "#6b7280";
-const INFO_COLOR = "#9ca3af";
 
 type ProfileSegmentScoreBadgeProps = {
   userId: string;
@@ -100,13 +95,6 @@ function ProfileSegmentScoreBadgeInner({
     segmentRankEnabled
   );
 
-  const showSegmentInfo = () => {
-    Alert.alert(
-      "#1 ne demek?",
-      "Benzer profile sahip kullanıcılar arasındaki sıralaman."
-    );
-  };
-
   const rankSlot =
     rankLoading && rank === null ? (
       <ActivityIndicator color={LOADING_COLOR} />
@@ -117,30 +105,6 @@ function ProfileSegmentScoreBadgeInner({
         lineHeight={layout.rankLineHeight}
       />
     );
-
-  const segmentLabelSlot = (
-    <View className="flex-row items-center gap-0.5">
-      <Text
-        className="font-medium"
-        style={{ color: LABEL_COLOR, fontSize: layout.labelFontSize }}
-        numberOfLines={1}
-      >
-        Segment sırası
-      </Text>
-      <Pressable
-        onPress={showSegmentInfo}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel="Segment sırası açıklaması"
-      >
-        <Ionicons
-          name="information-circle-outline"
-          size={layout.infoIconSize}
-          color={INFO_COLOR}
-        />
-      </Pressable>
-    </View>
-  );
 
   return (
     <View
@@ -156,7 +120,6 @@ function ProfileSegmentScoreBadgeInner({
         layout={layout}
         variant="embedded"
         middleSlot={rankSlot}
-        footerSlot={segmentLabelSlot}
         loadingTarget={loading}
         snapshotReady={ready}
         voteFlash={voteFlash}

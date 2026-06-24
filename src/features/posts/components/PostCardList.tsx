@@ -28,7 +28,7 @@ export function PostCardList({
   onPostDeleted,
   onPostContentUpdated,
   currentUserId = null,
-  reelsSource = "discover",
+  reelsSource = "home",
   reelsAuthorId,
 }: PostCardListProps) {
   const postIds = useMemo(() => posts.map((post) => post.id), [posts]);

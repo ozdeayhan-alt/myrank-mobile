@@ -5,10 +5,24 @@ import { hasActiveSegmentFilters } from "@/features/posts/api/matchesSegmentFilt
 import { getFieldConfig, type FilterFieldKey } from "../config/filterFields";
 import { applyFieldValue } from "../utils/applyFieldValue";
 
-export function useMetadataFilters() {
+/** Türkiye odaklı başlangıç: keşfet ve sıralama sekmeleri için varsayılan ülke filtresi */
+export const DEFAULT_COUNTRY_FILTERS: UserMetadata = {
+  ...EMPTY_METADATA,
+  country: "Türkiye",
+};
+
+/** @deprecated Use DEFAULT_COUNTRY_FILTERS */
+export const RANKING_DEFAULT_FILTERS = DEFAULT_COUNTRY_FILTERS;
+
+type UseMetadataFiltersOptions = {
+  initialFilters?: UserMetadata | null;
+};
+
+export function useMetadataFilters(options: UseMetadataFiltersOptions = {}) {
+  const { initialFilters = null } = options;
   const profileMetadata = useProfileStore((s) => s.metadata);
-  /** Global First: başlangıçta filtre yok → tüm gönderiler / global sıralama */
-  const [filters, setFilters] = useState<UserMetadata | null>(null);
+  /** `initialFilters` yoksa global (filtresiz); keşfet/sıralama `DEFAULT_COUNTRY_FILTERS` ile başlar */
+  const [filters, setFilters] = useState<UserMetadata | null>(initialFilters);
   const [activeField, setActiveField] = useState<FilterFieldKey | null>(null);
 
   const openField = useCallback((field: FilterFieldKey) => {

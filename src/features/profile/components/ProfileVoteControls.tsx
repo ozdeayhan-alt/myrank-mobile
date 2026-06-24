@@ -60,7 +60,7 @@ export function ProfileVoteControls({
   );
 
   return (
-    <View className="mb-2 w-full" style={{ marginTop: 8 }} collapsable={false}>
+    <View className="mb-4 w-full" style={{ marginTop: 8 }} collapsable={false}>
       {!enabled ? (
         <Text className="mb-3 text-center text-xs text-gray-500">
           Oy kullanmak ve takip etmek için giriş yapın.

@@ -40,7 +40,12 @@ export function useReelRowPlayback({
   mode,
   enabled,
 }: UseReelRowPlaybackOptions) {
-  const sources = useMemo(() => resolveReelVideoSources(post), [post]);
+  const sources = useMemo(
+    () => resolveReelVideoSources(post),
+    [post.id, post.mediaURL, post.hlsURL]
+  );
+  const sourcesRef = useRef(sources);
+  sourcesRef.current = sources;
   const sourcesFingerprint = useMemo(() => sourcesKey(sources), [sources]);
   const shouldMount = enabled && mode !== "idle" && postHasReelVideo(post);
   const initialSource = shouldMount ? (sources[0] ?? null) : null;
@@ -53,6 +58,7 @@ export function useReelRowPlayback({
   const parkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const modeRef = useRef(mode);
   modeRef.current = mode;
+  const appliedModeRef = useRef<ReelRowMode | null>(null);
 
   const [maskingSeek, setMaskingSeek] = useState(false);
 
@@ -104,10 +110,15 @@ export function useReelRowPlayback({
     if (isPlayerReady(player)) {
       scheduleAdjacentPark();
     }
+
+    appliedModeRef.current = "adjacent";
   };
 
   const beginActivePlayback = () => {
     clearParkTimer();
+
+    const wasAlreadyActive =
+      modeRef.current === "active" && appliedModeRef.current === "active";
 
     const parkedAtStart =
       adjacentParkedRef.current &&
@@ -116,7 +127,11 @@ export function useReelRowPlayback({
 
     player.bufferOptions = { ...REEL_ACTIVE_BUFFER_OPTIONS };
 
-    if (!parkedAtStart && player.currentTime > REEL_START_TOLERANCE_SEC) {
+    if (
+      !wasAlreadyActive &&
+      !parkedAtStart &&
+      player.currentTime > REEL_START_TOLERANCE_SEC
+    ) {
       setMaskingSeek(true);
       player.currentTime = 0;
     } else {
@@ -125,6 +140,7 @@ export function useReelRowPlayback({
 
     player.muted = false;
     player.play();
+    appliedModeRef.current = "active";
   };
 
   const applyPlaybackPolicy = (currentMode: ReelRowMode) => {
@@ -154,6 +170,7 @@ export function useReelRowPlayback({
     if (!shouldMount) {
       clearParkTimer();
       adjacentParkedRef.current = false;
+      appliedModeRef.current = null;
       setMaskingSeek(false);
       player.pause();
       player.muted = true;
@@ -165,14 +182,16 @@ export function useReelRowPlayback({
       loadedFingerprintRef.current === sourcesFingerprint &&
       isPlayerReady(player)
     ) {
-      applyPlaybackPolicy(modeRef.current);
       return;
     }
 
     const generation = ++generationRef.current;
 
     void (async () => {
-      const loaded = await replaceWithSourceFallback(player, sources);
+      const loaded = await replaceWithSourceFallback(
+        player,
+        sourcesRef.current
+      );
       if (generation !== generationRef.current) {
         return;
       }
@@ -190,7 +209,7 @@ export function useReelRowPlayback({
     return () => {
       generationRef.current += 1;
     };
-  }, [shouldMount, sources, sourcesFingerprint, player]);
+  }, [shouldMount, sourcesFingerprint, player]);
 
   useEffect(() => {
     if (!enabled || !shouldMount) {
@@ -201,8 +220,10 @@ export function useReelRowPlayback({
       loadedFingerprintRef.current === sourcesFingerprint &&
       isPlayerReady(player)
     ) {
+      if (mode === appliedModeRef.current) {
+        return;
+      }
       applyPlaybackPolicy(mode);
-      return;
     }
   }, [enabled, mode, shouldMount, sourcesFingerprint, player]);
 
@@ -210,6 +231,7 @@ export function useReelRowPlayback({
     if (!enabled || mode === "idle") {
       clearParkTimer();
       adjacentParkedRef.current = false;
+      appliedModeRef.current = null;
       setMaskingSeek(false);
       player.pause();
       player.muted = true;

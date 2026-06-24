@@ -1,3 +1,5 @@
+import { PROFILE_SECONDARY_BUTTON_COLORS } from "@/features/profile/components/profileFollowButtonTheme";
+
 /** WhatsApp-like chat UI with MyRank gray palette */
 export const messageTheme = {
   screenBg: "#F3F4F6",
@@ -20,7 +22,6 @@ export const messageTheme = {
 } as const;
 
 export const MESSAGE_BUTTON_THEME = {
-  gradient: ["#5eead4", "#14b8a6", "#0f766e"] as const,
-  rim: "#0d9488",
-  dropShadow: "#134e4a",
+  fill: PROFILE_SECONDARY_BUTTON_COLORS.fill,
+  foreground: PROFILE_SECONDARY_BUTTON_COLORS.foreground,
 };

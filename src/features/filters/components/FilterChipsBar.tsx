@@ -33,8 +33,10 @@ type FilterChipsBarProps = {
   filteredModeLabel?: string;
   /** Smaller padding and chips — legacy Keşfet compact */
   compact?: boolean;
-  /** Hide global/filtered label row — Keşfet feed header only */
+  /** Keşfet feed header only — üst mod satırını tamamen gizle */
   hideModeRow?: boolean;
+  /** Filtreli mod etiketini gizle; Global'e dön / Profilime göre kalır */
+  hideFilteredModeLabel?: boolean;
   /** Keşfet: 6 chip tek satır; boşta kategori adı, seçiliyse sadece değer */
   layout?: "scroll" | "exploreRow";
 };
@@ -48,10 +50,14 @@ export function FilterChipsBar({
   filteredModeLabel = "Filtreli Görüntü",
   compact = false,
   hideModeRow = false,
+  hideFilteredModeLabel = false,
   layout = "scroll",
 }: FilterChipsBarProps) {
   const isGlobal = !filters || !hasActiveSegmentFilters(filters);
   const isExploreRow = layout === "exploreRow";
+  const showModeLabel =
+    !hideModeRow &&
+    (!hideFilteredModeLabel || isGlobal);
 
   const chips = FILTER_FIELDS.map(({ key, label }) => {
     const value = formatFilterChipValue(key, filters);
@@ -137,13 +143,15 @@ export function FilterChipsBar({
     >
       {!hideModeRow ? (
         <View
-          className={`flex-row items-center justify-between px-4 ${
+          className={`flex-row items-center px-4 ${
             compact ? "mb-1" : "mb-2"
-          }`}
+          } ${showModeLabel ? "justify-between" : "justify-end"}`}
         >
-          <Text className="text-xs font-medium uppercase tracking-wide text-gray-400">
-            {isGlobal ? globalModeLabel : filteredModeLabel}
-          </Text>
+          {showModeLabel ? (
+            <Text className="text-xs font-medium uppercase tracking-wide text-gray-400">
+              {isGlobal ? globalModeLabel : filteredModeLabel}
+            </Text>
+          ) : null}
           <View className="flex-row gap-3">
             {onResetToGlobal ? (
               <Pressable onPress={onResetToGlobal} hitSlop={8}>

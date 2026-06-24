@@ -1,7 +1,11 @@
 export { GLOBAL_RANKING_SEGMENT } from "./constants";
 export { FilterChipsBar } from "./components/FilterChipsBar";
 export { FilterModal } from "./components/FilterModal";
-export { useMetadataFilters } from "./hooks/useMetadataFilters";
+export {
+  useMetadataFilters,
+  DEFAULT_COUNTRY_FILTERS,
+  RANKING_DEFAULT_FILTERS,
+} from "./hooks/useMetadataFilters";
 export {
   getFilterSegmentLabel,
   getRankingSegmentKey,

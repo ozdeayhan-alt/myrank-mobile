@@ -3,7 +3,7 @@ import type { HomeFeedMode } from "@/components/HomeFeedModeToggle";
 import { useFollowingFeedInfinite } from "@/features/explore/hooks/useFollowingFeedInfinite";
 import { useHomeFeedInfinite } from "@/features/explore/hooks/useHomeFeedInfinite";
 import { useFeedRefreshStore } from "@/features/posts/store/useFeedRefreshStore";
-import { filterVideoPosts } from "../utils/videoPosts";
+import { collectVideoPostsForPlaylist } from "../utils/videoPosts";
 
 /** Ana sayfa video akışı — global veya takip moduna göre. */
 export function useReelsFeedInfinite(
@@ -18,10 +18,10 @@ export function useReelsFeedInfinite(
 
   const videoPosts = useMemo(() => {
     if (feedMode === "following") {
-      return filterVideoPosts(followingFeed.posts);
+      return collectVideoPostsForPlaylist(followingFeed.posts);
     }
 
-    return filterVideoPosts(globalFeed.recentPosts);
+    return collectVideoPostsForPlaylist(globalFeed.recentPosts);
   }, [feedMode, followingFeed.posts, globalFeed.recentPosts]);
 
   const activeFeed = feedMode === "global" ? globalFeed : followingFeed;

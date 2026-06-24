@@ -13,6 +13,8 @@ import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { HomeFeedMode } from "@/components/HomeFeedModeToggle";
 import { useTabBarContentInset } from "@/hooks/useTabBarContentInset";
+import { useExploreFeedInfinite } from "@/features/explore/hooks/useExploreFeedInfinite";
+import { getFilterSegmentLabel } from "@/features/filters/utils/segmentLabel";
 import { useIncrementalEngagement } from "@/features/ranking/hooks/useIncrementalEngagement";
 import { useAuthorPosts } from "@/features/profile/hooks/useAuthorPosts";
 import { PostInteractionProvider } from "../context/PostInteractionContext";
@@ -86,22 +88,42 @@ export function ReelsTabFeed({
   const seedPosts = useReelsNavigationStore((s) => s.seedPosts);
   const playlistSource = useReelsNavigationStore((s) => s.playlistSource);
   const authorId = useReelsNavigationStore((s) => s.authorId);
-  const clearNavigation = useReelsNavigationStore((s) => s.clearNavigation);
+  const exploreFilters = useReelsNavigationStore((s) => s.exploreFilters);
+  const clearScrollTarget = useReelsNavigationStore((s) => s.clearScrollTarget);
 
   const isProfilePlaylist = playlistSource === "profile" && Boolean(authorId);
+  const isExplorePlaylist = playlistSource === "explore";
+  const useHomeFeed = !isProfilePlaylist && !isExplorePlaylist;
 
   const {
     videoPosts: feedVideoPosts,
     loading: feedLoading,
     error: feedError,
     refresh: feedRefresh,
-    updatePostScore,
+    updatePostScore: feedUpdatePostScore,
     hasNextPage: feedHasNextPage,
     isFetchingNextPage: feedIsFetchingNextPage,
     fetchNextPage: feedFetchNextPage,
     isRefetching: feedIsRefetching,
     engagementResetKey: feedEngagementResetKey,
-  } = useReelsFeedInfinite(screenFocused && !isProfilePlaylist, feedMode);
+  } = useReelsFeedInfinite(screenFocused && useHomeFeed, feedMode);
+
+  const {
+    posts: explorePosts,
+    loading: exploreLoading,
+    error: exploreError,
+    refresh: exploreRefresh,
+    updatePostScore: exploreUpdatePostScore,
+    hasNextPage: exploreHasNextPage,
+    isFetchingNextPage: exploreIsFetchingNextPage,
+    fetchNextPage: exploreFetchNextPage,
+    isRefetching: exploreIsRefetching,
+  } = useExploreFeedInfinite(exploreFilters, screenFocused && isExplorePlaylist);
+
+  const exploreVideoPosts = useMemo(
+    () => collectVideoPostsForPlaylist(explorePosts),
+    [explorePosts]
+  );
 
   const {
     posts: authorPosts,
@@ -127,27 +149,70 @@ export function ReelsTabFeed({
       return seedPosts ?? [];
     }
 
+    if (isExplorePlaylist) {
+      if (seedPosts && seedPosts.length > 0) {
+        return appendUniqueFeedPosts(seedPosts, exploreVideoPosts);
+      }
+      return exploreVideoPosts;
+    }
+
     if (seedPosts && seedPosts.length > 0) {
       return appendUniqueFeedPosts(seedPosts, feedVideoPosts);
     }
 
     return feedVideoPosts;
-  }, [authorVideoPosts, feedVideoPosts, isProfilePlaylist, seedPosts]);
+  }, [
+    authorVideoPosts,
+    exploreVideoPosts,
+    feedVideoPosts,
+    isExplorePlaylist,
+    isProfilePlaylist,
+    seedPosts,
+  ]);
 
-  const loading = isProfilePlaylist ? authorLoading : feedLoading;
-  const error = isProfilePlaylist ? authorError : feedError;
-  const refresh = isProfilePlaylist ? authorRefresh : feedRefresh;
-  const hasNextPage = isProfilePlaylist ? authorHasNextPage : feedHasNextPage;
+  const loading = isProfilePlaylist
+    ? authorLoading
+    : isExplorePlaylist
+      ? exploreLoading
+      : feedLoading;
+  const error = isProfilePlaylist
+    ? authorError
+    : isExplorePlaylist
+      ? exploreError
+      : feedError;
+  const refresh = isProfilePlaylist
+    ? authorRefresh
+    : isExplorePlaylist
+      ? exploreRefresh
+      : feedRefresh;
+  const hasNextPage = isProfilePlaylist
+    ? authorHasNextPage
+    : isExplorePlaylist
+      ? exploreHasNextPage
+      : feedHasNextPage;
   const isFetchingNextPage = isProfilePlaylist
     ? authorIsFetchingNextPage
-    : feedIsFetchingNextPage;
+    : isExplorePlaylist
+      ? exploreIsFetchingNextPage
+      : feedIsFetchingNextPage;
   const fetchNextPage = isProfilePlaylist
     ? authorFetchNextPage
-    : feedFetchNextPage;
-  const isRefetching = isProfilePlaylist ? authorIsRefetching : feedIsRefetching;
+    : isExplorePlaylist
+      ? exploreFetchNextPage
+      : feedFetchNextPage;
+  const isRefetching = isProfilePlaylist
+    ? authorIsRefetching
+    : isExplorePlaylist
+      ? exploreIsRefetching
+      : feedIsRefetching;
+  const updatePostScore = isExplorePlaylist
+    ? exploreUpdatePostScore
+    : feedUpdatePostScore;
   const engagementResetKey = isProfilePlaylist
     ? `reels-profile-${authorId}`
-    : feedEngagementResetKey;
+    : isExplorePlaylist
+      ? `reels-explore-${getFilterSegmentLabel(exploreFilters)}`
+      : feedEngagementResetKey;
 
   const postIds = useMemo(() => videoPosts.map((post) => post.id), [videoPosts]);
   useIncrementalEngagement(postIds, engagementResetKey);
@@ -178,6 +243,14 @@ export function ReelsTabFeed({
     setActiveIndex(index);
   }, [resolveTargetIndex, setActiveIndex]);
 
+  useLayoutEffect(() => {
+    if (targetPostId) {
+      return;
+    }
+    activeIndexRef.current = 0;
+    resetActiveIndex();
+  }, [resetActiveIndex, targetPostId]);
+
   useEffect(() => {
     if (!targetPostId || videoPosts.length === 0) {
       return;
@@ -188,7 +261,10 @@ export function ReelsTabFeed({
       if (isProfilePlaylist && authorLoading) {
         return;
       }
-      clearNavigation();
+      if (isExplorePlaylist && exploreLoading) {
+        return;
+      }
+      clearScrollTarget();
       return;
     }
 
@@ -206,7 +282,7 @@ export function ReelsTabFeed({
       listRef.current?.scrollToIndex({ index, animated: false });
 
       if (attempt >= 8) {
-        clearNavigation();
+        clearScrollTarget();
       }
     };
 
@@ -223,7 +299,9 @@ export function ReelsTabFeed({
     };
   }, [
     authorLoading,
-    clearNavigation,
+    clearScrollTarget,
+    exploreLoading,
+    isExplorePlaylist,
     isProfilePlaylist,
     resolveTargetIndex,
     setActiveIndex,
@@ -241,11 +319,26 @@ export function ReelsTabFeed({
   }, [resolveTargetIndex, targetPostId]);
 
   const listKey = useMemo(() => {
-    if (!targetPostId) {
-      return `reels-${playlistSource ?? "browse"}-${feedMode}`;
+    if (isProfilePlaylist && authorId) {
+      return `reels-profile-${authorId}`;
     }
-    return `reels-nav-${targetPostId}`;
-  }, [feedMode, playlistSource, targetPostId]);
+    if (isExplorePlaylist) {
+      const filterKey = getFilterSegmentLabel(exploreFilters);
+      const seedKey = seedPosts?.[0]?.id ?? "browse";
+      return `reels-explore-${filterKey}-${seedKey}`;
+    }
+    if (seedPosts && seedPosts.length > 0) {
+      return `reels-home-${feedMode}-${seedPosts[0].id}`;
+    }
+    return `reels-browse-${feedMode}`;
+  }, [
+    authorId,
+    exploreFilters,
+    feedMode,
+    isExplorePlaylist,
+    isProfilePlaylist,
+    seedPosts,
+  ]);
 
   const setActiveIndexFromOffset = useCallback(
     (offsetY: number) => {

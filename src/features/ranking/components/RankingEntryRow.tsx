@@ -9,7 +9,7 @@ import {
   formatTpChange,
   TREND_LABEL_TR,
 } from "../utils/momentum";
-import { prestigeTierFromRank } from "../utils/prestige";
+import { prestigeTierFromRank, PRESTIGE_RING, PRESTIGE_ROW } from "../utils/prestige";
 import { formatRankingCategoriesLine } from "../utils/formatRankingCategoriesLine";
 import type { RankingEntry } from "../types";
 
@@ -94,18 +94,42 @@ function RankingEntryRowInner({
   }, [entry.userId, entry.displayName, entry.photoURL, currentUserId]);
 
   const prestigeTier = prestigeTierFromRank(entry.rank);
+  const prestigeRow = prestigeTier ? PRESTIGE_ROW[prestigeTier] : null;
   const categoriesLine = formatRankingCategoriesLine(entry.metadata);
   const isSystemProfile = isSystemProfileUserId(entry.userId);
 
   return (
     <Pressable
       onPress={openProfile}
-      className="mb-2 flex-row items-center justify-between rounded-xl border border-gray-100 px-4 py-3 active:bg-gray-50"
+      className={`mb-2 flex-row items-center justify-between rounded-xl px-4 py-3 ${
+        prestigeTier ? "active:opacity-90" : "border border-gray-100 active:bg-gray-50"
+      }`}
+      style={
+        prestigeRow
+          ? {
+              borderWidth: prestigeRow.borderWidth,
+              borderColor: prestigeRow.borderColor,
+              backgroundColor: prestigeRow.backgroundColor,
+              shadowColor: prestigeRow.shadowColor,
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.45,
+              shadowRadius: 4,
+              elevation: 2,
+            }
+          : undefined
+      }
       accessibilityRole="button"
       accessibilityLabel={`${entry.displayName} profilini aç`}
     >
       <View className="mr-2 flex-1 flex-row items-center gap-3">
-        <Text className="w-8 text-center text-lg font-bold text-gray-800">
+        <Text
+          className="w-8 text-center text-lg font-bold text-gray-800"
+          style={
+            prestigeTier
+              ? { color: PRESTIGE_RING[prestigeTier].border }
+              : undefined
+          }
+        >
           {entry.rank}
         </Text>
 

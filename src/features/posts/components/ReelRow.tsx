@@ -20,7 +20,20 @@ type ReelRowProps = {
   overlayBottomInset?: number;
 };
 
-export const ReelRow = memo(function ReelRow({
+function reelRowPropsAreEqual(prev: ReelRowProps, next: ReelRowProps): boolean {
+  return (
+    prev.index === next.index &&
+    prev.enabled === next.enabled &&
+    prev.width === next.width &&
+    prev.height === next.height &&
+    prev.overlayBottomInset === next.overlayBottomInset &&
+    prev.post.id === next.post.id &&
+    prev.post.mediaURL === next.post.mediaURL &&
+    prev.post.hlsURL === next.post.hlsURL
+  );
+}
+
+function ReelRowInner({
   post,
   index,
   enabled,
@@ -69,4 +82,6 @@ export const ReelRow = memo(function ReelRow({
       ) : null}
     </View>
   );
-});
+}
+
+export const ReelRow = memo(ReelRowInner, reelRowPropsAreEqual);

@@ -96,4 +96,24 @@ describe("resolveMediaDisplayUrl", () => {
       true
     );
   });
+
+  it("resolveVideoStreamUrl uses proxy for MP4 when pilot enabled", async () => {
+    process.env.EXPO_PUBLIC_MEDIA_PROXY_ORIGIN = "https://myrank.com.tr";
+    process.env.EXPO_PUBLIC_MP4_PROXY_ENABLED = "true";
+    const { resolveVideoStreamUrl } = await import("./resolveMediaDisplayUrl");
+    const url = resolveVideoStreamUrl(
+      "https://firebasestorage.googleapis.com/v0/b/myrankapp-d62b9.firebasestorage.app/o/posts%2Fu1%2F123_fast.mp4?alt=media"
+    );
+    expect(url).toContain("myrank.com.tr/fb-media");
+  });
+
+  it("resolveVideoStreamUrl keeps HLS direct even when MP4 pilot enabled", async () => {
+    process.env.EXPO_PUBLIC_MP4_PROXY_ENABLED = "true";
+    const { resolveVideoStreamUrl } = await import("./resolveMediaDisplayUrl");
+    const url = resolveVideoStreamUrl(
+      "https://firebasestorage.googleapis.com/v0/b/bucket/o/posts%2Fu1%2Fmaster.m3u8?alt=media"
+    );
+    expect(url).toContain("firebasestorage.googleapis.com");
+    expect(url).not.toContain("fb-media");
+  });
 });

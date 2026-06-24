@@ -1,4 +1,3 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -32,7 +31,7 @@ export function ProfileFollowButton({ diameter = 76 }: ProfileFollowButtonProps)
   const styles = useMemo(() => createProfileFollowButtonStyles(diameter), [diameter]);
   const theme = FOLLOW_THEMES[following ? "active" : "idle"];
   const label = following ? "Takiptesin" : "Takip Et";
-  const plusSize = 46;
+  const iconSize = Math.round(diameter * 0.34);
 
   useEffect(() => {
     if (isOwnProfile || !votesEnabled) {
@@ -115,31 +114,31 @@ export function ProfileFollowButton({ diameter = 76 }: ProfileFollowButtonProps)
         },
       ]}
     >
-      <View style={[styles.dropShadow, { backgroundColor: theme.dropShadow }]} />
-
-      <LinearGradient
-        colors={[...theme.gradient]}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={[styles.face, { borderColor: theme.rim }]}
+      <View
+        style={[
+          styles.face,
+          {
+            backgroundColor: theme.fill,
+            borderColor: theme.borderColor ?? "transparent",
+            borderWidth: theme.borderWidth ?? 0,
+          },
+        ]}
       >
-        <View style={styles.gloss} />
-        <View style={styles.innerRim} />
-
         <View style={styles.content}>
           <View style={styles.iconCenter} pointerEvents="none">
             {loading || submitting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={theme.foreground} />
             ) : (
-              <FollowPlusIcon size={plusSize} />
+              <FollowPlusIcon size={iconSize} color={theme.foreground} />
             )}
           </View>
           {!loading && !submitting ? (
-            <Text style={styles.label}>{label}</Text>
+            <Text style={[styles.label, { color: theme.foreground }]}>
+              {label}
+            </Text>
           ) : null}
         </View>
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 }

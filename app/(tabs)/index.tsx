@@ -23,10 +23,11 @@ import {
 } from "@/features/posts/components/FeedFlashList";
 import { ReelsTabFeed } from "@/features/posts/components/ReelsTabFeed";
 import { useHomeFeedContentStore } from "@/features/posts/store/useHomeFeedContentStore";
+import { useReelsActiveIndexStore } from "@/features/posts/store/useReelsActiveIndexStore";
 import { useReelsNavigationStore } from "@/features/posts/store/useReelsNavigationStore";
 import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
-import { filterVideoPosts } from "@/features/posts/utils/videoPosts";
+import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
 import { useStoriesRingStore } from "@/features/stories/store/useStoriesRingStore";
 import { useProfileStore } from "@/features/profile/store/useProfileStore";
 
@@ -42,6 +43,9 @@ export default function HomeScreen() {
   const handleContentFilterChange = useCallback(
     (filter: Parameters<typeof setContentFilter>[0]) => {
       useReelsNavigationStore.getState().clearNavigation();
+      if (filter === "video") {
+        useReelsActiveIndexStore.getState().resetActiveIndex();
+      }
       setContentFilter(filter);
     },
     [setContentFilter]
@@ -63,6 +67,7 @@ export default function HomeScreen() {
   useEffect(() => {
     const unsubscribe = navigation.addListener("tabPress", () => {
       if (contentFilter === "video") {
+        useReelsNavigationStore.getState().clearNavigation();
         setContentFilter(null);
       }
     });
@@ -81,9 +86,9 @@ export default function HomeScreen() {
 
   const videoPosts = useMemo(() => {
     if (feedMode === "global") {
-      return filterVideoPosts(globalFeed.recentPosts);
+      return collectVideoPostsForPlaylist(globalFeed.recentPosts);
     }
-    return filterVideoPosts(followingFeed.posts);
+    return collectVideoPostsForPlaylist(followingFeed.posts);
   }, [feedMode, globalFeed.recentPosts, followingFeed.posts]);
 
   const feedItems = useMemo((): FeedListItem[] => {
@@ -126,6 +131,14 @@ export default function HomeScreen() {
   const listHeader = useMemo(
     () => (
       <View>
+        <View className="pb-2 pt-1">
+          <StoryRingsRow
+            currentUserId={user?.uid ?? null}
+            currentUserDisplayName={displayName || "Sen"}
+            currentUserPhotoURL={photoURL || user?.photoURL}
+            reloadSignal={storyReloadSignal}
+          />
+        </View>
         <HomeFeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
         <HomeFeedContentFilter
           contentFilter={contentFilter}
@@ -133,7 +146,17 @@ export default function HomeScreen() {
         />
       </View>
     ),
-    [contentFilter, feedMode, handleContentFilterChange, setFeedMode]
+    [
+      contentFilter,
+      displayName,
+      feedMode,
+      handleContentFilterChange,
+      photoURL,
+      setFeedMode,
+      storyReloadSignal,
+      user?.photoURL,
+      user?.uid,
+    ]
   );
 
   const feedListContentStyle = useMemo(
@@ -163,33 +186,24 @@ export default function HomeScreen() {
   return (
     <TabScreenSafeArea className="flex-1 bg-gray-50">
       <View className="min-h-0 flex-1">
-        <View className="shrink-0 px-4 pb-2 pt-1" collapsable={false}>
-          <StoryRingsRow
-            currentUserId={user?.uid ?? null}
-            currentUserDisplayName={displayName || "Sen"}
-            currentUserPhotoURL={photoURL || user?.photoURL}
-            reloadSignal={storyReloadSignal}
-          />
-        </View>
-        <View className="min-h-0 flex-1">
-          <FeedFlashList
-            items={feedItems}
-            videoPosts={videoPosts}
-            loading={loading}
-            error={error}
-            emptyMessage={emptyMessage}
-            onRefresh={handleRefresh}
-            onScoreUpdate={activeFeed.updatePostScore}
-            ListHeaderComponent={listHeader}
-            hasNextPage={activeFeed.hasNextPage}
-            isFetchingNextPage={activeFeed.isFetchingNextPage}
-            onLoadMore={activeFeed.fetchNextPage}
-            isRefetching={activeFeed.isRefetching}
-            listRef={listRef}
-            currentUserId={user?.uid ?? null}
-            contentContainerStyle={feedListContentStyle}
-          />
-        </View>
+        <FeedFlashList
+          items={feedItems}
+          videoPosts={videoPosts}
+          loading={loading}
+          error={error}
+          emptyMessage={emptyMessage}
+          onRefresh={handleRefresh}
+          onScoreUpdate={activeFeed.updatePostScore}
+          ListHeaderComponent={listHeader}
+          hasNextPage={activeFeed.hasNextPage}
+          isFetchingNextPage={activeFeed.isFetchingNextPage}
+          onLoadMore={activeFeed.fetchNextPage}
+          isRefetching={activeFeed.isRefetching}
+          listRef={listRef}
+          currentUserId={user?.uid ?? null}
+          contentContainerStyle={feedListContentStyle}
+          reelsSource="home"
+        />
       </View>
     </TabScreenSafeArea>
   );

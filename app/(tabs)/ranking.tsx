@@ -14,6 +14,7 @@ import {
   FilterChipsBar,
   FilterModal,
   formatFilterDisplayTitle,
+  DEFAULT_COUNTRY_FILTERS,
   useMetadataFilters,
 } from "@/features/filters";
 import { hasActiveSegmentFilters } from "@/features/posts/api/matchesSegmentFilters";
@@ -36,7 +37,7 @@ export default function RankingScreen() {
     applyField,
     resetToGlobal,
     resetToProfile,
-  } = useMetadataFilters();
+  } = useMetadataFilters({ initialFilters: DEFAULT_COUNTRY_FILTERS });
 
   const { entries, loading, isRefetching, error, refresh } = useSegmentRanking(filters);
 
@@ -53,16 +54,6 @@ export default function RankingScreen() {
       <RankingEntryRow entry={item} currentUserId={currentUserId} />
     ),
     [currentUserId]
-  );
-
-  const listHeader = useMemo(
-    () =>
-      !isGlobal ? (
-        <Text className="mb-4 text-sm text-gray-500">
-          Seçtiğiniz segmentte toplam puan (TP) sıralaması
-        </Text>
-      ) : null,
-    [isGlobal]
   );
 
   const listEmpty = useMemo(() => {
@@ -95,7 +86,7 @@ export default function RankingScreen() {
         onResetToGlobal={resetToGlobal}
         onResetToProfile={resetToProfile}
         globalModeLabel="Global Sıralama"
-        filteredModeLabel="Filtreli sıralama"
+        hideFilteredModeLabel
       />
 
       <FilterModal
@@ -119,7 +110,6 @@ export default function RankingScreen() {
         data={entries}
         keyExtractor={(item) => item.userId}
         renderItem={renderItem}
-        ListHeaderComponent={listHeader}
         ListEmptyComponent={listEmpty}
         contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 16 }}
         refreshControl={

@@ -128,11 +128,11 @@ export const PROFILE_SEGMENT_TO_SCORE_GAP = 8;
 /** Alçalt/Yükselt optik ortalama düzeltmesi (sağa kaydırma) */
 export const PROFILE_VOTE_CENTER_NUDGE = 6;
 
-const PROFILE_VOTE_DIAMETER_MAX = 72;
-const PROFILE_VOTE_DIAMETER_MIN = 56;
-const PROFILE_SIDE_DIAMETER_MAX = 64;
-const PROFILE_SIDE_DIAMETER_MIN = 50;
-const PROFILE_VOTE_GAP = 4;
+const PROFILE_VOTE_DIAMETER_MAX = 66;
+const PROFILE_VOTE_DIAMETER_MIN = 52;
+const PROFILE_SIDE_DIAMETER_MAX = 58;
+const PROFILE_SIDE_DIAMETER_MIN = 46;
+const PROFILE_VOTE_GAP = 10;
 /** Gölge / hitSlop taşması için satır genişliği güvenlik payı */
 const PROFILE_VOTE_ROW_SAFETY = 12;
 

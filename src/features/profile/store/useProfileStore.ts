@@ -22,6 +22,8 @@ type ProfileState = {
   /** Persist edilen metadata hangi kullanıcıya ait */
   profileOwnerId: string | null;
   isRemoteLoaded: boolean;
+  /** İlk profil çözümlemesi (cache + remote) tamamlandı mı */
+  isProfileBootstrapSettled: boolean;
   isSyncing: boolean;
   /** Firestore users/{uid} kaydı mevcut ve metadata sunucuda tam. */
   profileSavedOnServer: boolean;
@@ -42,6 +44,8 @@ type ProfileState = {
   setRemoteLoaded: (loaded: boolean) => void;
   setSyncing: (syncing: boolean) => void;
   setProfileSavedOnServer: (saved: boolean) => void;
+  beginProfileBootstrap: () => void;
+  finishProfileBootstrap: () => void;
   reset: () => void;
   isComplete: () => boolean;
 };
@@ -57,6 +61,7 @@ export const useProfileStore = create<ProfileState>()(
       totalScore: 0,
       profileOwnerId: null,
       isRemoteLoaded: false,
+      isProfileBootstrapSettled: false,
       isSyncing: false,
       profileSavedOnServer: false,
 
@@ -95,7 +100,6 @@ export const useProfileStore = create<ProfileState>()(
           bioCategoryVisibility,
           totalScore,
           profileOwnerId: state.profileOwnerId,
-          isRemoteLoaded: true,
         })),
 
       setTotalScore: (totalScore) => set({ totalScore }),
@@ -105,6 +109,12 @@ export const useProfileStore = create<ProfileState>()(
       setSyncing: (syncing) => set({ isSyncing: syncing }),
 
       setProfileSavedOnServer: (saved) => set({ profileSavedOnServer: saved }),
+
+      beginProfileBootstrap: () =>
+        set({ isRemoteLoaded: false, isProfileBootstrapSettled: false }),
+
+      finishProfileBootstrap: () =>
+        set({ isRemoteLoaded: true, isProfileBootstrapSettled: true }),
 
       reset: () =>
         set({
@@ -116,6 +126,7 @@ export const useProfileStore = create<ProfileState>()(
           totalScore: 0,
           profileOwnerId: null,
           isRemoteLoaded: false,
+          isProfileBootstrapSettled: false,
           isSyncing: false,
           profileSavedOnServer: false,
         }),

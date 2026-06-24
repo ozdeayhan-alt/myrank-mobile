@@ -14,7 +14,9 @@ import { useProfileMenuStore } from "@/features/profile/store/useProfileMenuStor
 export default function ProfileScreen() {
   const [editing, setEditing] = useState(false);
   const metadata = useProfileStore((s) => s.metadata);
-  const isRemoteLoaded = useProfileStore((s) => s.isRemoteLoaded);
+  const isProfileBootstrapSettled = useProfileStore(
+    (s) => s.isProfileBootstrapSettled
+  );
   const isSyncing = useProfileStore((s) => s.isSyncing);
   const profileSavedOnServer = useProfileStore((s) => s.profileSavedOnServer);
   const setEditHandler = useProfileMenuStore((s) => s.setEditHandler);
@@ -27,7 +29,7 @@ export default function ProfileScreen() {
     return () => setEditHandler(null);
   }, [setEditHandler]);
 
-  if (!isRemoteLoaded) {
+  if (!isProfileBootstrapSettled) {
     return (
       <TabScreenSafeArea className="flex-1 bg-white">
         <ProfileLoadingSkeleton />
@@ -48,21 +50,21 @@ export default function ProfileScreen() {
   }
 
   if (!profileReady) {
-    if (complete) {
+    if (!complete) {
       return (
         <TabScreenSafeArea className="flex-1 bg-white">
-          <ProfileLoadingSkeleton />
+          <ProfileForm
+            onSaved={() => {
+              setEditing(false);
+            }}
+          />
         </TabScreenSafeArea>
       );
     }
 
     return (
       <TabScreenSafeArea className="flex-1 bg-white">
-        <ProfileForm
-          onSaved={() => {
-            setEditing(false);
-          }}
-        />
+        <ProfileLoadingSkeleton />
       </TabScreenSafeArea>
     );
   }

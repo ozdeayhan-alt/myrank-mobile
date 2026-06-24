@@ -118,7 +118,6 @@ export function ProfileForm({ onSaved, variant = "onboarding" }: ProfileFormProp
   const setSyncing = useProfileStore((s) => s.setSyncing);
   const isSyncing = useProfileStore((s) => s.isSyncing);
   const profileSavedOnServer = useProfileStore((s) => s.profileSavedOnServer);
-  const setProfileSavedOnServer = useProfileStore((s) => s.setProfileSavedOnServer);
 
   const [activeField, setActiveField] = useState<FilterFieldKey | null>(null);
   const autoSaveStartedRef = useRef(false);
@@ -185,7 +184,8 @@ export function ProfileForm({ onSaved, variant = "onboarding" }: ProfileFormProp
           bioCategoryVisibility
         );
       useProfileStore.setState({ profileOwnerId: user.uid });
-      setProfileSavedOnServer(true);
+      useProfileStore.getState().setProfileSavedOnServer(true);
+      useProfileStore.getState().finishProfileBootstrap();
       onSaved?.();
     } catch (error) {
       autoSaveStartedRef.current = false;
