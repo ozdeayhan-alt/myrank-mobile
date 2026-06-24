@@ -94,12 +94,7 @@ function applyCachedProfile(
     local.bio,
     local.bioCategoryVisibility
   );
-  useProfileStore.setState({
-    profileOwnerId: userId,
-    ...(isMetadataComplete(local.metadata)
-      ? { profileSavedOnServer: true }
-      : {}),
-  });
+  useProfileStore.setState({ profileOwnerId: userId });
 }
 
 function applyAuthBootstrap(
@@ -173,6 +168,10 @@ function reconcileProfileSavedOnServer(
   const local = useProfileStore.getState();
   const localComplete = isMetadataComplete(local.metadata);
 
+  if (local.profileSavedOnServer) {
+    return;
+  }
+
   if (remote) {
     const savedOnServer =
       remote.fromUsers && isMetadataComplete(remote.profile.metadata);
@@ -181,10 +180,7 @@ function reconcileProfileSavedOnServer(
       return;
     }
     if (localComplete && (hadCachedProfile || local.profileSavedOnServer)) {
-      useProfileStore.getState().setProfileSavedOnServer(true);
-      void ensureProfileSavedOnServer().catch(() => {
-        useProfileStore.getState().setProfileSavedOnServer(false);
-      });
+      void ensureProfileSavedOnServer().catch(() => undefined);
       return;
     }
     useProfileStore.getState().setProfileSavedOnServer(false);
@@ -192,10 +188,7 @@ function reconcileProfileSavedOnServer(
   }
 
   if (hadCachedProfile && localComplete) {
-    useProfileStore.getState().setProfileSavedOnServer(true);
-    void ensureProfileSavedOnServer().catch(() => {
-      useProfileStore.getState().setProfileSavedOnServer(false);
-    });
+    void ensureProfileSavedOnServer().catch(() => undefined);
     return;
   }
 

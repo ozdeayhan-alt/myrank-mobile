@@ -247,6 +247,13 @@ export function ProfileForm({ onSaved, variant = "onboarding" }: ProfileFormProp
             : "Keşfet ve sıralama için kategorileri listeden seç. Tüm alanlar zorunlu."}
         </Text>
 
+        {!isEdit && isSyncing && isMetadataComplete(normalizeUserMetadata(metadata)) ? (
+          <View className="mb-4 flex-row items-center rounded-xl bg-gray-50 px-4 py-3">
+            <ActivityIndicator color="#374151" />
+            <Text className="ml-3 text-sm text-gray-600">Profilin kaydediliyor…</Text>
+          </View>
+        ) : null}
+
         <Text className="mb-1 text-sm font-medium text-gray-700">Ad Soyad</Text>
         <TextInput
           className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"

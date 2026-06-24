@@ -17,7 +17,6 @@ export default function ProfileScreen() {
   const isProfileBootstrapSettled = useProfileStore(
     (s) => s.isProfileBootstrapSettled
   );
-  const isSyncing = useProfileStore((s) => s.isSyncing);
   const profileSavedOnServer = useProfileStore((s) => s.profileSavedOnServer);
   const setEditHandler = useProfileMenuStore((s) => s.setEditHandler);
 
@@ -50,29 +49,13 @@ export default function ProfileScreen() {
   }
 
   if (!profileReady) {
-    if (!complete) {
-      return (
-        <TabScreenSafeArea className="flex-1 bg-white">
-          <ProfileForm
-            onSaved={() => {
-              setEditing(false);
-            }}
-          />
-        </TabScreenSafeArea>
-      );
-    }
-
     return (
       <TabScreenSafeArea className="flex-1 bg-white">
-        <ProfileLoadingSkeleton />
-      </TabScreenSafeArea>
-    );
-  }
-
-  if (isSyncing) {
-    return (
-      <TabScreenSafeArea className="flex-1 bg-white">
-        <ProfileLoadingSkeleton />
+        <ProfileForm
+          onSaved={() => {
+            setEditing(false);
+          }}
+        />
       </TabScreenSafeArea>
     );
   }

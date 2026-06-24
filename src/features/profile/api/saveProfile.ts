@@ -78,5 +78,9 @@ export async function saveProfile(
     await updateProfile(auth.currentUser, { displayName: trimmedName });
   }
 
-  await ensureRankingEntries({ profileSaved: true });
+  try {
+    await ensureRankingEntries({ profileSaved: true });
+  } catch {
+    // Profil kaydı başarılı; sıralama kaydı arka planda tekrar denenebilir.
+  }
 }
