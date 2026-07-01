@@ -18,7 +18,6 @@ import {
 import { CommentSheetHost } from "@/features/posts/components/CommentSheetHost";
 import { PushNotificationHandler } from "@/features/push";
 import { HomeFeedPrefetch } from "@/features/explore/components/HomeFeedPrefetch";
-import { StoriesRingBootstrap } from "@/features/stories/components/StoriesRingBootstrap";
 import { QueryProvider } from "@/providers/QueryProvider";
 import {
   isMetadataComplete,
@@ -158,7 +157,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       <CrashReportingBootstrap />
       <PushNotificationHandler />
       <HomeFeedPrefetch />
-      <StoriesRingBootstrap />
       <CommentSheetHost />
       {children}
     </>

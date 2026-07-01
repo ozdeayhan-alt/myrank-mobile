@@ -1,15 +1,10 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import type { Story } from "../constants/types";
 
 export async function fetchStoriesFeed(limit = 30): Promise<Story[]> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(
-    `${getApiBaseUrl()}/api/stories/feed?limit=${limit}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    }
+  const response = await fetchApi(
+    `${getApiBaseUrl()}/api/stories/feed?limit=${limit}`
   );
 
   const data = await response.json().catch(() => ({}));
@@ -21,12 +16,8 @@ export async function fetchStoriesFeed(limit = 30): Promise<Story[]> {
 }
 
 export async function fetchStoryById(storyId: string): Promise<Story> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(
-    `${getApiBaseUrl()}/api/stories/${encodeURIComponent(storyId)}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    }
+  const response = await fetchApi(
+    `${getApiBaseUrl()}/api/stories/${encodeURIComponent(storyId)}`
   );
 
   const data = await response.json().catch(() => ({}));

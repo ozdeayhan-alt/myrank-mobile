@@ -275,6 +275,8 @@ export function useReelRowPlayback({
   return {
     player,
     showPoster,
-    shouldRenderVideo: shouldMount,
+    /** Android: yalnızca aktif satırda native VideoView (yüzey çakışmasını önler). */
+    shouldRenderVideo: shouldMount && mode === "active",
+    shouldPreload: shouldMount,
   };
 }

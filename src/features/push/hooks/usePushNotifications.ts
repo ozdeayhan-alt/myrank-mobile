@@ -5,6 +5,7 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { navigateFromNotification } from "@/features/notifications/utils/navigateFromNotification";
+import { emitMessagePush } from "@/features/messages/lib/messagePushBus";
 import { registerPushToken } from "../api/registerPushToken";
 import { unregisterPushToken } from "../api/unregisterPushToken";
 import { requestNotificationPermissions, ensureAndroidChannel } from "../utils/requestNotificationPermissions";
@@ -124,6 +125,24 @@ export function usePushNotifications(userId?: string) {
     const subscription =
       Notifications.addNotificationResponseReceivedListener(handleResponse);
 
+    const receivedSubscription =
+      Notifications.addNotificationReceivedListener((notification) => {
+        const data = notification.request.content.data;
+        if (!data || typeof data !== "object") {
+          return;
+        }
+
+        const parsed = notificationFromPushData(
+          data as Record<string, unknown>
+        );
+        if (
+          parsed?.type === "message_received" &&
+          typeof parsed.payload.conversationId === "string"
+        ) {
+          emitMessagePush(parsed.payload.conversationId);
+        }
+      });
+
     void Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response) {
         handleResponse(response);
@@ -132,6 +151,7 @@ export function usePushNotifications(userId?: string) {
 
     return () => {
       subscription.remove();
+      receivedSubscription.remove();
     };
   }, [router, userId]);
 }

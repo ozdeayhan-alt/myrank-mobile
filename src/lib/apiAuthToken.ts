@@ -1,10 +1,12 @@
 import { getFirebaseAuth } from "@/lib/firebase";
 
 /**
- * Backend API istekleri için güncel Firebase ID token döner.
- * Süresi dolmuş token hatalarını önlemek için her seferinde yenilenir.
+ * Backend API istekleri için Firebase ID token döner.
+ * Varsayılan: önbellekteki token (düşük gecikme). forceRefresh=true ile yenilenir.
  */
-export async function getApiAuthToken(): Promise<string> {
+export async function getApiAuthToken(
+  forceRefresh = false
+): Promise<string> {
   const auth = getFirebaseAuth();
   const user = auth.currentUser;
 
@@ -12,5 +14,5 @@ export async function getApiAuthToken(): Promise<string> {
     throw new Error("Oturum açık değil");
   }
 
-  return user.getIdToken(true);
+  return user.getIdToken(forceRefresh);
 }

@@ -41,6 +41,34 @@ export function getUpperSemicirclePeakY(
   return pointOnUpperSemicircle(cx, cy, radius, 0.5).y;
 }
 
+/** Horizontal energy bar: progress 0 = left end, 1 = right end. */
+export function pointOnHorizontalBar(
+  barX: number,
+  barY: number,
+  barLength: number,
+  progress: number
+) {
+  return {
+    x: barX + clamp01(progress) * barLength,
+    y: barY,
+  };
+}
+
+export function describeHorizontalBar(
+  barX: number,
+  barY: number,
+  barLength: number
+): string {
+  if (barLength <= 0) {
+    return "";
+  }
+  return `M ${barX} ${barY} L ${barX + barLength} ${barY}`;
+}
+
+export function getHorizontalBarLength(barLength: number): number {
+  return Math.max(0, barLength);
+}
+
 export function describeUpperSemicircleArc(
   cx: number,
   cy: number,
@@ -125,6 +153,46 @@ export function pickActiveAheadRung(
   return null;
 }
 
+/**
+ * Resmi sıradan yukarı: officialRank−1, −2 … basamakları sırayla dene.
+ * Donmuş skoru geçilmiş basamak atlanır; hedef resmi zincirdeki ilk geçilmemiş kişi.
+ */
+export function pickActiveAheadRungByOfficialRank(
+  rungs: LadderRung[],
+  score: number,
+  officialRank: number
+): LadderRung | null {
+  if (officialRank <= 1) {
+    return null;
+  }
+
+  const byRank = new Map<number, LadderRung>();
+  for (const rung of rungs) {
+    byRank.set(rung.rank, rung);
+  }
+
+  let fallback: LadderRung | null = null;
+
+  for (let rank = officialRank - 1; rank >= 1; rank -= 1) {
+    const rung = byRank.get(rank);
+    if (!rung) {
+      continue;
+    }
+    if (fallback === null) {
+      fallback = rung;
+    }
+    if (score < rung.totalScore) {
+      return rung;
+    }
+  }
+
+  if (fallback !== null && score >= fallback.totalScore) {
+    return pickActiveAheadRung(rungs, score);
+  }
+
+  return fallback;
+}
+
 /** Aşağı (−) merdiven: gece listesinde henüz geçilmemiş ilk alt basamak. */
 export function pickActiveBehindRung(
   rungs: LadderRung[],
@@ -135,6 +203,30 @@ export function pickActiveBehindRung(
       return rung;
     }
   }
+  return null;
+}
+
+/** Resmi sıradan aşağı: officialRank+1, +2 … basamakları sırayla dene. */
+export function pickActiveBehindRungByOfficialRank(
+  rungs: LadderRung[],
+  score: number,
+  officialRank: number
+): LadderRung | null {
+  const byRank = new Map<number, LadderRung>();
+  for (const rung of rungs) {
+    byRank.set(rung.rank, rung);
+  }
+
+  for (let rank = officialRank + 1; ; rank += 1) {
+    const rung = byRank.get(rank);
+    if (!rung) {
+      break;
+    }
+    if (score > rung.totalScore) {
+      return rung;
+    }
+  }
+
   return null;
 }
 
@@ -186,6 +278,8 @@ export type LadderGaugeInput = {
   direction: GaugeDirection;
   aheadRungs: LadderRung[];
   behindRungs: LadderRung[];
+  /** Resmi gece sırası — hedef basamak seçimi için */
+  officialRank?: number | null;
 };
 
 export function computeLadderGaugeProgress({
@@ -194,15 +288,20 @@ export function computeLadderGaugeProgress({
   direction,
   aheadRungs,
   behindRungs,
+  officialRank = null,
 }: LadderGaugeInput): GaugeProgressResult {
   if (direction === "up") {
-    const activeRung = pickActiveAheadRung(aheadRungs, score);
+    const activeRung =
+      officialRank != null && officialRank > 0
+        ? pickActiveAheadRungByOfficialRank(aheadRungs, score, officialRank)
+        : pickActiveAheadRung(aheadRungs, score);
     if (!activeRung) {
+      const atOfficialTop = officialRank != null && officialRank <= 1;
       return {
         hasTarget: false,
-        isLeader: true,
+        isLeader: atOfficialTop,
         isLast: false,
-        progress: 1,
+        progress: atOfficialTop ? 1 : 0,
         span: Math.max(baselineScore * 0.2, 50),
         remainingPoints: 0,
         neighborRank: null,
@@ -231,7 +330,10 @@ export function computeLadderGaugeProgress({
     };
   }
 
-  const activeRung = pickActiveBehindRung(behindRungs, score);
+  const activeRung =
+    officialRank != null && officialRank > 0
+      ? pickActiveBehindRungByOfficialRank(behindRungs, score, officialRank)
+      : pickActiveBehindRung(behindRungs, score);
   if (!activeRung) {
     return {
       hasTarget: false,

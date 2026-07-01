@@ -1,27 +1,36 @@
-import { doc, getDoc } from "firebase/firestore";
-import { getFirestoreDb } from "@/lib/firebase";
+import { getApiBaseUrl } from "@/lib/api";
+import { fetchApi } from "@/lib/fetchApi";
 
 export type OfficialSegmentRankResult = {
   rank: number | null;
 };
 
+type RankingEntryApiResponse = {
+  ok: boolean;
+  entry: { rank: number | null } | null;
+  error?: string;
+};
+
 /**
- * Yalnızca gece job veya ensure ile yazılmış resmi sıra.
- * Gün içi TP değişse bile entry.rank sabit kalır; tahmini sıra hesaplanmaz.
+ * Backend ranking entry — totalScore gün içi güncellenir; rank gece/incremental job ile yenilenir.
  */
 export async function resolveOfficialSegmentRank(
   segmentKey: string,
   userId: string
 ): Promise<OfficialSegmentRankResult> {
-  const entrySnap = await getDoc(
-    doc(getFirestoreDb(), "rankings", segmentKey, "entries", userId)
+  const params = new URLSearchParams({ segmentKey });
+  const response = await fetchApi(
+    `${getApiBaseUrl()}/api/profile/${encodeURIComponent(userId)}/ranking-entry?${params.toString()}`,
+    { method: "GET", timeoutMs: 15_000 }
   );
 
-  if (!entrySnap.exists()) {
-    return { rank: null };
+  const data = (await response.json()) as RankingEntryApiResponse;
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Ranking entry request failed");
   }
 
-  const data = entrySnap.data();
-  const rank = typeof data.rank === "number" ? data.rank : null;
+  const rank =
+    data.entry && typeof data.entry.rank === "number" ? data.entry.rank : null;
   return { rank };
 }

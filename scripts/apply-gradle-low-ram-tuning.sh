@@ -24,7 +24,10 @@ apply_gradle_low_ram_tuning() {
 
   sed -i 's/^reactNativeArchitectures=.*/reactNativeArchitectures=arm64-v8a/' "$gradle_props"
 
-  for key in "android.lint.checkReleaseBuilds=false" "android.lint.abortOnError=false"; do
+  for key in \
+    "android.lint.checkReleaseBuilds=false" \
+    "android.lint.abortOnError=false" \
+    "org.gradle.caching=true"; do
     local prop="${key%%=*}"
     if grep -q "^${prop}=" "$gradle_props"; then
       sed -i "s/^${prop}=.*/${key}/" "$gradle_props"

@@ -78,8 +78,13 @@ export default function RankingScreen() {
 
   const showRefreshing = isRefetching && entries.length > 0;
 
+  const listContentStyle = useMemo(
+    () => ({ paddingHorizontal: 0, paddingTop: 12, paddingBottom: 16 }),
+    []
+  );
+
   return (
-    <TabScreenSafeArea className="flex-1 bg-white">
+    <TabScreenSafeArea className="flex-1 bg-gray-50">
       <FilterChipsBar
         filters={filters}
         onOpenField={openField}
@@ -99,8 +104,8 @@ export default function RankingScreen() {
         onClose={closeModal}
       />
 
-      <View className="flex-row items-center border-b border-gray-200 bg-white px-4 py-3">
-        <Text className="flex-1 text-sm font-semibold leading-5 text-gray-900">
+      <View className="border-b border-gray-200/80 bg-white px-4 py-3">
+        <Text className="flex-1 text-sm font-semibold leading-5 text-gray-800">
           {filterTitle}
         </Text>
       </View>
@@ -111,7 +116,7 @@ export default function RankingScreen() {
         keyExtractor={(item) => item.userId}
         renderItem={renderItem}
         ListEmptyComponent={listEmpty}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 16 }}
+        contentContainerStyle={listContentStyle}
         refreshControl={
           <RefreshControl refreshing={showRefreshing} onRefresh={refresh} />
         }

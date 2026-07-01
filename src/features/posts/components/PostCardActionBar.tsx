@@ -1,7 +1,6 @@
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import type { PostCounts } from "@/features/ranking/types";
 import { ui } from "@/lib/uiClasses";
-import { formatActionSubLabel } from "../utils/formatActionSubLabel";
 import { getPostActionBarLayout } from "../utils/postActionBarLayout";
 import { PostVoteCirclePair } from "./PostVoteCirclePair";
 
@@ -19,7 +18,6 @@ type PostCardActionBarProps = {
 
 type ActionButtonProps = {
   label: string;
-  subLabel: string;
   active: boolean;
   onPress: () => void;
   disabled: boolean;
@@ -29,7 +27,6 @@ type ActionButtonProps = {
 
 function ActionButton({
   label,
-  subLabel,
   active,
   onPress,
   disabled,
@@ -49,9 +46,6 @@ function ActionButton({
         numberOfLines={1}
       >
         {label}
-      </Text>
-      <Text className="text-[10px] text-gray-400" numberOfLines={1}>
-        {subLabel}
       </Text>
     </Pressable>
   );
@@ -84,7 +78,6 @@ export function PostCardActionBar({
   const commentButton = (
     <ActionButton
       label={`💬 ${counts.commentCount}`}
-      subLabel={formatActionSubLabel("comment", false)}
       active={false}
       onPress={onCommentPress}
       disabled={loading}
@@ -96,7 +89,6 @@ export function PostCardActionBar({
   const shareButton = (
     <ActionButton
       label={`↗ ${counts.shareCount}`}
-      subLabel={formatActionSubLabel("share", shareActive)}
       active={shareActive}
       onPress={onSharePress}
       disabled={loading}
@@ -108,7 +100,6 @@ export function PostCardActionBar({
   const saveButton = (
     <ActionButton
       label={`🔖 ${counts.saveCount}`}
-      subLabel={formatActionSubLabel("save", saveActive)}
       active={saveActive}
       onPress={onSavePress}
       disabled={loading}

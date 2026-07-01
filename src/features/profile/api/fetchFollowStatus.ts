@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 
 export type FollowStatusResponse = {
   ok: boolean;
@@ -12,14 +11,10 @@ export type FollowStatusResponse = {
 export async function fetchFollowStatus(
   targetUserId: string
 ): Promise<boolean> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(
+  const response = await fetchApi(
     `${getApiBaseUrl()}/api/follows/${encodeURIComponent(targetUserId)}/status`,
     {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       timeoutMs: 15000,
     }
   );

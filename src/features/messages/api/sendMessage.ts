@@ -1,18 +1,15 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import type { SendMessageInput } from "../types";
 
 export async function sendMessage(
   conversationId: string,
   input: SendMessageInput
 ): Promise<void> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(`${getApiBaseUrl()}/api/messages/send`, {
+  const response = await fetchApi(`${getApiBaseUrl()}/api/messages/send`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
       conversationId,

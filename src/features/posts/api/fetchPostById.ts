@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import type { Post } from "../types";
 
 type PostApiPost = Omit<Post, "createdAt"> & {
@@ -21,14 +20,10 @@ function mapApiPost(post: PostApiPost): Post {
 }
 
 export async function fetchPostById(postId: string): Promise<Post | null> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(
+  const response = await fetchApi(
     `${getApiBaseUrl()}/api/posts/${encodeURIComponent(postId)}`,
     {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       timeoutMs: 20000,
     }
   );

@@ -2,15 +2,24 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { PostActionsSheet } from "@/features/posts/components/PostActionsSheet";
+import { REPORT_PICKER_MESSAGE } from "../utils/reportFeedback";
 import {
   blockUser,
   fetchBlockStatus,
   unblockUser,
 } from "../api/blockUser";
+import type { ReportReason } from "../api/reportContent";
 import { reportContent } from "../api/reportContent";
-import { showReportReasonPicker } from "../utils/showReportReasonPicker";
 import { showReportSubmittedAlert } from "../utils/reportFeedback";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
+
+const REPORT_OPTIONS: { reason: ReportReason; label: string }[] = [
+  { reason: "spam", label: "Spam" },
+  { reason: "harassment", label: "Taciz" },
+  { reason: "inappropriate", label: "Uygunsuz içerik" },
+  { reason: "other", label: "Diğer" },
+];
 
 type ProfileUserMenuButtonProps = {
   userId: string;
@@ -25,6 +34,9 @@ export function ProfileUserMenuButton({
   const [blocked, setBlocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,8 +63,8 @@ export function ProfileUserMenuButton({
     };
   }, [userId]);
 
-  const handleReport = useCallback(() => {
-    showReportReasonPicker((reason) => {
+  const handleReportReason = useCallback(
+    (reason: ReportReason) => {
       void (async () => {
         try {
           await reportContent({ targetUserId: userId, reason });
@@ -61,8 +73,9 @@ export function ProfileUserMenuButton({
           Alert.alert("Hata", getUserFacingErrorMessage(error));
         }
       })();
-    });
-  }, [userId]);
+    },
+    [userId]
+  );
 
   const toggleBlock = useCallback(async () => {
     setActing(true);
@@ -87,51 +100,73 @@ export function ProfileUserMenuButton({
     }
   }, [blocked, displayName, router, userId]);
 
-  const confirmBlock = useCallback(() => {
+  const handleBlockFromMenu = useCallback(() => {
     if (blocked) {
       void toggleBlock();
       return;
     }
-
-    Alert.alert(
-      "Kullanıcıyı engelle",
-      `${displayName} engellensin mi? Mesaj, takip ve gönderileri gizlenir.`,
-      [
-        { text: "Vazgeç", style: "cancel" },
-        {
-          text: "Engelle",
-          style: "destructive",
-          onPress: () => void toggleBlock(),
-        },
-      ]
-    );
-  }, [blocked, displayName, toggleBlock]);
-
-  const openMenu = useCallback(() => {
-    Alert.alert(displayName, undefined, [
-      { text: "Şikayet et", onPress: handleReport },
-      {
-        text: blocked ? "Engeli kaldır" : "Engelle",
-        style: "destructive",
-        onPress: confirmBlock,
-      },
-      { text: "İptal", style: "cancel" },
-    ]);
-  }, [blocked, confirmBlock, displayName, handleReport]);
+    setBlockConfirmOpen(true);
+  }, [blocked, toggleBlock]);
 
   if (loading || acting) {
     return <ActivityIndicator size="small" color="#374151" />;
   }
 
   return (
-    <Pressable
-      onPress={openMenu}
-      hitSlop={10}
-      accessibilityRole="button"
-      accessibilityLabel="Profil seçenekleri"
-      className="pb-2 pl-2 pt-0"
-    >
-      <Ionicons name="ellipsis-horizontal" size={22} color="#374151" />
-    </Pressable>
+    <>
+      <Pressable
+        onPress={() => setMenuOpen(true)}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Profil seçenekleri"
+        className="px-1 pb-2 pt-0"
+      >
+        <Ionicons name="ellipsis-horizontal" size={22} color="#374151" />
+      </Pressable>
+
+      <PostActionsSheet
+        visible={menuOpen}
+        actions={[
+          {
+            label: "Şikayet et",
+            onPress: () => setReportOpen(true),
+          },
+          {
+            label: blocked ? "Engeli kaldır" : "Engelle",
+            destructive: true,
+            onPress: handleBlockFromMenu,
+          },
+        ]}
+        onClose={() => setMenuOpen(false)}
+      />
+
+      <PostActionsSheet
+        visible={reportOpen}
+        headerTitle="Şikayet et"
+        headerMessage={REPORT_PICKER_MESSAGE}
+        cancelLabel="Vazgeç"
+        actions={REPORT_OPTIONS.map((option) => ({
+          label: option.label,
+          onPress: () => handleReportReason(option.reason),
+        }))}
+        onClose={() => setReportOpen(false)}
+      />
+
+      <PostActionsSheet
+        visible={blockConfirmOpen}
+        headerTitle="Kullanıcıyı engelle?"
+        headerMessage={`${displayName} engellensin mi? Mesaj, takip ve gönderileri gizlenir.`}
+        cancelLabel="Vazgeç"
+        actions={[
+          {
+            label: "Engelle",
+            destructive: true,
+            disabled: acting,
+            onPress: () => void toggleBlock(),
+          },
+        ]}
+        onClose={() => setBlockConfirmOpen(false)}
+      />
+    </>
   );
 }

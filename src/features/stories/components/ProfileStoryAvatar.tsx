@@ -8,6 +8,7 @@ type ProfileStoryAvatarProps = {
   photoURL?: string | null;
   fallbackLetter: string;
   size?: number;
+  isOwnProfile?: boolean;
   reloadSignal?: number;
 };
 
@@ -16,6 +17,7 @@ export function ProfileStoryAvatar({
   photoURL,
   fallbackLetter,
   size = 108,
+  isOwnProfile = false,
   reloadSignal = 0,
 }: ProfileStoryAvatarProps) {
   const reload = useStoriesRingStore((state) => state.reload);
@@ -36,6 +38,7 @@ export function ProfileStoryAvatar({
       photoURL={photoURL}
       fallbackLetter={fallbackLetter}
       size={size}
+      isOwnProfile={isOwnProfile}
     />
   );
 }

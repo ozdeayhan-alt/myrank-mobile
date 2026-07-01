@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 
 type DeleteAccountResponse = {
   ok?: boolean;
@@ -8,12 +7,8 @@ type DeleteAccountResponse = {
 };
 
 export async function deleteAccount(): Promise<void> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(`${getApiBaseUrl()}/api/account`, {
+  const response = await fetchApi(`${getApiBaseUrl()}/api/account`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
     timeoutMs: 120000,
   });
 

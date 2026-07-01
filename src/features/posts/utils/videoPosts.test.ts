@@ -83,6 +83,24 @@ describe("findVideoPostForOpen", () => {
 });
 
 describe("filterVideoPosts", () => {
+  it("includes HLS-only videos", () => {
+    const hlsOnly: Post = {
+      id: "hls",
+      authorId: "u1",
+      postScore: 0,
+      likeCount: 0,
+      dislikeCount: 0,
+      shareCount: 0,
+      saveCount: 0,
+      commentCount: 0,
+      contentType: "video",
+      content: "",
+      hlsURL: "https://example.com/v.m3u8",
+    };
+
+    expect(filterVideoPosts([hlsOnly]).map((post) => post.id)).toEqual(["hls"]);
+  });
+
   it("excludes repost wrappers", () => {
     const posts: Post[] = [
       {

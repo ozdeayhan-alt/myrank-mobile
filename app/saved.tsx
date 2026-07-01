@@ -9,9 +9,16 @@ import { useSavedPosts } from "@/features/saved/hooks/useSavedPosts";
 
 export default function SavedScreen() {
   const { user } = useAuth();
-  const { posts, loading, error, refresh, isRefetching } = useSavedPosts(
-    user?.uid
-  );
+  const {
+    posts,
+    loading,
+    error,
+    refresh,
+    isRefetching,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useSavedPosts(user?.uid);
 
   const items = useMemo(
     (): FeedListItem[] =>
@@ -40,6 +47,9 @@ export default function SavedScreen() {
         isRefetching={isRefetching}
         engagementResetKey={`saved-${user?.uid ?? ""}`}
         currentUserId={user?.uid ?? null}
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        onLoadMore={fetchNextPage}
       />
   );
 }

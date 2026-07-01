@@ -1,7 +1,10 @@
 import { useCallback } from "react";
 import { Text, View } from "react-native";
 import { DoubleTapToLike } from "@/components/DoubleTapToLike";
-import { LikeHeartBurst } from "@/components/LikeHeartBurst";
+import {
+  LikeHeartBurst,
+  type VoteBurstDirection,
+} from "@/components/LikeHeartBurst";
 import type { Post } from "../types";
 import { postBodyText } from "../utils/postBodyText";
 import {
@@ -17,7 +20,8 @@ import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 
 type PostCardBodyProps = PostFeedMediaLayoutOptions & {
   post: Post;
-  heartBurstKey: number;
+  voteBurstKey: number;
+  voteBurstDirection: VoteBurstDirection;
   onLike: () => void;
   onLikeAnimated: () => void;
   onOpenVideo?: (postId: string) => void;
@@ -28,7 +32,8 @@ type PostCardBodyProps = PostFeedMediaLayoutOptions & {
 
 export function PostCardBody({
   post,
-  heartBurstKey,
+  voteBurstKey,
+  voteBurstDirection,
   onLike,
   onLikeAnimated,
   onOpenVideo,
@@ -110,7 +115,12 @@ export function PostCardBody({
         </DoubleTapToLike>
       )}
 
-      {!isRepostPost(post) ? <LikeHeartBurst burstKey={heartBurstKey} /> : null}
+      {!isRepostPost(post) ? (
+        <LikeHeartBurst
+          burstKey={voteBurstKey}
+          direction={voteBurstDirection}
+        />
+      ) : null}
     </View>
   );
 }

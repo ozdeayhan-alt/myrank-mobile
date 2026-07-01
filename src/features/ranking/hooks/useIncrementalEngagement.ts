@@ -34,7 +34,8 @@ function isEngagementLoaded(postId: string): boolean {
  */
 export function useIncrementalEngagement(
   postIds: string[],
-  resetKey?: string
+  resetKey?: string,
+  enabled = true
 ) {
   const knownIdsRef = useRef<Set<string>>(new Set());
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,6 +55,10 @@ export function useIncrementalEngagement(
   }, [resetKey]);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const allIds = idsKey ? idsKey.split(",") : [];
     const toFetch = allIds.filter((id) => {
       if (knownIdsRef.current.has(id)) {
@@ -86,7 +91,7 @@ export function useIncrementalEngagement(
       if (batch.length === 0) return;
 
       void (async () => {
-        try {
+        const loadBatch = async () => {
           const chunks = chunkArray(batch, BATCH_CHUNK_SIZE);
           const results = await Promise.all(
             chunks.map((chunk) => fetchBatchEngagement(chunk))
@@ -102,8 +107,18 @@ export function useIncrementalEngagement(
             knownIdsRef.current.add(id);
           }
           mergeBatch(merged);
+        };
+
+        try {
+          await loadBatch();
         } catch {
-          // Keep existing engagement state
+          if (cancelled) return;
+          try {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await loadBatch();
+          } catch {
+            // Keep existing engagement state
+          }
         }
       })();
     }, FETCH_DEBOUNCE_MS);
@@ -115,7 +130,7 @@ export function useIncrementalEngagement(
         debounceTimerRef.current = null;
       }
     };
-  }, [idsKey, mergeBatch, resetKey]);
+  }, [enabled, idsKey, mergeBatch, resetKey]);
 
   const getEngagement = useCallback((postId: string): EngagementStatus => {
     const stored = useEngagementStore.getState().engagements[postId];

@@ -11,6 +11,7 @@ export type OriginalPostSnapshot = {
   mediaURL?: string;
   hlsURL?: string;
   posterURL?: string;
+  thumbURL?: string;
   mediaWidth?: number;
   mediaHeight?: number;
 };
@@ -39,6 +40,7 @@ export type Post = {
   /** HLS manifest — reels için öncelikli kaynak */
   hlsURL?: string;
   posterURL?: string;
+  thumbURL?: string;
   mediaWidth?: number;
   mediaHeight?: number;
   hashtags?: string[];
@@ -53,6 +55,7 @@ export type CreatePostInput = {
   /** HLS manifest — reels için öncelikli kaynak */
   hlsURL?: string;
   posterURL?: string;
+  thumbURL?: string;
   mediaWidth?: number;
   mediaHeight?: number;
 };

@@ -1,4 +1,4 @@
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, RefreshControl, Text, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Stack, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,7 +11,7 @@ import { SPINNER_COLOR } from "@/lib/uiClasses";
 
 export default function MessagesInboxScreen() {
   const router = useRouter();
-  const { entries, loading, error } = useInbox();
+  const { entries, loading, error, refreshing, refresh } = useInbox();
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: messageTheme.inboxBg }}>
@@ -49,6 +49,9 @@ export default function MessagesInboxScreen() {
         <FlashList
           data={entries}
           keyExtractor={(item: InboxEntry) => item.conversationId}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={refresh} />
+          }
           renderItem={({ item }) => (
             <InboxRow
               entry={item}

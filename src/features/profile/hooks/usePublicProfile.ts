@@ -18,7 +18,8 @@ function resolveDisplayName(
   remote: PublicProfile | null | undefined,
   displayNameFallback?: string
 ): string {
-  if (remote?.displayName.trim()) return remote.displayName.trim();
+  const remoteName = remote?.displayName?.trim();
+  if (remoteName) return remoteName;
   if (displayNameFallback?.trim()) return displayNameFallback.trim();
   return userId ? `Kullanıcı ${userId.slice(0, 6)}` : DEFAULT_DISPLAY_NAME;
 }
@@ -27,21 +28,28 @@ function resolvePhotoURL(
   remote: PublicProfile | null | undefined,
   photoURLFallback?: string
 ): string {
-  if (remote?.photoURL.trim()) return remote.photoURL.trim();
+  const remotePhoto = remote?.photoURL?.trim();
+  if (remotePhoto) return remotePhoto;
   return photoURLFallback?.trim() ?? "";
 }
 
+type UsePublicProfileOptions = {
+  enabled?: boolean;
+};
+
 export function usePublicProfile(
   userId: string,
-  fallbacks: PublicProfileFallbacks = {}
+  fallbacks: PublicProfileFallbacks = {},
+  options: UsePublicProfileOptions = {}
 ) {
   const displayNameFallback = fallbacks.displayName;
   const photoURLFallback = fallbacks.photoURL;
+  const queryEnabled = options.enabled ?? true;
 
   const query = useQuery({
     queryKey: publicProfileQueryKey(userId),
     queryFn: () => getPublicProfile(userId),
-    enabled: Boolean(userId),
+    enabled: Boolean(userId) && queryEnabled,
     staleTime: 60_000,
   });
 

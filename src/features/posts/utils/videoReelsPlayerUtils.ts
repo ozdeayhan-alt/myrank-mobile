@@ -48,18 +48,25 @@ export function waitForPlayerReady(
   }
 
   return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(false), timeoutMs);
+    let settled = false;
+    const finish = (ready: boolean) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      sub.remove();
+      resolve(ready);
+    };
+
     const sub = player.addListener("statusChange", ({ status }) => {
       if (status === "readyToPlay") {
-        clearTimeout(timer);
-        sub.remove();
-        resolve(true);
+        finish(true);
       } else if (status === "error") {
-        clearTimeout(timer);
-        sub.remove();
-        resolve(false);
+        finish(false);
       }
     });
+    const timer = setTimeout(() => finish(false), timeoutMs);
   });
 }
 

@@ -12,38 +12,84 @@ import { useAuth } from "@/features/auth";
 import { triggerVoteHaptic } from "@/lib/voteFeedback";
 import {
   loadGaugeVoteMode,
-  saveGaugeVoteMode,
+  saveGaugeVoteModeDebounced,
   type GaugeVoteMode,
 } from "../lib/gaugeVoteModeStorage";
 import { useProfileVoteTap } from "../hooks/useProfileVoteTap";
 import { useProfileStore } from "../store/useProfileStore";
+import { ProfileVoteFountainProvider } from "./profileVoteFountainContext";
 
 export type { GaugeVoteMode } from "../lib/gaugeVoteModeStorage";
 
 export type VoteFlashDirection = "up" | "down" | null;
 
-const VOTE_FLASH_MS = 700;
+const VOTE_FLASH_MS = 450;
 
-type ProfileVoteContextValue = {
+export type VoteArrowSpawn = {
+  seq: number;
+  direction: "up" | "down";
+  count: number;
+};
+
+export type VoteButtonPulse = {
+  seq: number;
+  direction: "up" | "down";
+};
+
+type ProfileVoteActionsContextValue = {
   targetUserId: string;
   isOwnProfile: boolean;
-  displayTP: number;
-  voteFlash: VoteFlashDirection;
-  /** Son oy modu: null = nötr (henüz oy yok / ilk açılış) */
-  gaugeVoteMode: GaugeVoteMode;
   registerUp: () => void;
   registerDown: () => void;
   votesEnabled: boolean;
+  spawnVoteArrows: (direction: "up" | "down", count?: number) => void;
+  spawnButtonPulse: (direction: "up" | "down") => void;
 };
 
-const ProfileVoteContext = createContext<ProfileVoteContextValue | null>(null);
+type ProfileVoteDisplayContextValue = {
+  displayTP: number;
+  voteFlash: VoteFlashDirection;
+  voteBurstKey: number;
+  arrowSpawn: VoteArrowSpawn | null;
+  buttonPulseSeq: number;
+  lastButtonPulse: VoteButtonPulse | null;
+  gaugeVoteMode: GaugeVoteMode;
+  /** İlk Yükselt/Alçalt — tam merdiven fetch */
+  fullLadderRequested: boolean;
+};
 
-export function useProfileVoteContext(): ProfileVoteContextValue {
-  const ctx = useContext(ProfileVoteContext);
+type ProfileVoteContextValue = ProfileVoteActionsContextValue &
+  ProfileVoteDisplayContextValue;
+
+const ProfileVoteActionsContext =
+  createContext<ProfileVoteActionsContextValue | null>(null);
+const ProfileVoteDisplayContext =
+  createContext<ProfileVoteDisplayContextValue | null>(null);
+
+export function useProfileVoteActions(): ProfileVoteActionsContextValue {
+  const ctx = useContext(ProfileVoteActionsContext);
   if (!ctx) {
-    throw new Error("useProfileVoteContext must be used within ProfileVoteProvider");
+    throw new Error(
+      "useProfileVoteActions must be used within ProfileVoteProvider"
+    );
   }
   return ctx;
+}
+
+export function useProfileVoteDisplay(): ProfileVoteDisplayContextValue {
+  const ctx = useContext(ProfileVoteDisplayContext);
+  if (!ctx) {
+    throw new Error(
+      "useProfileVoteDisplay must be used within ProfileVoteProvider"
+    );
+  }
+  return ctx;
+}
+
+export function useProfileVoteContext(): ProfileVoteContextValue {
+  const actions = useProfileVoteActions();
+  const display = useProfileVoteDisplay();
+  return useMemo(() => ({ ...actions, ...display }), [actions, display]);
 }
 
 type ProfileVoteProviderProps = {
@@ -86,8 +132,34 @@ export function ProfileVoteProvider({
   });
 
   const [gaugeVoteMode, setGaugeVoteMode] = useState<GaugeVoteMode>(null);
+  const [fullLadderRequested, setFullLadderRequested] = useState(isOwnProfile);
   const [voteFlash, setVoteFlash] = useState<VoteFlashDirection>(null);
+  const [voteBurstKey, setVoteBurstKey] = useState(0);
+  const [arrowSpawn, setArrowSpawn] = useState<VoteArrowSpawn | null>(null);
+  const [buttonPulseSeq, setButtonPulseSeq] = useState(0);
+  const [lastButtonPulse, setLastButtonPulse] = useState<VoteButtonPulse | null>(
+    null
+  );
   const voteFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const arrowSpawnSeqRef = useRef(0);
+  const buttonPulseSeqRef = useRef(0);
+
+  const spawnVoteArrows = useCallback((direction: "up" | "down", count = 1) => {
+    const nextSeq = arrowSpawnSeqRef.current + 1;
+    arrowSpawnSeqRef.current = nextSeq;
+    setArrowSpawn({ seq: nextSeq, direction, count });
+  }, []);
+
+  const spawnButtonPulse = useCallback((direction: "up" | "down") => {
+    const nextSeq = buttonPulseSeqRef.current + 1;
+    buttonPulseSeqRef.current = nextSeq;
+    setButtonPulseSeq(nextSeq);
+    setLastButtonPulse({ seq: nextSeq, direction });
+  }, []);
+
+  useEffect(() => {
+    setFullLadderRequested(isOwnProfile);
+  }, [targetUserId, isOwnProfile]);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +178,7 @@ export function ProfileVoteProvider({
       clearTimeout(voteFlashTimerRef.current);
     }
     setVoteFlash(direction);
+    setVoteBurstKey((key) => key + 1);
     voteFlashTimerRef.current = setTimeout(() => {
       voteFlashTimerRef.current = null;
       setVoteFlash(null);
@@ -120,52 +193,95 @@ export function ProfileVoteProvider({
     };
   }, []);
 
-  const registerUpWithFeedback = useCallback(() => {
+  const castUpVote = useCallback(() => {
+    if (!votesEnabled) {
+      return;
+    }
     registerUp();
+    setFullLadderRequested(true);
     setGaugeVoteMode("up");
-    void saveGaugeVoteMode(targetUserId, "up");
+    saveGaugeVoteModeDebounced(targetUserId, "up");
+  }, [registerUp, votesEnabled, targetUserId]);
+
+  const castDownVote = useCallback(() => {
+    if (!votesEnabled) {
+      return;
+    }
+    registerDown();
+    setFullLadderRequested(true);
+    setGaugeVoteMode("down");
+    saveGaugeVoteModeDebounced(targetUserId, "down");
+  }, [registerDown, votesEnabled, targetUserId]);
+
+  const registerUpWithFeedback = useCallback(() => {
+    castUpVote();
     if (votesEnabled) {
       triggerVoteHaptic();
       flashVote("up");
+      spawnButtonPulse("up");
+      spawnVoteArrows("up", 1);
     }
-  }, [registerUp, votesEnabled, flashVote, targetUserId]);
+  }, [castUpVote, votesEnabled, flashVote, spawnButtonPulse, spawnVoteArrows]);
 
   const registerDownWithFeedback = useCallback(() => {
-    registerDown();
-    setGaugeVoteMode("down");
-    void saveGaugeVoteMode(targetUserId, "down");
+    castDownVote();
     if (votesEnabled) {
       triggerVoteHaptic();
       flashVote("down");
+      spawnButtonPulse("down");
+      spawnVoteArrows("down", 1);
     }
-  }, [registerDown, votesEnabled, flashVote, targetUserId]);
+  }, [castDownVote, votesEnabled, flashVote, spawnButtonPulse, spawnVoteArrows]);
 
-  const value = useMemo(
-    (): ProfileVoteContextValue => ({
+  const actionsValue = useMemo(
+    (): ProfileVoteActionsContextValue => ({
       targetUserId,
       isOwnProfile,
-      displayTP,
-      voteFlash,
-      gaugeVoteMode,
       registerUp: registerUpWithFeedback,
       registerDown: registerDownWithFeedback,
       votesEnabled,
+      spawnVoteArrows,
+      spawnButtonPulse,
     }),
     [
       targetUserId,
       isOwnProfile,
-      displayTP,
-      voteFlash,
-      gaugeVoteMode,
       registerUpWithFeedback,
       registerDownWithFeedback,
       votesEnabled,
+      spawnVoteArrows,
+      spawnButtonPulse,
+    ]
+  );
+
+  const displayValue = useMemo(
+    (): ProfileVoteDisplayContextValue => ({
+      displayTP,
+      voteFlash,
+      voteBurstKey,
+      arrowSpawn,
+      buttonPulseSeq,
+      lastButtonPulse,
+      gaugeVoteMode,
+      fullLadderRequested,
+    }),
+    [
+      displayTP,
+      voteFlash,
+      voteBurstKey,
+      arrowSpawn,
+      buttonPulseSeq,
+      lastButtonPulse,
+      gaugeVoteMode,
+      fullLadderRequested,
     ]
   );
 
   return (
-    <ProfileVoteContext.Provider value={value}>
-      {children}
-    </ProfileVoteContext.Provider>
+    <ProfileVoteActionsContext.Provider value={actionsValue}>
+      <ProfileVoteDisplayContext.Provider value={displayValue}>
+        <ProfileVoteFountainProvider>{children}</ProfileVoteFountainProvider>
+      </ProfileVoteDisplayContext.Provider>
+    </ProfileVoteActionsContext.Provider>
   );
 }

@@ -54,11 +54,16 @@ export function useExploreFeedInfinite(
     await queryClient.invalidateQueries({ queryKey: [...EXPLORE_KEY] });
   }, [queryClient]);
 
-  const fetchNextPage = () => {
+  const fetchNextPage = useCallback(() => {
     if (query.hasNextPage && !query.isFetchingNextPage && !query.isFetching) {
       void query.fetchNextPage();
     }
-  };
+  }, [
+    query.fetchNextPage,
+    query.hasNextPage,
+    query.isFetching,
+    query.isFetchingNextPage,
+  ]);
 
   const updatePostScore = useCallback(
     (postId: string, postScore: number, counts?: PostCounts) => {

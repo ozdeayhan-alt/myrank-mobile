@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import { rankingEnsureError } from "./rankingEnsureError";
 
 type EnsureRankingEntriesResponse = {
@@ -12,13 +11,11 @@ type EnsureRankingEntriesResponse = {
 export async function ensureRankingEntries(options?: {
   profileSaved?: boolean;
 }): Promise<EnsureRankingEntriesResponse> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(
+  const response = await fetchApi(
     `${getApiBaseUrl()}/api/profile/ensure-ranking-entries`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({}),

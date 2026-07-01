@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import type { EngagementStatus } from "../types";
 
 const DEFAULT_ENGAGEMENT: EngagementStatus = {
@@ -39,11 +38,9 @@ export function useUserEngagement(postId: string | null) {
 
     setLoading(true);
     try {
-      const token = await getApiAuthToken();
-      const response = await fetchWithTimeout(
+      const response = await fetchApi(
         `${getApiBaseUrl()}/api/interactions/engagement?postId=${encodeURIComponent(postId)}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
           timeoutMs: 20000,
         }
       );

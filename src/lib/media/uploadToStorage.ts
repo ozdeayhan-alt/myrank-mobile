@@ -142,7 +142,7 @@ export async function uploadFileToStorage(
   const auth = getFirebaseAuth();
 
   try {
-    let idToken = await auth.currentUser!.getIdToken(true);
+    let idToken = await auth.currentUser!.getIdToken(false);
 
     try {
       return await uploadViaFirebaseRest(

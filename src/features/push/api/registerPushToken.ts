@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 
 type RegisterPushTokenResponse = {
   ok?: boolean;
@@ -11,14 +10,12 @@ export async function registerPushToken(
   expoPushToken: string,
   platform: "ios" | "android"
 ): Promise<void> {
-  const token = await getApiAuthToken();
 
-  const response = await fetchWithTimeout(
+  const response = await fetchApi(
     `${getApiBaseUrl()}/api/push/register`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ expoPushToken, platform }),

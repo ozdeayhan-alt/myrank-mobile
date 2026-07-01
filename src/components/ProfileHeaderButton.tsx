@@ -7,7 +7,7 @@ export function ProfileHeaderButton() {
 
   return (
     <Pressable
-      className="pb-2 pl-2 pt-0"
+      className="px-1 pb-2 pt-0"
       onPress={openMenu}
       accessibilityLabel="Profil menüsü"
     >

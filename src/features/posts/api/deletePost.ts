@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 
 export type DeletePostResponse = {
   ok: boolean;
@@ -13,14 +12,10 @@ export type DeletePostResponse = {
 };
 
 export async function deletePost(postId: string): Promise<DeletePostResponse> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(
+  const response = await fetchApi(
     `${getApiBaseUrl()}/api/posts/${encodeURIComponent(postId)}`,
     {
       method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       timeoutMs: 30000,
     }
   );

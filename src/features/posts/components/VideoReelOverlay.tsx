@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/features/auth";
-import { LikeHeartBurst } from "@/components/LikeHeartBurst";
+import { LikeHeartBurst, type VoteBurstDirection } from "@/components/LikeHeartBurst";
 import { ProfileAvatar } from "@/features/profile/components/ProfileAvatar";
 import { navigateToAuthorProfile } from "@/features/profile/navigateToAuthorProfile";
 import { isSystemProfileUserId } from "@/lib/profile/isSystemProfile";
@@ -32,12 +32,17 @@ type VideoReelOverlayProps = {
   onScoreUpdate?: (postId: string, postScore: number) => void;
   /** Tab bar üstünde kalmak için; modalda varsayılan safe-area bottom */
   bottomInset?: number;
+  /** Flow satırı boyutu; verilmezse tam ekran (modal). */
+  layoutWidth?: number;
+  layoutHeight?: number;
 };
 
 export function VideoReelOverlay({
   post,
   onScoreUpdate,
   bottomInset,
+  layoutWidth,
+  layoutHeight,
 }: VideoReelOverlayProps) {
   const engagement = usePostEngagement(post.id);
   const patchEngagement = useEngagementStore((s) => s.patchEngagement);
@@ -48,10 +53,14 @@ export function VideoReelOverlay({
     [patchEngagement, post.id]
   );
   const { user } = useAuth();
-  const { width, height } = useWindowDimensions();
+  const windowDims = useWindowDimensions();
+  const width = layoutWidth ?? windowDims.width;
+  const height = layoutHeight ?? windowDims.height;
+  const isCellLayout = layoutHeight != null;
   const insets = useSafeAreaInsets();
   const resolvedBottomInset = bottomInset ?? insets.bottom;
   const openCommentSheet = useOpenCommentSheet();
+  const overlayRef = useRef<View>(null);
   const avatarRowRef = useRef<View>(null);
   const [voteBarBottom, setVoteBarBottom] = useState<number | null>(null);
 
@@ -83,15 +92,24 @@ export function VideoReelOverlay({
     onScoreUpdate,
   });
 
-  const [heartBurstKey, setHeartBurstKey] = useState(0);
-  const triggerLikeHeart = useCallback(() => {
-    setHeartBurstKey((k) => k + 1);
+  const [voteBurstKey, setVoteBurstKey] = useState(0);
+  const [voteBurstDirection, setVoteBurstDirection] =
+    useState<VoteBurstDirection>("up");
+
+  const triggerVoteBurst = useCallback((direction: VoteBurstDirection) => {
+    setVoteBurstDirection(direction);
+    setVoteBurstKey((k) => k + 1);
   }, []);
 
   const handleLikePress = useCallback(() => {
     handleLike();
-    triggerLikeHeart();
-  }, [handleLike, triggerLikeHeart]);
+    triggerVoteBurst("up");
+  }, [handleLike, triggerVoteBurst]);
+
+  const handleDislikePress = useCallback(() => {
+    handleDislike();
+    triggerVoteBurst("down");
+  }, [handleDislike, triggerVoteBurst]);
 
   const caption = post.content?.trim();
   const displayName = resolvePostAuthorDisplayName(post);
@@ -103,10 +121,27 @@ export function VideoReelOverlay({
     !isSystemProfileUserId(post.authorId);
 
   const syncVoteBarPosition = useCallback(() => {
-    avatarRowRef.current?.measureInWindow((_x, y) => {
+    const avatarNode = avatarRowRef.current;
+    const overlayNode = overlayRef.current;
+    if (!avatarNode) {
+      return;
+    }
+
+    if (isCellLayout && overlayNode) {
+      avatarNode.measureLayout(
+        overlayNode,
+        (_x, y) => {
+          setVoteBarBottom(height - y + VOTE_ABOVE_AVATAR_GAP);
+        },
+        () => {}
+      );
+      return;
+    }
+
+    avatarNode.measureInWindow((_x, y) => {
       setVoteBarBottom(height - y + VOTE_ABOVE_AVATAR_GAP);
     });
-  }, [height]);
+  }, [height, isCellLayout]);
 
   useEffect(() => {
     syncVoteBarPosition();
@@ -114,17 +149,18 @@ export function VideoReelOverlay({
 
   return (
     <View
+      ref={overlayRef}
       pointerEvents="box-none"
       style={{ width, height, zIndex: 20 }}
       className="absolute inset-0"
     >
-      <LikeHeartBurst burstKey={heartBurstKey} />
+      <LikeHeartBurst burstKey={voteBurstKey} direction={voteBurstDirection} />
 
       <View
         pointerEvents="none"
         style={{
           position: "absolute",
-          top: insets.top + 10,
+          top: insets.top + (isCellLayout ? 16 : 10),
           right: 12,
           zIndex: 22,
         }}
@@ -159,7 +195,7 @@ export function VideoReelOverlay({
             variant="reels"
             disabled={loading}
             onUp={handleLikePress}
-            onDown={handleDislike}
+            onDown={handleDislikePress}
           />
         </View>
       ) : null}

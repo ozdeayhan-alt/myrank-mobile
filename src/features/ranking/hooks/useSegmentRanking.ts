@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { getFilterSegmentLabel } from "@/features/filters/utils/segmentLabel";
 import type { UserMetadata } from "@/features/profile/types";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
-import { enrichRankingPhotos } from "../api/enrichRankingPhotos";
 import {
   fetchRankingEntries,
   RANKING_LIST_MAX,
@@ -13,8 +12,7 @@ export const segmentRankingQueryKey = (filters: UserMetadata | null) =>
   ["ranking", "segment", getFilterSegmentLabel(filters)] as const;
 
 async function fetchSegmentRanking(filters: UserMetadata | null) {
-  const rows = await fetchRankingEntries(filters, RANKING_LIST_MAX);
-  return enrichRankingPhotos(rows);
+  return fetchRankingEntries(filters, RANKING_LIST_MAX);
 }
 
 export function useSegmentRanking(filters: UserMetadata | null) {

@@ -30,9 +30,8 @@ export default function StoryViewScreen() {
   }, [router]);
 
   const handleStoryViewed = useCallback((storyId: string) => {
-    void markStorySeen(storyId).then(() => {
-      void useStoriesRingStore.getState().reload();
-    });
+    useStoriesRingStore.getState().markStorySeenLocally(storyId);
+    void markStorySeen(storyId);
   }, []);
 
   const load = useCallback(async () => {
@@ -80,6 +79,7 @@ export default function StoryViewScreen() {
       key={`${initialIndex}-${stories.map((s) => s.id).join(",")}`}
       stories={stories}
       initialIndex={initialIndex}
+      currentUserId={user?.uid ?? null}
       onClose={handleClose}
       onStoryViewed={handleStoryViewed}
     />

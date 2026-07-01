@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import { StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native";
 import Animated, {
@@ -8,13 +9,23 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { FERRARI_RED, VOTE_UP_BLUE } from "@/features/profile/components/profileFollowButtonTheme";
+
+export type VoteBurstDirection = "heart" | "up" | "down";
 
 type LikeHeartBurstProps = {
   burstKey: number;
+  direction?: VoteBurstDirection;
   style?: StyleProp<ViewStyle>;
 };
 
-export function LikeHeartBurst({ burstKey, style }: LikeHeartBurstProps) {
+const ARROW_SIZE = 64;
+
+export function LikeHeartBurst({
+  burstKey,
+  direction = "heart",
+  style,
+}: LikeHeartBurstProps) {
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
 
@@ -31,7 +42,7 @@ export function LikeHeartBurst({ burstKey, style }: LikeHeartBurstProps) {
     opacity.value = withDelay(550, withTiming(0, { duration: 280 }));
   }, [burstKey, opacity, scale]);
 
-  const heartStyle = useAnimatedStyle(() => ({
+  const burstStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
     opacity: opacity.value,
   }));
@@ -39,15 +50,31 @@ export function LikeHeartBurst({ burstKey, style }: LikeHeartBurstProps) {
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.heartWrap, style, heartStyle]}
+      style={[styles.wrap, style, burstStyle]}
     >
-      <Text style={styles.heart}>❤️</Text>
+      {direction === "up" ? (
+        <Ionicons
+          name="arrow-up"
+          size={ARROW_SIZE}
+          color={VOTE_UP_BLUE}
+          style={styles.arrowShadow}
+        />
+      ) : direction === "down" ? (
+        <Ionicons
+          name="arrow-down"
+          size={ARROW_SIZE}
+          color={FERRARI_RED}
+          style={styles.arrowShadow}
+        />
+      ) : (
+        <Text style={styles.heart}>❤️</Text>
+      )}
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  heartWrap: {
+  wrap: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
@@ -55,6 +82,11 @@ const styles = StyleSheet.create({
   },
   heart: {
     fontSize: 58,
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  arrowShadow: {
     textShadowColor: "rgba(0,0,0,0.35)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,

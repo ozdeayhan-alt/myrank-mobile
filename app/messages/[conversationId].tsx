@@ -50,7 +50,7 @@ export default function ConversationScreen() {
     });
   }, []);
 
-  const { messages, loading, error } = useConversationMessages(
+  const { messages, loading, error, refetch } = useConversationMessages(
     conversationId ?? null
   );
 
@@ -78,13 +78,14 @@ export default function ConversationScreen() {
       setSending(true);
       try {
         await sendMessageApi(conversationId, input);
+        await refetch({ silent: true });
       } catch (err) {
         Alert.alert("Mesaj gönderilemedi", getUserFacingErrorMessage(err));
       } finally {
         setSending(false);
       }
     },
-    [conversationId]
+    [conversationId, refetch]
   );
 
   const handleComposerFocus = useCallback(() => {

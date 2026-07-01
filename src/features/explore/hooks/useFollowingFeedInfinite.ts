@@ -30,7 +30,7 @@ export function useFollowingFeedInfinite(enabled = true) {
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.cursor : undefined,
     staleTime: HOME_FEED_STALE_MS,
-    refetchOnMount: true,
+    refetchOnMount: false,
     enabled,
   });
 
@@ -52,7 +52,7 @@ export function useFollowingFeedInfinite(enabled = true) {
     await queryClient.invalidateQueries({ queryKey: [...HOME_FOLLOWING_KEY] });
   }, [queryClient]);
 
-  const fetchNextPage = () => {
+  const fetchNextPage = useCallback(() => {
     if (
       followingQuery.hasNextPage &&
       !followingQuery.isFetchingNextPage &&
@@ -60,7 +60,12 @@ export function useFollowingFeedInfinite(enabled = true) {
     ) {
       void followingQuery.fetchNextPage();
     }
-  };
+  }, [
+    followingQuery.fetchNextPage,
+    followingQuery.hasNextPage,
+    followingQuery.isFetching,
+    followingQuery.isFetchingNextPage,
+  ]);
 
   const updatePostScore = useCallback(
     (postId: string, postScore: number, counts?: PostCounts) => {

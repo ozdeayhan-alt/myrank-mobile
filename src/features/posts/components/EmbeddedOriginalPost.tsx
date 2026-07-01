@@ -10,6 +10,7 @@ import {
 } from "../utils/resolvePostAuthor";
 import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 import { isRepostPost } from "../utils/repostUtils";
+import { FeedStreamMedia } from "./FeedStreamMedia";
 import { PostFeedMedia } from "./PostFeedMedia";
 import { getContentTypeLabel } from "../constants/contentTypeLabels";
 import { isVideoPost } from "../utils/videoPosts";
@@ -19,6 +20,8 @@ type EmbeddedOriginalPostProps = PostFeedMediaLayoutOptions & {
   onOpenVideo?: (postId: string) => void;
   variant?: "feed" | "compact";
   currentUserId?: string | null;
+  streamMedia?: boolean;
+  imagePriority?: "low" | "normal" | "high";
 };
 
 function postBodyText(post: Post): string | null {
@@ -36,6 +39,8 @@ export function EmbeddedOriginalPost({
   currentUserId = null,
   listHorizontalInset,
   mediaEdgeBleed,
+  streamMedia = false,
+  imagePriority = "normal",
 }: EmbeddedOriginalPostProps) {
   const compact = variant === "compact";
   const router = useRouter();
@@ -98,12 +103,26 @@ export function EmbeddedOriginalPost({
         </View>
       ) : null}
 
-      <PostFeedMedia
-        post={post}
-        variant={variant}
-        listHorizontalInset={listHorizontalInset}
-        mediaEdgeBleed={mediaEdgeBleed}
-      />
+      {streamMedia ? (
+        <FeedStreamMedia
+          post={post}
+          imagePriority={imagePriority}
+          onOpenVideo={() => {
+            if (isVideoPost(post) && post.id) {
+              onOpenVideo?.(post.id);
+            }
+          }}
+          listHorizontalInset={listHorizontalInset}
+          mediaEdgeBleed={mediaEdgeBleed}
+        />
+      ) : (
+        <PostFeedMedia
+          post={post}
+          variant={variant}
+          listHorizontalInset={listHorizontalInset}
+          mediaEdgeBleed={mediaEdgeBleed}
+        />
+      )}
 
       {bodyText && post.contentType !== "tweet" ? (
         <View className="px-3 py-2">

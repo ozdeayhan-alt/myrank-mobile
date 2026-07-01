@@ -3,8 +3,7 @@ import { StoryPhotoDisplay } from "@/features/media/components/StoryPhotoDisplay
 import { LinearGradient } from "expo-linear-gradient";
 import { useEventListener } from "expo";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import {
   STORY_IMAGE_DURATION_MS,
@@ -28,7 +27,6 @@ export function StoryMediaLayer({
   onPlaybackEnd,
 }: StoryMediaLayerProps) {
   const { width, height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
   const [videoVisible, setVideoVisible] = useState(false);
   const isVideo = story.mediaType === "video";
 
@@ -94,9 +92,6 @@ export function StoryMediaLayer({
     return () => clearTimeout(fallbackTimer);
   }, [active, isVideo, onDurationResolved, onPlaybackReady, story.id]);
 
-  const initials =
-    story.authorDisplayName.trim().charAt(0).toUpperCase() || "?";
-
   return (
     <View style={{ width, height }}>
       {isVideo ? (
@@ -133,31 +128,6 @@ export function StoryMediaLayer({
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-
-      <View
-        pointerEvents="none"
-        className="absolute left-4 flex-row items-center"
-        style={{ bottom: insets.bottom + 24 }}
-      >
-        {story.authorPhotoURL ? (
-          <Image
-            source={{ uri: story.authorPhotoURL }}
-            className="mr-3 h-10 w-10 rounded-full border-2 border-white"
-          />
-        ) : (
-          <View className="mr-3 h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-gray-400">
-            <Text className="text-sm font-bold text-white">{initials}</Text>
-          </View>
-        )}
-        <View className="flex-1 pr-6">
-          <Text className="text-base font-semibold text-white">
-            {story.authorDisplayName}
-          </Text>
-          {story.caption ? (
-            <Text className="mt-0.5 text-sm text-white/90">{story.caption}</Text>
-          ) : null}
-        </View>
-      </View>
     </View>
   );
 }

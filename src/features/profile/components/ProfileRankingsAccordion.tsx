@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -6,6 +6,8 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useQueryClient } from "@tanstack/react-query";
+import { useFeedRefreshStore } from "@/features/posts/store/useFeedRefreshStore";
 import type { UserMetadata } from "../types";
 import { ui } from "@/lib/uiClasses";
 import { ensureRankingEntries } from "../api/ensureRankingEntries";
@@ -15,6 +17,8 @@ import {
 } from "../api/fetchRankingSnapshotMeta";
 import { formatProfileRankingSentence } from "../utils/formatProfileRankingSentence";
 import { useProfileRankings } from "../hooks/useProfileRankings";
+import { profileSummaryQueryKey } from "../hooks/useProfileSummary";
+import { useProfileExpandableCardHeaderHeight } from "../hooks/useProfileExpandableCardHeaderHeight";
 import { ProfileExpandableCard } from "@/components/ProfileExpandableCard";
 
 type ProfileRankingsAccordionProps = {
@@ -59,17 +63,26 @@ function ProfileRankingsAccordionInner({
   metadata,
   isOwnProfile = false,
 }: ProfileRankingsAccordionProps) {
+  const headerHeight = useProfileExpandableCardHeaderHeight();
+  const queryClient = useQueryClient();
+  const feedVersion = useFeedRefreshStore((s) => s.version);
   const [expanded, setExpanded] = useState(false);
   const [officialUpdatedLabel, setOfficialUpdatedLabel] = useState<string | null>(
     null
   );
   const [ensureWarning, setEnsureWarning] = useState<string | null>(null);
   const [ensuring, setEnsuring] = useState(false);
-  const { rankings, loading, error, refresh, isRefreshing } = useProfileRankings(
+  const { rankings, loading, error, isRefreshing } = useProfileRankings(
     userId,
     metadata,
     expanded
   );
+
+  const refreshRankings = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: profileSummaryQueryKey(userId, feedVersion),
+    });
+  }, [feedVersion, queryClient, userId]);
 
   const loadSnapshotMeta = useCallback(async () => {
     try {
@@ -95,12 +108,12 @@ function ProfileRankingsAccordionInner({
           );
         }
       }
-      await refresh();
+      await refreshRankings();
       await loadSnapshotMeta();
     } finally {
       setEnsuring(false);
     }
-  }, [isOwnProfile, refresh, loadSnapshotMeta]);
+  }, [isOwnProfile, refreshRankings, loadSnapshotMeta]);
 
   useEffect(() => {
     if (expanded) {
@@ -127,6 +140,7 @@ function ProfileRankingsAccordionInner({
       onToggle={handleToggle}
       icon="podium-outline"
       accessibilityLabel={title}
+      headerHeight={headerHeight}
     >
       {loading ? (
         <ActivityIndicator className="my-6" color="#374151" />

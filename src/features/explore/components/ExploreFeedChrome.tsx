@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { Text, View } from "react-native";
+import { HomeFeedContentFilter } from "@/components/HomeFeedContentFilter";
 import { FilterChipsBar } from "@/features/filters/components/FilterChipsBar";
 import type { FilterFieldKey } from "@/features/filters/config/filterFields";
 import { formatFilterDisplayTitle } from "@/features/filters/utils/formatFilterDisplayTitle";
+import type { HomeFeedContentFilter as HomeFeedContentFilterValue } from "@/features/posts/store/useHomeFeedContentStore";
 import type { UserMetadata } from "@/features/profile/types";
 import { ExploreSearchBarPlaceholder } from "@/features/search/components/ExploreSearchBarPlaceholder";
 
@@ -12,6 +14,8 @@ export type ExploreFeedChromeProps = {
   onOpenField: (field: FilterFieldKey) => void;
   onResetToGlobal?: () => void;
   onResetToProfile?: () => void;
+  contentFilter: HomeFeedContentFilterValue;
+  onContentFilterChange: (filter: HomeFeedContentFilterValue) => void;
 };
 
 export function ExploreFeedChrome({
@@ -20,6 +24,8 @@ export function ExploreFeedChrome({
   onOpenField,
   onResetToGlobal,
   onResetToProfile,
+  contentFilter,
+  onContentFilterChange,
 }: ExploreFeedChromeProps) {
   const filterTitle = useMemo(
     () => formatFilterDisplayTitle(filters, "explore"),
@@ -41,6 +47,12 @@ export function ExploreFeedChrome({
         <Text className="flex-1 text-sm font-semibold leading-5 text-gray-900">
           {filterTitle}
         </Text>
+      </View>
+      <View className="px-4 pt-3">
+        <HomeFeedContentFilter
+          contentFilter={contentFilter}
+          onContentFilterChange={onContentFilterChange}
+        />
       </View>
     </View>
   );

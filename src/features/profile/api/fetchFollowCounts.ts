@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import type { FollowCounts } from "../types/followLists";
 
 type FollowCountsResponse = FollowCounts & {
@@ -9,14 +8,10 @@ type FollowCountsResponse = FollowCounts & {
 };
 
 export async function fetchFollowCounts(): Promise<FollowCounts> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(
+  const response = await fetchApi(
     `${getApiBaseUrl()}/api/follows/me/counts`,
     {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       timeoutMs: 15000,
     }
   );

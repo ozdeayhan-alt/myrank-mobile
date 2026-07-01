@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 
 export type ReportReason =
   | "spam"
@@ -19,11 +18,9 @@ export async function reportContent(input: {
   reason: ReportReason;
   details?: string;
 }): Promise<void> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(`${getApiBaseUrl()}/api/reports`, {
+  const response = await fetchApi(`${getApiBaseUrl()}/api/reports`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(input),

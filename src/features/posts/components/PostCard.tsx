@@ -1,3 +1,4 @@
+import type { VoteBurstDirection } from "@/components/LikeHeartBurst";
 import { memo, useCallback, useState } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 import type { EngagementStatus } from "@/features/ranking/types";
@@ -8,6 +9,7 @@ import type { Post } from "../types";
 import { EditPostTextModal } from "./EditPostTextModal";
 import { PostCardActionBar } from "./PostCardActionBar";
 import { PostCardBody } from "./PostCardBody";
+import { PostCardOwnerSheets } from "./PostCardOwnerSheets";
 import { useOpenCommentSheet } from "../hooks/useOpenCommentSheet";
 import { PostHeader } from "./PostHeader";
 import { PostShareModals } from "./PostShareModals";
@@ -36,7 +38,9 @@ export const PostCard = memo(function PostCard({
   mediaImagePriority = "normal",
 }: PostCardProps) {
   const isOwner = Boolean(currentUserId && post.authorId === currentUserId);
-  const [heartBurstKey, setHeartBurstKey] = useState(0);
+  const [voteBurstKey, setVoteBurstKey] = useState(0);
+  const [voteBurstDirection, setVoteBurstDirection] =
+    useState<VoteBurstDirection>("up");
   const openCommentSheet = useOpenCommentSheet();
 
   const {
@@ -44,8 +48,21 @@ export const PostCard = memo(function PostCard({
     editOpen,
     setEditOpen,
     ownerActionLoading,
+    ownerMenuOpen,
+    moreMenuOpen,
+    deleteConfirmOpen,
+    reportMenuOpen,
+    setOwnerMenuOpen,
+    setMoreMenuOpen,
+    setDeleteConfirmOpen,
+    setReportMenuOpen,
     handleOwnerMenuPress,
     handleMoreMenuPress,
+    handleEditFromMenu,
+    handleRequestDelete,
+    handleOpenReportMenu,
+    handleConfirmDelete,
+    handleReportReason,
     handleEditSave,
   } = usePostCardOwnerActions({
     post,
@@ -82,18 +99,20 @@ export const PostCard = memo(function PostCard({
     onScoreUpdate,
   });
 
-  const triggerLikeHeart = useCallback(() => {
-    setHeartBurstKey((k) => k + 1);
+  const triggerVoteBurst = useCallback((direction: VoteBurstDirection) => {
+    setVoteBurstDirection(direction);
+    setVoteBurstKey((k) => k + 1);
   }, []);
 
   const handleLikePress = useCallback(() => {
     handleLike();
-    triggerLikeHeart();
-  }, [handleLike, triggerLikeHeart]);
+    triggerVoteBurst("up");
+  }, [handleLike, triggerVoteBurst]);
 
   const handleDislikePress = useCallback(() => {
     handleDislike();
-  }, [handleDislike]);
+    triggerVoteBurst("down");
+  }, [handleDislike, triggerVoteBurst]);
 
   return (
     <>
@@ -112,9 +131,10 @@ export const PostCard = memo(function PostCard({
 
         <PostCardBody
           post={displayPost}
-          heartBurstKey={heartBurstKey}
+          voteBurstKey={voteBurstKey}
+          voteBurstDirection={voteBurstDirection}
           onLike={handleLike}
-          onLikeAnimated={triggerLikeHeart}
+          onLikeAnimated={() => triggerVoteBurst("up")}
           onOpenVideo={onOpenVideo}
           currentUserId={currentUserId}
           mediaImagePriority={mediaImagePriority}
@@ -151,6 +171,24 @@ export const PostCard = memo(function PostCard({
           onSave={handleEditSave}
         />
       ) : null}
+
+      <PostCardOwnerSheets
+        post={post}
+        ownerMenuOpen={ownerMenuOpen}
+        moreMenuOpen={moreMenuOpen}
+        deleteConfirmOpen={deleteConfirmOpen}
+        reportMenuOpen={reportMenuOpen}
+        ownerActionLoading={ownerActionLoading}
+        onCloseOwnerMenu={() => setOwnerMenuOpen(false)}
+        onCloseMoreMenu={() => setMoreMenuOpen(false)}
+        onCloseDeleteConfirm={() => setDeleteConfirmOpen(false)}
+        onCloseReportMenu={() => setReportMenuOpen(false)}
+        onEdit={handleEditFromMenu}
+        onRequestDelete={handleRequestDelete}
+        onConfirmDelete={() => void handleConfirmDelete()}
+        onOpenReportMenu={handleOpenReportMenu}
+        onReportReason={handleReportReason}
+      />
 
       <PostShareModals
         post={post}

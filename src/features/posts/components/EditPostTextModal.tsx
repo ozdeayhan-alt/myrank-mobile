@@ -1,19 +1,24 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { SPINNER_COLOR, ui } from "@/lib/uiClasses";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SPINNER_COLOR } from "@/lib/uiClasses";
 import {
   POST_CAPTION_MAX_LENGTH,
   TWEET_MAX_LENGTH,
 } from "../constants";
 import { CONTENT_TYPE_LABELS } from "../constants/contentTypeLabels";
 import type { PostContentType } from "../types";
+
+const DONE_BLUE = "#0095F6";
 
 type EditPostTextModalProps = {
   visible: boolean;
@@ -43,6 +48,7 @@ export function EditPostTextModal({
   onClose,
   onSave,
 }: EditPostTextModalProps) {
+  const insets = useSafeAreaInsets();
   const [text, setText] = useState(initialContent);
   const maxLength = maxLengthForType(contentType);
 
@@ -56,55 +62,75 @@ export function EditPostTextModal({
     <Modal
       visible={visible}
       animationType="slide"
-      transparent
       onRequestClose={onClose}
     >
-      <View className="flex-1 justify-end bg-black/40">
-        <View className="max-h-[85%] rounded-t-3xl bg-white px-6 pb-10 pt-6">
-          <Text className="mb-1 text-lg font-bold text-gray-900">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1 bg-white"
+        style={{ paddingTop: insets.top }}
+      >
+        <View className="flex-row items-center justify-between border-b border-gray-100 px-4 py-3">
+          <Pressable
+            onPress={onClose}
+            disabled={submitting}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="İptal"
+            className="min-w-[72px]"
+          >
+            <Text className="text-base text-gray-600">İptal</Text>
+          </Pressable>
+
+          <Text className="text-base font-semibold text-gray-900">
             Metni düzenle
           </Text>
-          <Text className="mb-4 text-sm text-gray-500">
-            {contentType === "tweet"
-              ? `${CONTENT_TYPE_LABELS.tweet} metnini güncelleyin.`
-              : "Medya aynı kalır; yalnızca açıklama değişir."}
-          </Text>
+
+          <Pressable
+            onPress={() => onSave(text)}
+            disabled={submitting}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Bitti"
+            className="min-w-[72px] items-end"
+          >
+            {submitting ? (
+              <ActivityIndicator size="small" color={DONE_BLUE} />
+            ) : (
+              <Text
+                className="text-base font-semibold"
+                style={{ color: DONE_BLUE }}
+              >
+                Bitti
+              </Text>
+            )}
+          </Pressable>
+        </View>
+
+        <View className="flex-1 px-4 pt-4">
+          {contentType !== "tweet" ? (
+            <Text className="mb-3 text-sm text-gray-500">
+              Medya aynı kalır; yalnızca açıklama değişir.
+            </Text>
+          ) : null}
 
           <TextInput
-            className="mb-2 min-h-[120px] rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
+            className="min-h-[160px] flex-1 text-base leading-6 text-gray-900"
             placeholder={placeholderForType(contentType)}
             placeholderTextColor="#9CA3AF"
             multiline
+            autoFocus
             value={text}
             onChangeText={setText}
             editable={!submitting}
             maxLength={maxLength}
+            textAlignVertical="top"
           />
-          <Text className="mb-4 text-right text-xs text-gray-400">
+
+          <Text className="py-3 text-right text-xs text-gray-400">
             {text.length}/{maxLength}
           </Text>
-
-          <Pressable
-            className={`mb-3 ${ui.btnPrimary} ${submitting ? "opacity-60" : ""}`}
-            onPress={() => onSave(text)}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color={SPINNER_COLOR} />
-            ) : (
-              <Text className={ui.btnPrimaryText}>Kaydet</Text>
-            )}
-          </Pressable>
-
-          <Pressable
-            className="items-center py-2"
-            onPress={onClose}
-            disabled={submitting}
-          >
-            <Text className="font-medium text-gray-500">İptal</Text>
-          </Pressable>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

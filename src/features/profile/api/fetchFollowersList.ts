@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import type { FollowListResponse } from "../types/followLists";
 
 type FetchFollowersListParams = {
@@ -12,19 +11,15 @@ export async function fetchFollowersList({
   cursor = null,
   limit = 30,
 }: FetchFollowersListParams = {}) {
-  const token = await getApiAuthToken();
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
   if (limit) params.set("limit", String(limit));
 
   const query = params.toString();
-  const response = await fetchWithTimeout(
+  const response = await fetchApi(
     `${getApiBaseUrl()}/api/follows/me/followers${query ? `?${query}` : ""}`,
     {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       timeoutMs: 20000,
     }
   );

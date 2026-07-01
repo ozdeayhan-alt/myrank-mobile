@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -18,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { STORY_IMAGE_DURATION_MS, type Story } from "../constants/types";
 import { StoryMediaLayer } from "./StoryMediaLayer";
 import { StoryProgressBar } from "./StoryProgressBar";
+import { StoryViewerOverlay } from "./StoryViewerOverlay";
 
 const DISMISS_DRAG_THRESHOLD = 80;
 const DISMISS_VELOCITY_THRESHOLD = 900;
@@ -25,6 +25,7 @@ const DISMISS_VELOCITY_THRESHOLD = 900;
 type StoryViewerProps = {
   stories: Story[];
   initialIndex?: number;
+  currentUserId?: string | null;
   onClose?: () => void;
   onStoryViewed?: (storyId: string) => void;
 };
@@ -32,12 +33,14 @@ type StoryViewerProps = {
 export function StoryViewer({
   stories,
   initialIndex = 0,
+  currentUserId = null,
   onClose,
   onStoryViewed,
 }: StoryViewerProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [index, setIndex] = useState(initialIndex);
+  const [storyItems, setStoryItems] = useState(stories);
   const [playbackReady, setPlaybackReady] = useState(false);
   const [slideDurationMs, setSlideDurationMs] = useState(STORY_IMAGE_DURATION_MS);
   const onCloseRef = useRef(onClose);
@@ -49,7 +52,11 @@ export function StoryViewer({
   onCloseRef.current = onClose;
   onStoryViewedRef.current = onStoryViewed;
 
-  const story = stories[index] ?? null;
+  useEffect(() => {
+    setStoryItems(stories);
+  }, [stories]);
+
+  const story = storyItems[index] ?? null;
 
   const markStoryViewed = useCallback((storyId: string) => {
     if (markedStoryIdsRef.current.has(storyId)) {
@@ -73,20 +80,28 @@ export function StoryViewer({
 
   const goNext = useCallback(() => {
     setIndex((current) => {
-      const currentStory = stories[current];
+      const currentStory = storyItems[current];
       if (currentStory) {
         markStoryViewed(currentStory.id);
       }
-      if (current >= stories.length - 1) {
+      if (current >= storyItems.length - 1) {
         onCloseRef.current?.();
         return current;
       }
       return current + 1;
     });
-  }, [markStoryViewed, stories]);
+  }, [markStoryViewed, storyItems]);
 
   const goPrev = useCallback(() => {
     setIndex((current) => Math.max(0, current - 1));
+  }, []);
+
+  const handleViewCountChange = useCallback((storyId: string, viewCount: number) => {
+    setStoryItems((items) =>
+      items.map((item) =>
+        item.id === storyId ? { ...item, viewCount } : item
+      )
+    );
   }, []);
 
   useEffect(() => {
@@ -152,14 +167,14 @@ export function StoryViewer({
 
   const progress = useMemo(
     () =>
-      stories.map((item, itemIndex) => ({
+      storyItems.map((item, itemIndex) => ({
         id: item.id,
         active: itemIndex === index,
         completed: itemIndex < index,
         durationMs:
           itemIndex === index ? slideDurationMs : STORY_IMAGE_DURATION_MS,
       })),
-    [index, slideDurationMs, stories]
+    [index, slideDurationMs, storyItems]
   );
 
   if (!story) {
@@ -194,22 +209,19 @@ export function StoryViewer({
             ))}
           </View>
 
-          {onClose ? (
-            <Pressable
-              className="absolute z-10 rounded-full bg-black/40 px-3 py-1"
-              style={{ top: insets.top + 24, right: 12 }}
-              onPress={dismissViewer}
-            >
-              <Text className="text-sm font-semibold text-white">Kapat</Text>
-            </Pressable>
-          ) : null}
-
           <StoryMediaLayer
             story={story}
             active
             onPlaybackReady={handlePlaybackReady}
             onDurationResolved={handleDurationResolved}
             onPlaybackEnd={handlePlaybackEnd}
+          />
+
+          <StoryViewerOverlay
+            story={story}
+            currentUserId={currentUserId}
+            active={playbackReady}
+            onViewCountChange={handleViewCountChange}
           />
 
           <View className="absolute inset-0 z-20 flex-row">

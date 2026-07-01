@@ -1,34 +1,35 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import type { RankingLadderResult } from "@/features/profile/api/fetchRankingLadder";
 import type { PublicProfile } from "@/features/profile/api/getPublicProfile";
+import type { CategoryRanking } from "@/features/profile/api/fetchProfileRankings";
 import type { FeedPageResult } from "@/features/posts/api/fetchFeedPage";
 import { applyFeedPageEngagements } from "@/features/posts/api/fetchFeedPage";
+import { sanitizeApiPublicProfile } from "@/features/profile/api/profileDocParsing";
 
 export type ProfileSummaryResult = {
   profile: PublicProfile | null;
+  rankings: CategoryRanking[];
+  ladderSegmentKey: string;
   ladderSnapshot: RankingLadderResult;
+  ladderSnapshotsBySegmentKey?: Record<string, RankingLadderResult>;
   postsPage: FeedPageResult;
 };
 
 type ProfileSummaryResponse = ProfileSummaryResult & {
   ok: boolean;
   error?: string;
+  ladderSegmentKey?: string;
 };
 
 export async function fetchProfileSummary(
   userId: string,
   postsLimit = 15
 ): Promise<ProfileSummaryResult> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(
+  const response = await fetchApi(
     `${getApiBaseUrl()}/api/profile/${encodeURIComponent(userId)}/summary?postsLimit=${postsLimit}`,
     {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       timeoutMs: 25000,
     }
   );
@@ -44,8 +45,11 @@ export async function fetchProfileSummary(
   }
 
   return {
-    profile: data.profile,
+    profile: data.profile ? sanitizeApiPublicProfile(data.profile) : null,
+    rankings: data.rankings ?? [],
+    ladderSegmentKey: data.ladderSegmentKey ?? "global",
     ladderSnapshot: data.ladderSnapshot,
+    ladderSnapshotsBySegmentKey: data.ladderSnapshotsBySegmentKey,
     postsPage: data.postsPage,
   };
 }

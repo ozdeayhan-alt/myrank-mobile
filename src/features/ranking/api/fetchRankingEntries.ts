@@ -1,132 +1,64 @@
-import {
-  collection,
-  getDocs,
-  getDocsFromServer,
-  limit,
-  orderBy,
-  query,
-  type Query,
-} from "firebase/firestore";
-import {
-  buildSegmentKey,
-  DEFAULT_DISPLAY_NAME,
-  isMetadataComplete,
-  type UserMetadata,
-} from "@/features/profile/types";
-import { GLOBAL_RANKING_SEGMENT } from "@/features/filters/constants";
-import {
-  buildSingleFieldSegmentKey,
-  entryMatchesSegmentFilters,
-} from "@/features/filters/utils/segmentLabel";
+import { getApiBaseUrl } from "@/lib/api";
+import { fetchApi } from "@/lib/fetchApi";
+import type { UserMetadata } from "@/features/profile/types";
 import { hasActiveSegmentFilters } from "@/features/posts/api/matchesSegmentFilters";
-import { getFirestoreDb } from "@/lib/firebase";
-import { normalizeAvatarUrl } from "@/lib/media/normalizeAvatarUrl";
-import { parsePostMetadata } from "@/features/posts/api/parsePostMetadata";
-import type { RankingEntry, RankingTrendLabel } from "../types";
+import type { RankingEntry } from "../types";
 
 /** Sıralama sekmesi — segmentteki tüm kayıtlar (şu an ~100; büyüme payı). */
 export const RANKING_LIST_MAX = 500;
 
-const GLOBAL_FETCH_CAP = RANKING_LIST_MAX;
+type RankingApiResponse = {
+  ok: boolean;
+  entries: RankingEntry[];
+  error?: string;
+};
 
-function parseTrendLabel(value: unknown): RankingTrendLabel {
-  if (value === "rising" || value === "falling" || value === "stable") {
-    return value;
+function filtersToQueryParams(
+  filters: UserMetadata | null
+): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (!filters || !hasActiveSegmentFilters(filters)) {
+    return params;
   }
-  return null;
-}
 
-function parseOptionalNumber(value: unknown): number | null {
-  return typeof value === "number" ? value : null;
-}
-
-function mapEntryDoc(
-  docSnap: { id: string; data: () => Record<string, unknown> },
-  fallbackRank: number
-): RankingEntry {
-  const data = docSnap.data();
-  const displayName =
-    typeof data.displayName === "string" && data.displayName.trim()
-      ? data.displayName.trim()
-      : DEFAULT_DISPLAY_NAME;
-
-  return {
-    userId: docSnap.id,
-    displayName,
-    totalScore: typeof data.totalScore === "number" ? data.totalScore : 0,
-    rank: typeof data.rank === "number" ? data.rank : fallbackRank,
-    metadata: parsePostMetadata({ metadata: data.metadata }),
-    photoURL: (() => {
-      const normalized = normalizeAvatarUrl(
-        typeof data.photoURL === "string" ? data.photoURL : undefined
-      );
-      return normalized || undefined;
-    })(),
-    previousRank: parseOptionalNumber(data.previousRank),
-    rankChange: parseOptionalNumber(data.rankChange),
-    previousTotalScore: parseOptionalNumber(data.previousTotalScore),
-    tpChange: parseOptionalNumber(data.tpChange),
-    trendLabel: parseTrendLabel(data.trendLabel),
-  };
-}
-
-async function runRankingQuery(q: Query) {
-  try {
-    return await getDocsFromServer(q);
-  } catch {
-    return await getDocs(q);
+  if (filters.country.trim()) params.country = filters.country.trim();
+  if (filters.city.trim()) params.city = filters.city.trim();
+  if (filters.gender.trim()) params.gender = filters.gender.trim();
+  if (filters.age !== null && filters.age > 0) {
+    params.age = String(filters.age);
   }
-}
+  if (filters.profession.trim()) params.profession = filters.profession.trim();
+  if (filters.maritalStatus.trim()) {
+    params.maritalStatus = filters.maritalStatus.trim();
+  }
 
-async function fetchRankingsFromSegment(
-  segmentKey: string,
-  max: number
-): Promise<RankingEntry[]> {
-  const q = query(
-    collection(getFirestoreDb(), "rankings", segmentKey, "entries"),
-    orderBy("totalScore", "desc"),
-    limit(max)
-  );
-  const snapshot = await runRankingQuery(q);
-  return snapshot.docs.map((docSnap, index) =>
-    mapEntryDoc(docSnap, index + 1)
-  );
+  return params;
 }
 
 /**
- * Global First: null/boş → rankings/global/entries.
- * Tam veya tek alan filtre → ilgili segment koleksiyonu.
- * Çoklu kısmi filtre → global çekip client-side eşleştirme.
+ * Ranking listesi — backend API (client Firestore okuması yerine).
  */
 export async function fetchRankingEntries(
   filters: UserMetadata | null,
   max = RANKING_LIST_MAX
 ): Promise<RankingEntry[]> {
-  if (!filters || !hasActiveSegmentFilters(filters)) {
-    return fetchRankingsFromSegment(GLOBAL_RANKING_SEGMENT, max);
-  }
+  const params = filtersToQueryParams(filters);
+  params.limit = String(max);
 
-  if (isMetadataComplete(filters)) {
-    return fetchRankingsFromSegment(buildSegmentKey(filters), max);
-  }
-
-  const singleKey = buildSingleFieldSegmentKey(filters);
-  if (singleKey) {
-    return fetchRankingsFromSegment(singleKey, max);
-  }
-
-  const globalRows = await fetchRankingsFromSegment(
-    GLOBAL_RANKING_SEGMENT,
-    GLOBAL_FETCH_CAP
+  const search = new URLSearchParams(params);
+  const response = await fetchApi(
+    `${getApiBaseUrl()}/api/ranking/entries?${search.toString()}`,
+    {
+      method: "GET",
+      timeoutMs: 20_000,
+    }
   );
 
-  return globalRows
-    .filter((row) => entryMatchesSegmentFilters(row.metadata, filters))
-    .slice(0, max)
-    .map((row, index) => ({
-      ...row,
-      rank: index + 1,
-      rankChange: null,
-      trendLabel: null,
-    }));
+  const data = (await response.json()) as RankingApiResponse;
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Ranking request failed");
+  }
+
+  return data.entries ?? [];
 }

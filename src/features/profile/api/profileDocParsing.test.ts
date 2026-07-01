@@ -1,5 +1,10 @@
 import { EMPTY_METADATA } from "../types";
-import { parseMetadataFromDoc, parseProfileFields } from "./profileDocParsing";
+import {
+  parseMetadataFromDoc,
+  parseProfileFields,
+  sanitizeApiPublicProfile,
+  sanitizeUserMetadata,
+} from "./profileDocParsing";
 
 describe("parseMetadataFromDoc", () => {
   it("reads flat metadata fields", () => {
@@ -86,5 +91,65 @@ describe("parseProfileFields", () => {
       },
       totalScore: 0,
     });
+  });
+});
+
+describe("sanitizeUserMetadata", () => {
+  it("returns empty metadata for nullish input", () => {
+    expect(sanitizeUserMetadata(null)).toEqual(EMPTY_METADATA);
+    expect(sanitizeUserMetadata(undefined)).toEqual(EMPTY_METADATA);
+  });
+
+  it("coerces null metadata fields to empty strings", () => {
+    expect(
+      sanitizeUserMetadata({
+        country: "TR",
+        city: null,
+        gender: undefined,
+        profession: "Doktor",
+      })
+    ).toEqual({
+      country: "TR",
+      city: "",
+      age: null,
+      gender: "",
+      profession: "Doktor",
+      maritalStatus: "",
+    });
+  });
+});
+
+describe("sanitizeApiPublicProfile", () => {
+  it("normalizes API profile missing displayName", () => {
+    expect(
+      sanitizeApiPublicProfile({
+        userId: "u1",
+        totalScore: 10,
+        metadata: {
+          country: "TR",
+          city: "İzmir",
+          age: 25,
+          gender: "Kadın",
+          profession: "Öğretmen",
+          maritalStatus: "Bekar",
+        },
+      })
+    ).toMatchObject({
+      displayName: "",
+      totalScore: 10,
+      metadata: {
+        country: "TR",
+        city: "İzmir",
+        age: 25,
+        gender: "Kadın",
+        profession: "Öğretmen",
+        maritalStatus: "Bekar",
+      },
+    });
+  });
+
+  it("returns null for non-object profile", () => {
+    expect(sanitizeApiPublicProfile(null)).toBeNull();
+    expect(sanitizeApiPublicProfile(undefined)).toBeNull();
   });
 });

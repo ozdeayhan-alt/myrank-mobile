@@ -17,7 +17,7 @@ echo "[prod] play upload keystore..."
 "$ROOT/scripts/ensure-play-keystore.sh"
 
 echo "[prod] prebuild (android)..."
-npx expo prebuild --platform android --no-install
+npx expo prebuild --platform android --no-install --clean
 
 "$ROOT/scripts/apply-play-signing.sh"
 
@@ -30,9 +30,8 @@ EOF
 source "$ROOT/scripts/apply-gradle-low-ram-tuning.sh"
 apply_gradle_low_ram_tuning "$ROOT"
 
-echo "[prod] gradle bundleRelease (arm64-v8a, max-workers=1, lint skipped)..."
-cd "$ROOT/android"
-./gradlew bundleRelease "${GRADLE_LOW_RAM_ARGS[@]}"
+echo "[prod] gradle bundleRelease..."
+"$ROOT/scripts/gradle-assemble-with-retry.sh" bundleRelease
 
 AAB="$ROOT/android/app/build/outputs/bundle/release/app-release.aab"
 PUBLIC_DIR="/root/myrankapp/public"

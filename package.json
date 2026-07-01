@@ -1,6 +1,6 @@
 {
   "name": "myrank-mobile",
-  "version": "1.0.2",
+  "version": "1.0.21",
   "main": "expo-router/entry",
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -71,6 +71,8 @@
     "build:android": "bash scripts/build-android-apk.sh",
     "build:dev:local": "bash scripts/build-dev-apk.sh",
     "build:preview:local": "bash scripts/build-preview-apk.sh",
+    "build:preview:fast": "bash scripts/build-preview-apk-fast.sh",
+    "build:preview:clean": "PREBUILD_CLEAN=1 bash scripts/build-preview-apk.sh",
     "build:prod:local": "bash scripts/build-prod-local.sh",
     "build:setup-fcm": "node scripts/setup-expo-fcm-v1.js",
     "build:verify-env": "bash scripts/verify-build-env.sh",

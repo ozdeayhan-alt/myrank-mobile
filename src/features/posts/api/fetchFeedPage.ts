@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import {
   buildSegmentKey,
   isMetadataComplete,
@@ -58,14 +57,10 @@ async function fetchFeedEndpoint(
   }
 
   const query = search.toString();
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(
+  const response = await fetchApi(
     `${getApiBaseUrl()}/api/feed/${path}${query ? `?${query}` : ""}`,
     {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       timeoutMs: 20000,
     }
   );
@@ -153,6 +148,16 @@ export function fetchHashtagFeedPage(
 ): Promise<FeedPageResult> {
   const normalized = tag.trim().replace(/^#/, "").toLowerCase();
   return fetchFeedEndpoint(`hashtag/${encodeURIComponent(normalized)}`, {
+    cursor: cursor ?? undefined,
+    limit: String(limit),
+  });
+}
+
+export function fetchSavedFeedPage(
+  cursor: string | null = null,
+  limit = 30
+): Promise<FeedPageResult> {
+  return fetchFeedEndpoint("saved", {
     cursor: cursor ?? undefined,
     limit: String(limit),
   });

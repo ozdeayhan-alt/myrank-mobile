@@ -9,12 +9,14 @@ import {
   View,
   type ViewToken,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { HomeFeedMode } from "@/components/HomeFeedModeToggle";
 import { useTabBarContentInset } from "@/hooks/useTabBarContentInset";
 import { useExploreFeedInfinite } from "@/features/explore/hooks/useExploreFeedInfinite";
 import { getFilterSegmentLabel } from "@/features/filters/utils/segmentLabel";
+import type { UserMetadata } from "@/features/profile/types";
 import { useIncrementalEngagement } from "@/features/ranking/hooks/useIncrementalEngagement";
 import { useAuthorPosts } from "@/features/profile/hooks/useAuthorPosts";
 import { PostInteractionProvider } from "../context/PostInteractionContext";
@@ -33,6 +35,9 @@ const VIEWABILITY_CONFIG = {
   itemVisiblePercentThreshold: 55,
   minimumViewTime: 0,
 };
+
+/** Boş video listesinde feed sayfalarını tarama üst sınırı (15 gönderi/sayfa). */
+const MAX_VIDEO_BACKFILL_PAGES = 20;
 
 function appendUniqueFeedPosts(seedPosts: Post[], feedPosts: Post[]): Post[] {
   const seen = new Set<string>();
@@ -61,20 +66,40 @@ type ReelsTabFeedProps = {
   currentUserId?: string | null;
   feedMode?: HomeFeedMode;
   fullscreen?: boolean;
+  /** Ana sayfa feed'inden önceden yüklenmiş videolar (anında oynatma). */
+  homeSeedPosts?: Post[];
+  /** Keşfet sekmesinde Flow filtresi ile tam ekran oynatma. */
+  exploreBrowse?: boolean;
+  exploreFilters?: UserMetadata | null;
+  /** Keşfet feed'inden önceden yüklenmiş videolar (anında oynatma). */
+  exploreSeedPosts?: Post[];
+  /** Profil sekmesinde Flow filtresi ile tam ekran oynatma. */
+  profileBrowse?: boolean;
+  profileAuthorId?: string;
+  /** Profil feed'inden önceden yüklenmiş videolar (anında oynatma). */
+  profileSeedPosts?: Post[];
 };
 
 export function ReelsTabFeed({
   currentUserId = null,
   feedMode = "global",
   fullscreen = false,
+  homeSeedPosts,
+  exploreBrowse = false,
+  exploreFilters: exploreFiltersProp,
+  exploreSeedPosts,
+  profileBrowse = false,
+  profileAuthorId,
+  profileSeedPosts,
 }: ReelsTabFeedProps) {
   const { width, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { bottom: tabBarInset, tabBarHeight } = useTabBarContentInset();
+  /** Item height === snap interval === list viewport (padding ile hizalı). */
   const reelHeight = Math.max(
     320,
     fullscreen
-      ? windowHeight - insets.top
+      ? windowHeight
       : windowHeight - tabBarHeight - insets.top
   );
 
@@ -88,11 +113,19 @@ export function ReelsTabFeed({
   const seedPosts = useReelsNavigationStore((s) => s.seedPosts);
   const playlistSource = useReelsNavigationStore((s) => s.playlistSource);
   const authorId = useReelsNavigationStore((s) => s.authorId);
-  const exploreFilters = useReelsNavigationStore((s) => s.exploreFilters);
+  const navExploreFilters = useReelsNavigationStore((s) => s.exploreFilters);
   const clearScrollTarget = useReelsNavigationStore((s) => s.clearScrollTarget);
 
-  const isProfilePlaylist = playlistSource === "profile" && Boolean(authorId);
-  const isExplorePlaylist = playlistSource === "explore";
+  const isProfilePlaylist =
+    (profileBrowse && Boolean(profileAuthorId)) ||
+    (playlistSource === "profile" && Boolean(authorId));
+  const resolvedAuthorId = profileBrowse
+    ? (profileAuthorId ?? "")
+    : (authorId ?? "");
+  const isExplorePlaylist = exploreBrowse || playlistSource === "explore";
+  const resolvedExploreFilters = exploreBrowse
+    ? (exploreFiltersProp ?? null)
+    : navExploreFilters;
   const useHomeFeed = !isProfilePlaylist && !isExplorePlaylist;
 
   const {
@@ -118,7 +151,10 @@ export function ReelsTabFeed({
     isFetchingNextPage: exploreIsFetchingNextPage,
     fetchNextPage: exploreFetchNextPage,
     isRefetching: exploreIsRefetching,
-  } = useExploreFeedInfinite(exploreFilters, screenFocused && isExplorePlaylist);
+  } = useExploreFeedInfinite(
+    resolvedExploreFilters,
+    screenFocused && isExplorePlaylist
+  );
 
   const exploreVideoPosts = useMemo(
     () => collectVideoPostsForPlaylist(explorePosts),
@@ -134,7 +170,10 @@ export function ReelsTabFeed({
     isFetchingNextPage: authorIsFetchingNextPage,
     fetchNextPage: authorFetchNextPage,
     isRefetching: authorIsRefetching,
-  } = useAuthorPosts(authorId ?? "");
+  } = useAuthorPosts(
+    resolvedAuthorId,
+    screenFocused && isProfilePlaylist
+  );
 
   const authorVideoPosts = useMemo(
     () => collectVideoPostsForPlaylist(authorPosts),
@@ -143,6 +182,13 @@ export function ReelsTabFeed({
 
   const videoPosts = useMemo(() => {
     if (isProfilePlaylist) {
+      const profileSeeds = [
+        ...(profileSeedPosts ?? []),
+        ...(seedPosts ?? []),
+      ];
+      if (profileSeeds.length > 0) {
+        return appendUniqueFeedPosts(profileSeeds, authorVideoPosts);
+      }
       if (authorVideoPosts.length > 0) {
         return authorVideoPosts;
       }
@@ -150,23 +196,34 @@ export function ReelsTabFeed({
     }
 
     if (isExplorePlaylist) {
-      if (seedPosts && seedPosts.length > 0) {
-        return appendUniqueFeedPosts(seedPosts, exploreVideoPosts);
+      const exploreSeeds = [
+        ...(exploreSeedPosts ?? []),
+        ...(seedPosts ?? []),
+      ];
+      if (exploreSeeds.length > 0) {
+        return appendUniqueFeedPosts(exploreSeeds, exploreVideoPosts);
       }
       return exploreVideoPosts;
     }
 
-    if (seedPosts && seedPosts.length > 0) {
-      return appendUniqueFeedPosts(seedPosts, feedVideoPosts);
+    const homeSeeds = [
+      ...(homeSeedPosts ?? []),
+      ...(seedPosts ?? []),
+    ];
+    if (homeSeeds.length > 0) {
+      return appendUniqueFeedPosts(homeSeeds, feedVideoPosts);
     }
 
     return feedVideoPosts;
   }, [
     authorVideoPosts,
+    exploreSeedPosts,
     exploreVideoPosts,
     feedVideoPosts,
+    homeSeedPosts,
     isExplorePlaylist,
     isProfilePlaylist,
+    profileSeedPosts,
     seedPosts,
   ]);
 
@@ -209,9 +266,9 @@ export function ReelsTabFeed({
     ? exploreUpdatePostScore
     : feedUpdatePostScore;
   const engagementResetKey = isProfilePlaylist
-    ? `reels-profile-${authorId}`
+    ? `reels-profile-${resolvedAuthorId}`
     : isExplorePlaylist
-      ? `reels-explore-${getFilterSegmentLabel(exploreFilters)}`
+      ? `reels-explore-${getFilterSegmentLabel(resolvedExploreFilters)}`
       : feedEngagementResetKey;
 
   const postIds = useMemo(() => videoPosts.map((post) => post.id), [videoPosts]);
@@ -319,12 +376,15 @@ export function ReelsTabFeed({
   }, [resolveTargetIndex, targetPostId]);
 
   const listKey = useMemo(() => {
-    if (isProfilePlaylist && authorId) {
-      return `reels-profile-${authorId}`;
+    if (isProfilePlaylist && resolvedAuthorId) {
+      const seedKey =
+        seedPosts?.[0]?.id ?? profileSeedPosts?.[0]?.id ?? "browse";
+      return `reels-profile-${resolvedAuthorId}-${seedKey}`;
     }
     if (isExplorePlaylist) {
-      const filterKey = getFilterSegmentLabel(exploreFilters);
-      const seedKey = seedPosts?.[0]?.id ?? "browse";
+      const filterKey = getFilterSegmentLabel(resolvedExploreFilters);
+      const seedKey =
+        seedPosts?.[0]?.id ?? exploreSeedPosts?.[0]?.id ?? "browse";
       return `reels-explore-${filterKey}-${seedKey}`;
     }
     if (seedPosts && seedPosts.length > 0) {
@@ -333,11 +393,55 @@ export function ReelsTabFeed({
     return `reels-browse-${feedMode}`;
   }, [
     authorId,
-    exploreFilters,
+    exploreSeedPosts,
     feedMode,
     isExplorePlaylist,
     isProfilePlaylist,
+    profileSeedPosts,
+    resolvedAuthorId,
+    resolvedExploreFilters,
     seedPosts,
+  ]);
+
+  const flashListKey = listKey;
+
+  const backfillPagesRef = useRef(0);
+  const [backfillExhausted, setBackfillExhausted] = useState(false);
+
+  useEffect(() => {
+    backfillPagesRef.current = 0;
+    setBackfillExhausted(false);
+  }, [listKey]);
+
+  useEffect(() => {
+    if (loading || error || isFetchingNextPage) {
+      return;
+    }
+
+    if (videoPosts.length > 0) {
+      backfillPagesRef.current = 0;
+      setBackfillExhausted(false);
+      return;
+    }
+
+    if (!hasNextPage) {
+      return;
+    }
+
+    if (backfillPagesRef.current >= MAX_VIDEO_BACKFILL_PAGES) {
+      setBackfillExhausted(true);
+      return;
+    }
+
+    backfillPagesRef.current += 1;
+    fetchNextPage();
+  }, [
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    loading,
+    videoPosts.length,
   ]);
 
   const setActiveIndexFromOffset = useCallback(
@@ -419,7 +523,12 @@ export function ReelsTabFeed({
   );
 
   const listEmpty = useMemo(() => {
-    if (loading) {
+    const searchingForVideos =
+      videoPosts.length === 0 &&
+      !backfillExhausted &&
+      (loading || isFetchingNextPage || hasNextPage);
+
+    if (searchingForVideos) {
       return (
         <View
           style={{ width, height: reelHeight }}
@@ -451,7 +560,7 @@ export function ReelsTabFeed({
         </Text>
       </View>
     );
-  }, [error, loading, reelHeight, width]);
+  }, [backfillExhausted, error, hasNextPage, isFetchingNextPage, loading, reelHeight, videoPosts.length, width]);
 
   const listFooter = useMemo(() => {
     if (!isFetchingNextPage) {
@@ -469,12 +578,15 @@ export function ReelsTabFeed({
 
   return (
     <PostInteractionProvider currentUserId={currentUserId}>
+      {fullscreen ? (
+        <StatusBar hidden={screenFocused} style="light" />
+      ) : null}
       <View
         className="flex-1 bg-black"
         style={fullscreen ? undefined : { paddingTop: insets.top }}
       >
         <FlashList
-          key={listKey}
+          key={flashListKey}
           ref={listRef}
           data={videoPosts}
           keyExtractor={(item) => item.id}

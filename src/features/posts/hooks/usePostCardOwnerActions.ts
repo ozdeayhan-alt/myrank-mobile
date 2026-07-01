@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
+import type { ReportReason } from "@/features/blocks/api/reportContent";
 import { reportContent } from "@/features/blocks/api/reportContent";
 import { useProfileStore } from "@/features/profile/store/useProfileStore";
-import { showReportReasonPicker } from "@/features/blocks/utils/showReportReasonPicker";
 import { showReportSubmittedAlert } from "@/features/blocks/utils/reportFeedback";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 import { deletePost } from "../api/deletePost";
@@ -14,7 +14,6 @@ import {
 } from "../constants/contentTypeLabels";
 import { useFeedRefreshStore } from "../store/useFeedRefreshStore";
 import type { Post } from "../types";
-import { isRepostPost } from "../utils/repostUtils";
 
 type UsePostCardOwnerActionsOptions = {
   post: Post;
@@ -33,6 +32,10 @@ export function usePostCardOwnerActions({
   const bumpFeed = useFeedRefreshStore((s) => s.bump);
   const [contentOverride, setContentOverride] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [reportMenuOpen, setReportMenuOpen] = useState(false);
   const [ownerActionLoading, setOwnerActionLoading] = useState(false);
 
   const displayPost = useMemo(
@@ -53,6 +56,7 @@ export function usePostCardOwnerActions({
         setTotalScore(result.authorTotalScore);
       }
       bumpFeed();
+      setDeleteConfirmOpen(false);
       onPostDeleted?.(post.id);
     } catch (error) {
       Alert.alert("Silinemedi", getUserFacingErrorMessage(error));
@@ -61,19 +65,8 @@ export function usePostCardOwnerActions({
     }
   }, [post.id, bumpFeed, onPostDeleted, setTotalScore, currentUserId]);
 
-  const confirmDelete = useCallback(() => {
-    Alert.alert(
-      "Gönderiyi sil",
-      "Bu işlem geri alınamaz. Gönderi ve medyası kalıcı olarak silinir.",
-      [
-        { text: "Vazgeç", style: "cancel" },
-        { text: "Sil", style: "destructive", onPress: () => void handleDelete() },
-      ]
-    );
-  }, [handleDelete]);
-
-  const handleReportPost = useCallback(() => {
-    showReportReasonPicker((reason) => {
+  const handleReportReason = useCallback(
+    (reason: ReportReason) => {
       void (async () => {
         try {
           await reportContent({
@@ -86,31 +79,29 @@ export function usePostCardOwnerActions({
           Alert.alert("Hata", getUserFacingErrorMessage(error));
         }
       })();
-    });
-  }, [post.authorId, post.id]);
-
-  const handleMoreMenuPress = useCallback(() => {
-    Alert.alert("Gönderi", undefined, [
-      { text: "Şikayet et", onPress: handleReportPost },
-      { text: "İptal", style: "cancel" },
-    ]);
-  }, [handleReportPost]);
+    },
+    [post.authorId, post.id]
+  );
 
   const handleOwnerMenuPress = useCallback(() => {
-    if (isRepostPost(post)) {
-      Alert.alert("Gönderi", undefined, [
-        { text: "Sil", style: "destructive", onPress: confirmDelete },
-        { text: "İptal", style: "cancel" },
-      ]);
-      return;
-    }
+    setOwnerMenuOpen(true);
+  }, []);
 
-    Alert.alert("Gönderi", undefined, [
-      { text: "Metni düzenle", onPress: () => setEditOpen(true) },
-      { text: "Sil", style: "destructive", onPress: confirmDelete },
-      { text: "İptal", style: "cancel" },
-    ]);
-  }, [confirmDelete, post]);
+  const handleMoreMenuPress = useCallback(() => {
+    setMoreMenuOpen(true);
+  }, []);
+
+  const handleEditFromMenu = useCallback(() => {
+    setEditOpen(true);
+  }, []);
+
+  const handleRequestDelete = useCallback(() => {
+    setDeleteConfirmOpen(true);
+  }, []);
+
+  const handleOpenReportMenu = useCallback(() => {
+    setReportMenuOpen(true);
+  }, []);
 
   const handleEditSave = useCallback(
     async (nextContent: string) => {
@@ -151,8 +142,21 @@ export function usePostCardOwnerActions({
     editOpen,
     setEditOpen,
     ownerActionLoading,
+    ownerMenuOpen,
+    moreMenuOpen,
+    deleteConfirmOpen,
+    reportMenuOpen,
+    setOwnerMenuOpen,
+    setMoreMenuOpen,
+    setDeleteConfirmOpen,
+    setReportMenuOpen,
     handleOwnerMenuPress,
     handleMoreMenuPress,
+    handleEditFromMenu,
+    handleRequestDelete,
+    handleOpenReportMenu,
+    handleConfirmDelete: handleDelete,
+    handleReportReason,
     handleEditSave,
   };
 }

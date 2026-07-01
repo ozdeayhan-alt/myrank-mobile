@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { prefetchStoryRingMedia } from "@/features/posts/utils/prefetchFeedExtras";
 import { fetchStoriesFeed } from "../api/fetchStoriesFeed";
 import {
   groupStoriesByUser,
@@ -20,15 +21,18 @@ export const EMPTY_AUTHOR_STORY_RING: AuthorStoryRing = {
 
 type StoriesRingState = {
   groups: StoryUserGroup[];
+  seenIds: Set<string>;
   loading: boolean;
   load: () => Promise<void>;
   reload: () => Promise<void>;
+  markStorySeenLocally: (storyId: string) => void;
 };
 
 let loadInFlight: Promise<void> | null = null;
 
 export const useStoriesRingStore = create<StoriesRingState>((set, get) => ({
   groups: [],
+  seenIds: new Set<string>(),
   loading: false,
   load: async () => {
     if (loadInFlight) {
@@ -42,10 +46,13 @@ export const useStoriesRingStore = create<StoriesRingState>((set, get) => ({
           fetchStoriesFeed(),
           getSeenStoryIds(),
         ]);
+        const grouped = groupStoriesByUser(stories, seenIds);
         set({
-          groups: groupStoriesByUser(stories, seenIds),
+          groups: grouped,
+          seenIds,
           loading: false,
         });
+        prefetchStoryRingMedia(grouped);
       } catch {
         set({ loading: false });
       } finally {
@@ -58,5 +65,21 @@ export const useStoriesRingStore = create<StoriesRingState>((set, get) => ({
   reload: async () => {
     loadInFlight = null;
     await get().load();
+  },
+  markStorySeenLocally: (storyId: string) => {
+    if (!storyId.trim()) {
+      return;
+    }
+    const state = get();
+    if (state.seenIds.has(storyId)) {
+      return;
+    }
+    const seenIds = new Set(state.seenIds);
+    seenIds.add(storyId);
+    const stories = state.groups.flatMap((group) => group.stories);
+    set({
+      seenIds,
+      groups: groupStoriesByUser(stories, seenIds),
+    });
   },
 }));

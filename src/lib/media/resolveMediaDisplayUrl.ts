@@ -109,6 +109,20 @@ export function resolveVideoStreamUrl(
   return resolveMediaUrl(trimmed, { useProxy: false });
 }
 
+/** Feed görselleri — mümkünse poster/thumbnail, yoksa tam boyut. */
+export function resolveFeedImageDisplayUrl(
+  mediaURL: string | undefined
+): string | undefined {
+  const derivedPoster = derivePosterUrlFromMediaUrl(mediaURL);
+  if (derivedPoster) {
+    return (
+      resolveMediaDisplayUrl(derivedPoster) ?? resolveMediaDisplayUrl(mediaURL)
+    );
+  }
+
+  return resolveMediaDisplayUrl(mediaURL);
+}
+
 /** mediaURL'den poster object path türet: …/123_fast.mp4 → …/123_poster.jpg */
 export function derivePosterObjectPathFromMediaUrl(
   mediaUrl: string

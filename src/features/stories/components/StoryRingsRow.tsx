@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { useStoriesRingStore } from "../store/useStoriesRingStore";
+import { StoryAddBadge } from "./StoryAddBadge";
 
 type StoryRingsRowProps = {
   currentUserId: string | null;
@@ -24,6 +25,7 @@ type StoryRingItem = {
   hasUnseen: boolean;
   isSelf?: boolean;
   onPress: () => void;
+  onAddPress?: () => void;
 };
 
 const AVATAR_SIZE = 56;
@@ -35,59 +37,59 @@ function StoryRing({
   hasUnseen,
   isSelf,
   onPress,
+  onAddPress,
 }: Omit<StoryRingItem, "key">) {
   const initials = label.trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <Pressable
-      className="mr-3 items-center"
-      style={{ width: 72 }}
-      onPress={onPress}
-    >
-      <View
-        className={`rounded-full p-0.5 ${
-          hasUnseen ? "bg-pink-500" : "bg-gray-300"
-        }`}
-      >
-        <View className="rounded-full border-2 border-white bg-white p-0.5">
-          {photoURL ? (
-            <Image
-              source={{ uri: photoURL }}
-              style={{
-                width: AVATAR_SIZE,
-                height: AVATAR_SIZE,
-                borderRadius: AVATAR_SIZE / 2,
-              }}
-              contentFit="cover"
-            />
-          ) : (
-            <View
-              style={{
-                width: AVATAR_SIZE,
-                height: AVATAR_SIZE,
-                borderRadius: AVATAR_SIZE / 2,
-              }}
-              className="items-center justify-center bg-gray-200"
-            >
-              <Text className="text-lg font-semibold text-gray-600">
-                {initials}
-              </Text>
-            </View>
-          )}
-          {isSelf ? (
-            <View className="absolute bottom-0 right-0 h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-gray-900">
-              <Text className="text-xs font-bold text-white">+</Text>
-            </View>
-          ) : null}
+    <View className="mr-3 items-center" style={{ width: 72, overflow: "visible" }}>
+      <Pressable onPress={onPress} accessibilityRole="button">
+        <View
+          className={`rounded-full p-0.5 ${
+            hasUnseen ? "bg-pink-500" : "bg-gray-300"
+          }`}
+        >
+          <View
+            className="rounded-full border-2 border-white bg-white p-0.5"
+            style={{ position: "relative", overflow: "visible" }}
+          >
+            {photoURL ? (
+              <Image
+                source={{ uri: photoURL }}
+                style={{
+                  width: AVATAR_SIZE,
+                  height: AVATAR_SIZE,
+                  borderRadius: AVATAR_SIZE / 2,
+                }}
+                contentFit="cover"
+              />
+            ) : (
+              <View
+                style={{
+                  width: AVATAR_SIZE,
+                  height: AVATAR_SIZE,
+                  borderRadius: AVATAR_SIZE / 2,
+                }}
+                className="items-center justify-center bg-gray-200"
+              >
+                <Text className="text-lg font-semibold text-gray-600">
+                  {initials}
+                </Text>
+              </View>
+            )}
+            {isSelf && onAddPress ? (
+              <StoryAddBadge onPress={onAddPress} />
+            ) : null}
+          </View>
         </View>
-      </View>
+      </Pressable>
       <Text
-        className="mt-1.5 w-full text-center text-xs text-gray-700"
+        className="mt-2.5 w-full text-center text-xs text-gray-700"
         numberOfLines={1}
       >
         {isSelf ? "Story'in" : label}
       </Text>
-    </Pressable>
+    </View>
   );
 }
 
@@ -140,6 +142,7 @@ export function StoryRingsRow({
       photoURL: currentUserPhotoURL ?? selfGroup?.photoURL,
       hasUnseen: selfGroup?.hasUnseen ?? false,
       isSelf: true,
+      onAddPress: openCreate,
       onPress: () => {
         if (selfGroup?.stories[0]) {
           openUserStories(selfGroup.userId, selfGroup.stories[0].id);
@@ -194,11 +197,11 @@ export function StoryRingsRow({
       keyExtractor={(item) => item.key}
       showsHorizontalScrollIndicator={false}
       nestedScrollEnabled
-      style={{ flexGrow: 0 }}
+      style={{ flexGrow: 0, overflow: "visible" }}
       contentContainerStyle={{
         paddingHorizontal: 4,
         paddingTop: 4,
-        paddingBottom: 8,
+        paddingBottom: 12,
       }}
       renderItem={({ item }) => (
         <StoryRing
@@ -207,6 +210,7 @@ export function StoryRingsRow({
           hasUnseen={item.hasUnseen}
           isSelf={item.isSelf}
           onPress={item.onPress}
+          onAddPress={item.onAddPress}
         />
       )}
     />

@@ -1,16 +1,17 @@
 import { memo } from "react";
-import { useProfileVoteContext } from "./ProfileVoteProvider";
+import { useProfileVoteActions, useProfileVoteDisplay } from "./ProfileVoteProvider";
 import { ProfileTotalScoreDisplay } from "./ProfileTotalScoreDisplay";
 
 function ProfileVoteScoreInner() {
-  const { displayTP, targetUserId, voteFlash, gaugeVoteMode } =
-    useProfileVoteContext();
+  const { targetUserId } = useProfileVoteActions();
+  const { displayTP, voteFlash, gaugeVoteMode, fullLadderRequested } = useProfileVoteDisplay();
   return (
     <ProfileTotalScoreDisplay
       displayScore={displayTP}
       userId={targetUserId}
       voteFlash={voteFlash}
       gaugeVoteMode={gaugeVoteMode}
+      fullLadderEnabled={fullLadderRequested}
     />
   );
 }

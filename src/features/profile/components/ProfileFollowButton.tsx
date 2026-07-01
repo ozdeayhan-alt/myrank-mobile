@@ -1,37 +1,34 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { Alert } from "react-native";
 import * as Haptics from "expo-haptics";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 import { fetchFollowStatus } from "../api/fetchFollowStatus";
 import { followUser } from "../api/followUser";
 import { unfollowUser } from "../api/unfollowUser";
-import { FollowPlusIcon } from "./FollowPlusIcon";
 import { FOLLOW_THEMES } from "./profileFollowButtonTheme";
-import { createProfileFollowButtonStyles } from "./profileFollowButtonStyles";
-import { useProfileVoteContext } from "./ProfileVoteProvider";
-
-const HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
+import { ProfileInstagramSideButton } from "./ProfileInstagramSideButton";
+import { useProfileVoteActions } from "./ProfileVoteProvider";
 
 type ProfileFollowButtonProps = {
-  diameter?: number;
+  height?: number;
+  maxWidth?: number;
+  fontSize?: number;
+  voteDiameter?: number;
 };
 
-export function ProfileFollowButton({ diameter = 76 }: ProfileFollowButtonProps) {
-  const { targetUserId, isOwnProfile, votesEnabled } = useProfileVoteContext();
+export function ProfileFollowButton({
+  height = 54,
+  maxWidth = 100,
+  fontSize = 12,
+  voteDiameter,
+}: ProfileFollowButtonProps) {
+  const { targetUserId, isOwnProfile, votesEnabled } = useProfileVoteActions();
   const [following, setFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const styles = useMemo(() => createProfileFollowButtonStyles(diameter), [diameter]);
   const theme = FOLLOW_THEMES[following ? "active" : "idle"];
   const label = following ? "Takiptesin" : "Takip Et";
-  const iconSize = Math.round(diameter * 0.34);
 
   useEffect(() => {
     if (isOwnProfile || !votesEnabled) {
@@ -89,56 +86,32 @@ export function ProfileFollowButton({ diameter = 76 }: ProfileFollowButtonProps)
     }
   }, [votesEnabled, submitting, loading, following, targetUserId]);
 
+  const accessibilityLabel = useMemo(
+    () => (following ? "Takipten çık" : "Takip et"),
+    [following]
+  );
+
   if (isOwnProfile) {
     return null;
   }
 
   const disabled = !votesEnabled || loading || submitting;
-  const accessibilityLabel = following ? "Takipten çık" : "Takip et";
 
   return (
-    <Pressable
+    <ProfileInstagramSideButton
+      label={label}
       onPress={() => void handlePress()}
       disabled={disabled}
-      hitSlop={HIT_SLOP}
-      accessibilityRole="button"
+      loading={loading || submitting}
       accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [
-        styles.wrapper,
-        {
-          opacity: disabled ? 0.45 : 1,
-          transform: [
-            { scale: pressed && !disabled ? 0.94 : 1 },
-            { translateY: pressed && !disabled ? 3 : 0 },
-          ],
-        },
-      ]}
-    >
-      <View
-        style={[
-          styles.face,
-          {
-            backgroundColor: theme.fill,
-            borderColor: theme.borderColor ?? "transparent",
-            borderWidth: theme.borderWidth ?? 0,
-          },
-        ]}
-      >
-        <View style={styles.content}>
-          <View style={styles.iconCenter} pointerEvents="none">
-            {loading || submitting ? (
-              <ActivityIndicator size="small" color={theme.foreground} />
-            ) : (
-              <FollowPlusIcon size={iconSize} color={theme.foreground} />
-            )}
-          </View>
-          {!loading && !submitting ? (
-            <Text style={[styles.label, { color: theme.foreground }]}>
-              {label}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-    </Pressable>
+      height={height}
+      maxWidth={maxWidth}
+      fontSize={fontSize}
+      voteDiameter={voteDiameter}
+      fill={theme.fill}
+      foreground={theme.foreground}
+      borderColor={theme.borderColor}
+      borderWidth={theme.borderWidth}
+    />
   );
 }

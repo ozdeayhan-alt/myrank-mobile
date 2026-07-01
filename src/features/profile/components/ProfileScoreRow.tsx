@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { PROFILE_METRIC_CARD_MIN_HEIGHT } from "@/components/ProfileMetricCard";
 import { PROFILE_SEGMENT_TO_SCORE_GAP } from "../profileLayout";
 import { ProfileTotalScoreDisplay } from "./ProfileTotalScoreDisplay";
-import { useProfileVoteContext } from "./ProfileVoteProvider";
+import { useProfileVoteDisplay } from "./ProfileVoteProvider";
 
 type ProfileScoreRowProps = {
   userId: string;
@@ -12,7 +12,7 @@ type ProfileScoreRowProps = {
 function ProfileScoreRowInner({
   userId,
 }: ProfileScoreRowProps) {
-  const { displayTP, voteFlash, gaugeVoteMode } = useProfileVoteContext();
+  const { displayTP, voteFlash, gaugeVoteMode, fullLadderRequested } = useProfileVoteDisplay();
 
   return (
     <View
@@ -29,6 +29,7 @@ function ProfileScoreRowInner({
         compact
         voteFlash={voteFlash}
         gaugeVoteMode={gaugeVoteMode}
+        fullLadderEnabled={fullLadderRequested}
       />
     </View>
   );

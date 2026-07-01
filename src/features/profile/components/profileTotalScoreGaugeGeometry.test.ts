@@ -1,10 +1,14 @@
 import {
   computeGaugeProgress,
   computeLadderGaugeProgress,
+  computeRemainingPointsUp,
+  describeHorizontalBar,
   describeUpperSemicircleArc,
   getUpperSemicirclePeakY,
   pickActiveAheadRung,
+  pickActiveAheadRungByOfficialRank,
   pickActiveBehindRung,
+  pointOnHorizontalBar,
   pointOnUpperSemicircle,
 } from "./profileTotalScoreGaugeGeometry";
 
@@ -33,7 +37,28 @@ describe("profileTotalScoreGaugeGeometry", () => {
     const path = describeUpperSemicircleArc(cx, cy, radius, 0, 1);
     expect(path).toContain("A");
     expect(path).toContain("1");
+    expect(path).toContain("M");
     expect(path.length).toBeGreaterThan(10);
+  });
+
+  it("places horizontal bar endpoints on baseline", () => {
+    const barX = 2;
+    const barY = 12;
+    const barLength = 300;
+    const left = pointOnHorizontalBar(barX, barY, barLength, 0);
+    const right = pointOnHorizontalBar(barX, barY, barLength, 1);
+    const mid = pointOnHorizontalBar(barX, barY, barLength, 0.5);
+
+    expect(left).toEqual({ x: barX, y: barY });
+    expect(right).toEqual({ x: barX + barLength, y: barY });
+    expect(mid.x).toBeCloseTo(barX + barLength / 2, 0);
+    expect(mid.y).toBe(barY);
+  });
+
+  it("builds a horizontal line path for energy bar", () => {
+    const path = describeHorizontalBar(2, 12, 300);
+    expect(path).toContain("M 2 12");
+    expect(path).toContain("L 302 12");
   });
 
   it("computes leader progress as full arc", () => {
@@ -93,6 +118,51 @@ describe("profileTotalScoreGaugeGeometry", () => {
     expect(pickActiveAheadRung(aheadRungs, 1300)).toBeNull();
   });
 
+  it("walks from official rank minus one for up targets", () => {
+    const aheadRungs = [
+      { rank: 68, totalScore: 1010 },
+      { rank: 67, totalScore: 1030 },
+    ];
+    expect(
+      pickActiveAheadRungByOfficialRank(aheadRungs, 1000, 69)?.rank
+    ).toBe(68);
+    expect(
+      pickActiveAheadRungByOfficialRank(aheadRungs, 1020, 69)?.rank
+    ).toBe(67);
+  });
+
+  it("returns null when all window rungs are passed in official chain", () => {
+    const aheadRungs = [
+      { rank: 6, totalScore: 1000 },
+      { rank: 5, totalScore: 900 },
+    ];
+    expect(pickActiveAheadRungByOfficialRank(aheadRungs, 1050, 7)).toBeNull();
+  });
+
+  it("skips missing ranks in official chain", () => {
+    const aheadRungs = [
+      { rank: 8, totalScore: 1100 },
+      { rank: 7, totalScore: 1200 },
+    ];
+    expect(
+      pickActiveAheadRungByOfficialRank(aheadRungs, 1000, 10)?.rank
+    ).toBe(8);
+  });
+
+  it("uses official rank in ladder gauge progress", () => {
+    const aheadRungs = [{ rank: 68, totalScore: 1015 }];
+    const result = computeLadderGaugeProgress({
+      score: 1000,
+      baselineScore: 1000,
+      direction: "up",
+      aheadRungs,
+      behindRungs: [],
+      officialRank: 69,
+    });
+    expect(result.neighborRank).toBe(68);
+    expect(result.remainingPoints).toBe(15);
+  });
+
   it("computes up ladder from rank 10 toward leader", () => {
     const aheadRungs = [
       { rank: 9, totalScore: 1100 },
@@ -104,6 +174,7 @@ describe("profileTotalScoreGaugeGeometry", () => {
       direction: "up",
       aheadRungs,
       behindRungs: [],
+      officialRank: 10,
     });
     expect(atStart.neighborRank).toBe(9);
     expect(atStart.remainingPoints).toBe(100);
@@ -114,6 +185,7 @@ describe("profileTotalScoreGaugeGeometry", () => {
       direction: "up",
       aheadRungs,
       behindRungs: [],
+      officialRank: 10,
     });
     expect(passedFirst.neighborRank).toBe(8);
     expect(passedFirst.remainingPoints).toBe(100);
@@ -127,6 +199,23 @@ describe("profileTotalScoreGaugeGeometry", () => {
     expect(pickActiveBehindRung(behindRungs, 1000)?.rank).toBe(11);
     expect(pickActiveBehindRung(behindRungs, 900)?.rank).toBe(12);
     expect(pickActiveBehindRung(behindRungs, 850)).toBeNull();
+  });
+
+  it("does not treat exhausted window as leader when official rank > 1", () => {
+    const aheadRungs = [
+      { rank: 55, totalScore: 1000 },
+      { rank: 54, totalScore: 1010 },
+    ];
+    const result = computeLadderGaugeProgress({
+      score: 1100,
+      baselineScore: 900,
+      direction: "up",
+      aheadRungs,
+      behindRungs: [],
+      officialRank: 56,
+    });
+    expect(result.isLeader).toBe(false);
+    expect(result.activeRung).toBeNull();
   });
 
   it("computes down ladder remaining points", () => {

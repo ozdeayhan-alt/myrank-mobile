@@ -1,4 +1,5 @@
 import {
+  useIsFocused,
   useNavigation,
   useScrollToTop,
   type ParamListBase,
@@ -15,6 +16,7 @@ import {
 import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
 import { useAuth } from "@/features/auth";
 import { StoryRingsRow } from "@/features/stories";
+import { StoriesRingBootstrap } from "@/features/stories/components/StoriesRingBootstrap";
 import { useFollowingFeedInfinite } from "@/features/explore/hooks/useFollowingFeedInfinite";
 import { useHomeFeedInfinite } from "@/features/explore/hooks/useHomeFeedInfinite";
 import {
@@ -30,9 +32,12 @@ import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabel
 import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
 import { useStoriesRingStore } from "@/features/stories/store/useStoriesRingStore";
 import { useProfileStore } from "@/features/profile/store/useProfileStore";
+import { isFixedSlotFeedEnabled } from "@/lib/featureFlags/feedFlags";
+import { useFeedBuffer } from "@/features/feed/useFeedBuffer";
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const isFocused = useIsFocused();
   const navigation = useNavigation<BottomTabNavigationProp<ParamListBase>>();
   const listRef = useRef<FlashListRef<FeedListItem>>(null);
   useScrollToTop(listRef);
@@ -55,14 +60,23 @@ export default function HomeScreen() {
   const displayName = useProfileStore((s) => s.displayName);
   const photoURL = useProfileStore((s) => s.photoURL);
 
-  const globalFeed = useHomeFeedInfinite(
-    contentFilter !== "video" && feedMode === "global"
-  );
-  const followingFeed = useFollowingFeedInfinite(
-    contentFilter !== "video" && feedMode === "following"
-  );
+  const globalFeed = useHomeFeedInfinite(feedMode === "global");
+  const followingFeed = useFollowingFeedInfinite(feedMode === "following");
 
   const activeFeed = feedMode === "global" ? globalFeed : followingFeed;
+  const fixedSlotFeed = isFixedSlotFeedEnabled(user?.uid ?? null);
+
+  const bufferedGlobalPosts = useFeedBuffer(globalFeed.recentPosts, {
+    feedKey: `home-global-${feedMode}`,
+    hasNextPage: globalFeed.hasNextPage,
+    isFetchingNextPage: globalFeed.isFetchingNextPage,
+  });
+
+  const bufferedFollowingPosts = useFeedBuffer(followingFeed.posts, {
+    feedKey: `home-following-${feedMode}`,
+    hasNextPage: followingFeed.hasNextPage,
+    isFetchingNextPage: followingFeed.isFetchingNextPage,
+  });
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("tabPress", () => {
@@ -94,7 +108,7 @@ export default function HomeScreen() {
   const feedItems = useMemo((): FeedListItem[] => {
     if (feedMode === "following") {
       return filterPostsByContentType(
-        followingFeed.posts,
+        bufferedFollowingPosts,
         listContentFilter
       ).map((post) => ({
         kind: "post" as const,
@@ -104,7 +118,7 @@ export default function HomeScreen() {
     }
 
     return filterPostsByContentType(
-      globalFeed.recentPosts,
+      bufferedGlobalPosts,
       listContentFilter
     ).map((post) => ({
       kind: "post" as const,
@@ -113,8 +127,8 @@ export default function HomeScreen() {
     }));
   }, [
     feedMode,
-    followingFeed.posts,
-    globalFeed.recentPosts,
+    bufferedFollowingPosts,
+    bufferedGlobalPosts,
     listContentFilter,
   ]);
 
@@ -175,6 +189,7 @@ export default function HomeScreen() {
           currentUserId={user?.uid ?? null}
           feedMode={feedMode}
           fullscreen
+          homeSeedPosts={videoPosts}
         />
       </View>
     );
@@ -184,7 +199,8 @@ export default function HomeScreen() {
   const error = activeFeed.error;
 
   return (
-    <TabScreenSafeArea className="flex-1 bg-gray-50">
+    <TabScreenSafeArea className={fixedSlotFeed ? "flex-1 bg-white" : "flex-1 bg-gray-50"}>
+      <StoriesRingBootstrap />
       <View className="min-h-0 flex-1">
         <FeedFlashList
           items={feedItems}
@@ -203,6 +219,8 @@ export default function HomeScreen() {
           currentUserId={user?.uid ?? null}
           contentContainerStyle={feedListContentStyle}
           reelsSource="home"
+          streamCell={fixedSlotFeed}
+          prefetchEnabled={isFocused}
         />
       </View>
     </TabScreenSafeArea>

@@ -1,7 +1,9 @@
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
 import { Text, View } from "react-native";
-import { usePublicProfile } from "../hooks/usePublicProfile";
+import { clearReelsNavigationForProfileVisit } from "../navigateToAuthorProfile";
+import { useRemoteProfileScreen } from "../hooks/useRemoteProfileScreen";
 import { ProfileContent } from "./ProfileContent";
-import { ProfileLoadingSkeleton } from "./ProfileLoadingSkeleton";
 
 type UserProfileViewProps = {
   userId: string;
@@ -14,16 +16,20 @@ export function UserProfileView({
   displayName,
   photoURL,
 }: UserProfileViewProps) {
-  const profile = usePublicProfile(userId, { displayName, photoURL });
+  useFocusEffect(
+    useCallback(() => {
+      clearReelsNavigationForProfileVisit();
+    }, [])
+  );
 
-  if (profile.loading) {
-    return <ProfileLoadingSkeleton />;
-  }
+  const profile = useRemoteProfileScreen(userId, { displayName, photoURL });
 
-  if (profile.error && !displayName?.trim()) {
+  if (profile.fatalError) {
     return (
       <View className="flex-1 items-center justify-center bg-white px-6">
-        <Text className="text-center text-sm text-red-700">{profile.error}</Text>
+        <Text className="text-center text-sm text-red-700">
+          {profile.fatalError}
+        </Text>
       </View>
     );
   }
@@ -35,7 +41,7 @@ export function UserProfileView({
       photoURL={profile.photoURL}
       bio={profile.bio}
       bioCategoryVisibility={profile.bioCategoryVisibility}
-      loadedTotalScore={profile.totalScore}
+      loadedTotalScore={profile.loadedTotalScore}
       metadata={profile.metadata}
       isOwnProfile={false}
     />

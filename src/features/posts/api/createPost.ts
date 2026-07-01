@@ -1,127 +1,40 @@
-import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
-import {
-  buildSegmentKey,
-  EMPTY_METADATA,
-  resolveDisplayName,
-  resolvePhotoURL,
-} from "@/features/profile/types";
-import { getFirebaseAuth, getFirestoreDb } from "@/lib/firebase";
+import { getApiBaseUrl } from "@/lib/api";
+import { fetchApi } from "@/lib/fetchApi";
 import type { CreatePostInput } from "../types";
-import {
-  extractHashtags,
-  extractMentionTokens,
-} from "../utils/parsePostContent";
-import { metadataOrEmpty, parsePostMetadata } from "./parsePostMetadata";
-import { resolveMentions } from "./resolveMentions";
 
 export type CreatePostResult = {
   id: string;
   mentionUserIds: string[];
 };
 
-const DEFAULT_VIDEO_WIDTH = 1280;
-const DEFAULT_VIDEO_HEIGHT = 720;
-const DEFAULT_IMAGE_WIDTH = 1080;
-const DEFAULT_IMAGE_HEIGHT = 1080;
-
-function resolveMediaDimensions(input: CreatePostInput): {
-  mediaWidth?: number;
-  mediaHeight?: number;
-} {
-  if (
-    typeof input.mediaWidth === "number" &&
-    typeof input.mediaHeight === "number" &&
-    input.mediaWidth > 0 &&
-    input.mediaHeight > 0
-  ) {
-    return {
-      mediaWidth: input.mediaWidth,
-      mediaHeight: input.mediaHeight,
-    };
-  }
-
-  if (!input.mediaURL) {
-    return {};
-  }
-
-  if (input.contentType === "video") {
-    return {
-      mediaWidth: DEFAULT_VIDEO_WIDTH,
-      mediaHeight: DEFAULT_VIDEO_HEIGHT,
-    };
-  }
-
-  if (input.contentType === "image") {
-    return {
-      mediaWidth: DEFAULT_IMAGE_WIDTH,
-      mediaHeight: DEFAULT_IMAGE_HEIGHT,
-    };
-  }
-
-  return {};
-}
+type CreatePostApiResponse = {
+  ok: boolean;
+  id: string;
+  mentionUserIds?: string[];
+  error?: string;
+};
 
 export async function createPost(
-  authorId: string,
+  _authorId: string,
   input: CreatePostInput
 ): Promise<CreatePostResult> {
-  const userSnap = await getDoc(doc(getFirestoreDb(), "users", authorId));
-  const userData = userSnap.exists() ? userSnap.data() : null;
-  const metadata = userData?.metadata
-    ? metadataOrEmpty(parsePostMetadata({ metadata: userData.metadata }))
-    : { ...EMPTY_METADATA };
-  const segmentKey = buildSegmentKey(metadata);
-
-  const authUser = getFirebaseAuth().currentUser;
-  const authorDisplayName = resolveDisplayName(
-    userData?.displayName as string | undefined,
-    authUser?.displayName
-  );
-  const authorPhotoURL = resolvePhotoURL(
-    userData?.photoURL as string | undefined,
-    authUser?.photoURL
-  );
-
-  const trimmedContent = input.content.trim();
-  const hashtags = extractHashtags(trimmedContent);
-  const mentionTokens = extractMentionTokens(trimmedContent);
-  let mentionUserIds: string[] = [];
-
-  if (mentionTokens.length > 0) {
-    try {
-      const resolved = await resolveMentions(mentionTokens);
-      mentionUserIds = [
-        ...new Set(resolved.map((entry) => entry.userId).filter(Boolean)),
-      ];
-    } catch {
-      // Mention resolution is best-effort; post still publishes.
-    }
-  }
-
-  const mediaDimensions = resolveMediaDimensions(input);
-
-  const docRef = await addDoc(collection(getFirestoreDb(), "posts"), {
-    authorId,
-    authorDisplayName,
-    ...(authorPhotoURL ? { authorPhotoURL } : {}),
-    metadata,
-    segmentKey,
-    postScore: 0,
-    likeCount: 0,
-    dislikeCount: 0,
-    shareCount: 0,
-    saveCount: 0,
-    commentCount: 0,
-    contentType: input.contentType,
-    content: trimmedContent,
-    ...(hashtags.length > 0 ? { hashtags } : {}),
-    ...(mentionUserIds.length > 0 ? { mentionUserIds } : {}),
-    ...(input.mediaURL ? { mediaURL: input.mediaURL } : {}),
-    ...(input.hlsURL ? { hlsURL: input.hlsURL } : {}),
-    ...(input.posterURL ? { posterURL: input.posterURL } : {}),
-    ...mediaDimensions,
-    createdAt: serverTimestamp(),
+  const response = await fetchApi(`${getApiBaseUrl()}/api/posts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+    timeoutMs: 30_000,
   });
 
-  return { id: docRef.id, mentionUserIds };
+  const data = (await response.json()) as CreatePostApiResponse;
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Gönderi paylaşılamadı");
+  }
+
+  return {
+    id: data.id,
+    mentionUserIds: data.mentionUserIds ?? [],
+  };
 }

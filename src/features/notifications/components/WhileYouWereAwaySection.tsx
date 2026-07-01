@@ -17,6 +17,7 @@ import {
 } from "../utils/navigateFromNotification";
 import { GossipWomanIcon } from "./GossipWomanIcon";
 import { ProfileExpandableCard } from "@/components/ProfileExpandableCard";
+import { useProfileExpandableCardHeaderHeight } from "@/features/profile/hooks/useProfileExpandableCardHeaderHeight";
 
 type WhileYouWereAwaySectionProps = {
   userId: string;
@@ -30,6 +31,7 @@ export function WhileYouWereAwaySection({
   currentUserId = null,
 }: WhileYouWereAwaySectionProps) {
   const router = useRouter();
+  const headerHeight = useProfileExpandableCardHeaderHeight();
   const [expanded, setExpanded] = useState(false);
   const { notifications, loading, error, refresh } = useNotifications(userId, {
     limit: 10,
@@ -61,6 +63,7 @@ export function WhileYouWereAwaySection({
       onToggle={handleToggleExpand}
       icon="notifications-outline"
       accessibilityLabel="Sen yokken neler oldu listesini aç"
+      headerHeight={headerHeight}
       trailing={
         expanded ? (
           <GossipWomanIcon onPress={() => void speakGossip()} speaking={speaking} />

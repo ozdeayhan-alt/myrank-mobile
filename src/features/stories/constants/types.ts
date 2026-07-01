@@ -11,6 +11,38 @@ export type Story = {
   caption: string | null;
   createdAt: number | null;
   expiresAt: number | null;
+  viewCount?: number;
+  heartLikeCount?: number;
+  likeCount?: number;
+  dislikeCount?: number;
+  storyScore?: number;
+};
+
+export type StoryActorSummary = {
+  userId: string;
+  displayName: string;
+  photoURL: string | null;
+  at: number | null;
+};
+
+export type StoryInsights = {
+  storyId: string;
+  viewCount: number;
+  heartLikeCount: number;
+  storyScore: number;
+  viewers: StoryActorSummary[];
+  likers: StoryActorSummary[];
+};
+
+export type StoryEngagement = {
+  storyId: string;
+  liked: boolean;
+  voteNet: number;
+};
+
+export type StoryVoteCounts = {
+  likeCount: number;
+  dislikeCount: number;
 };
 
 export const CAPTION_MAX_LENGTH = 40;

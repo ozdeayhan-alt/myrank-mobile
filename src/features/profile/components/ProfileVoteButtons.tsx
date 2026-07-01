@@ -1,15 +1,26 @@
-import { memo } from "react";
-import { useProfileVoteContext } from "./ProfileVoteProvider";
+import { memo, type RefObject } from "react";
+import { View, type View as RNView } from "react-native";
+import { useProfileVoteActions } from "./ProfileVoteProvider";
 import { ProfileVoteControls } from "./ProfileVoteControls";
 
-function ProfileVoteButtonsInner() {
-  const { votesEnabled, registerUp, registerDown } = useProfileVoteContext();
+type ProfileVoteButtonsProps = {
+  voteRowRef?: RefObject<RNView | null>;
+  onVoteRowLayout?: () => void;
+};
+
+function ProfileVoteButtonsInner({
+  voteRowRef,
+  onVoteRowLayout,
+}: ProfileVoteButtonsProps) {
+  const { votesEnabled, registerUp, registerDown } = useProfileVoteActions();
   return (
-    <ProfileVoteControls
-      enabled={votesEnabled}
-      onUp={registerUp}
-      onDown={registerDown}
-    />
+    <View ref={voteRowRef} collapsable={false} onLayout={onVoteRowLayout}>
+      <ProfileVoteControls
+        enabled={votesEnabled}
+        onUp={registerUp}
+        onDown={registerDown}
+      />
+    </View>
   );
 }
 

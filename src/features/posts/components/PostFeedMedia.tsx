@@ -284,6 +284,21 @@ function PostFeedMediaInner({
   mediaEdgeBleed,
 }: PostFeedMediaProps) {
   const isImage = post.contentType === "image";
+  const storedRatio = storedAspectRatio(post);
+
+  if (isImage && storedRatio != null) {
+    return (
+      <PostFeedMediaLayout
+        post={post}
+        variant={variant}
+        aspectRatio={storedRatio}
+        imagePriority={imagePriority}
+        inlineAutoplay={inlineAutoplay}
+        listHorizontalInset={listHorizontalInset}
+        mediaEdgeBleed={mediaEdgeBleed}
+      />
+    );
+  }
 
   if (isImage) {
     return (
@@ -298,8 +313,6 @@ function PostFeedMediaInner({
       />
     );
   }
-
-  const storedRatio = storedAspectRatio(post);
 
   if (placeholderHeight != null && storedRatio == null) {
     return (

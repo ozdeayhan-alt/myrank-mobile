@@ -1,14 +1,11 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 
 export async function markConversationRead(conversationId: string): Promise<void> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(`${getApiBaseUrl()}/api/messages/read`, {
+  const response = await fetchApi(`${getApiBaseUrl()}/api/messages/read`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ conversationId }),
     timeoutMs: 20000,

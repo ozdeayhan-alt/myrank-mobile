@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import type { EngagementStatus, PostCounts } from "@/features/ranking/types";
 
 export type PostVoteBatchResponse = {
@@ -19,14 +18,12 @@ export async function fetchPostVoteBatch(
   postId: string,
   delta: number
 ): Promise<PostVoteBatchResponse> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(
+  const response = await fetchApi(
     `${getApiBaseUrl()}/api/post-votes/batch`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ postId, delta }),
       timeoutMs: 20000,

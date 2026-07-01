@@ -1,8 +1,9 @@
 import { View } from "react-native";
 import { ProfileVoteCircleButton } from "@/features/profile/components/ProfileVoteCircleButton";
 
-const FEED_VOTE_DIAMETER = 44;
-const REELS_VOTE_DIAMETER = 44;
+const FEED_VOTE_DIAMETER = 46;
+const REELS_VOTE_DIAMETER = 46;
+const REELS_VISUAL_OPACITY = 0.48;
 const VOTE_GAP = 6;
 
 type PostVoteCirclePairProps = {
@@ -41,6 +42,7 @@ export function PostVoteCirclePair({
         diameter={diameter}
         showLabel={false}
         ghost={ghost}
+        visualOpacity={ghost ? REELS_VISUAL_OPACITY : 1}
         accessibilityLabel="Alçalt, gönderi puanından 1 düşür"
       />
       <ProfileVoteCircleButton
@@ -50,6 +52,7 @@ export function PostVoteCirclePair({
         diameter={diameter}
         showLabel={false}
         ghost={ghost}
+        visualOpacity={ghost ? REELS_VISUAL_OPACITY : 1}
         accessibilityLabel="Yükselt, gönderi puanına 1 ekle"
       />
     </View>

@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import type { Story, StoryMediaType } from "../constants/types";
 
 export type CreateStoryInput = {
@@ -11,11 +10,9 @@ export type CreateStoryInput = {
 };
 
 export async function createStory(input: CreateStoryInput): Promise<Story> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(`${getApiBaseUrl()}/api/stories`, {
+  const response = await fetchApi(`${getApiBaseUrl()}/api/stories`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(input),

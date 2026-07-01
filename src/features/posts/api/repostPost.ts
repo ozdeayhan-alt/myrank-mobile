@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 
 export type RepostPostResult = {
   ok: boolean;
@@ -13,12 +12,10 @@ export async function repostPost(
   postId: string,
   caption?: string
 ): Promise<RepostPostResult> {
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(`${getApiBaseUrl()}/api/posts/repost`, {
+  const response = await fetchApi(`${getApiBaseUrl()}/api/posts/repost`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ postId, caption: caption ?? "" }),
     timeoutMs: 20000,

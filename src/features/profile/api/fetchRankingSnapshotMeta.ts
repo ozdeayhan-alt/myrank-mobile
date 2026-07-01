@@ -1,38 +1,40 @@
-import { doc, getDoc, Timestamp } from "firebase/firestore";
-import { getFirestoreDb } from "@/lib/firebase";
+import { getApiBaseUrl } from "@/lib/api";
+import { fetchApi } from "@/lib/fetchApi";
 
 export type RankingSnapshotMeta = {
   rebuiltAt: Date | null;
   timezone: string | null;
 };
 
+type SnapshotMetaApiResponse = {
+  ok: boolean;
+  meta: {
+    rebuiltAt: string | null;
+    timezone: string | null;
+    mode?: string | null;
+  };
+  error?: string;
+};
+
 export async function fetchRankingSnapshotMeta(): Promise<RankingSnapshotMeta> {
-  const snap = await getDoc(
-    doc(getFirestoreDb(), "rankingSnapshots", "latest")
+  const response = await fetchApi(
+    `${getApiBaseUrl()}/api/ranking/snapshot-meta`,
+    { method: "GET", timeoutMs: 15_000 }
   );
 
-  if (!snap.exists()) {
-    return { rebuiltAt: null, timezone: null };
+  const data = (await response.json()) as SnapshotMetaApiResponse;
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Ranking snapshot meta request failed");
   }
 
-  const data = snap.data();
-  const rebuiltAtRaw = data.rebuiltAt;
-
-  let rebuiltAt: Date | null = null;
-  if (rebuiltAtRaw instanceof Timestamp) {
-    rebuiltAt = rebuiltAtRaw.toDate();
-  } else if (
-    rebuiltAtRaw &&
-    typeof rebuiltAtRaw === "object" &&
-    "seconds" in rebuiltAtRaw
-  ) {
-    rebuiltAt = new Date((rebuiltAtRaw as { seconds: number }).seconds * 1000);
-  }
-
+  const rebuiltAtRaw = data.meta?.rebuiltAt;
   return {
-    rebuiltAt,
+    rebuiltAt: rebuiltAtRaw ? new Date(rebuiltAtRaw) : null,
     timezone:
-      typeof data.timezone === "string" ? data.timezone : "Europe/Istanbul",
+      typeof data.meta?.timezone === "string"
+        ? data.meta.timezone
+        : "Europe/Istanbul",
   };
 }
 

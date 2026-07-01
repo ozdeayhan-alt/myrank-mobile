@@ -1,11 +1,34 @@
 import { Image } from "expo-image";
 import type { VideoSource } from "expo-video";
-import { resolveMediaDisplayUrl, resolveVideoPosterUrl } from "@/lib/media/resolveMediaDisplayUrl";
+import {
+  resolveMediaDisplayUrl,
+  resolveVideoPosterUrl,
+} from "@/lib/media/resolveMediaDisplayUrl";
 import type { Post } from "../types";
+import { resolveFeedMediaDisplayUrls } from "@/features/feed/resolveFeedMediaDisplayUrls";
 import { resolveReelVideoSources } from "./resolveReelVideoSource";
+import {
+  isRepostPost,
+  resolveEmbeddedOriginalPost,
+} from "./repostUtils";
 import { isVideoPost } from "./videoPosts";
 
 const MP4_WARMUP_BYTES = 131_071;
+const PREFETCH_TIMEOUT_MS = 8_000;
+
+async function fetchWithPrefetchTimeout(
+  url: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PREFETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function resolveVideoPrefetchUri(source: VideoSource): string | null {
   if (source == null) {
@@ -33,21 +56,6 @@ function isHlsSource(source: VideoSource): boolean {
   );
 }
 
-async function warmMp4Uri(uri: string): Promise<void> {
-  try {
-    await fetch(uri, { method: "HEAD" });
-  } catch {
-    try {
-      await fetch(uri, {
-        method: "GET",
-        headers: { Range: `bytes=0-${MP4_WARMUP_BYTES}` },
-      });
-    } catch {
-      // CDN warmup best-effort
-    }
-  }
-}
-
 function resolvePlaylistSegmentUrl(
   manifestUrl: string,
   segmentRef: string
@@ -58,9 +66,24 @@ function resolvePlaylistSegmentUrl(
   return new URL(segmentRef, manifestUrl).toString();
 }
 
+async function warmMp4Uri(uri: string): Promise<void> {
+  try {
+    await fetchWithPrefetchTimeout(uri, { method: "HEAD" });
+  } catch {
+    try {
+      await fetchWithPrefetchTimeout(uri, {
+        method: "GET",
+        headers: { Range: `bytes=0-${MP4_WARMUP_BYTES}` },
+      });
+    } catch {
+      // CDN warmup best-effort
+    }
+  }
+}
+
 async function warmHlsManifest(manifestUrl: string): Promise<void> {
   try {
-    const response = await fetch(manifestUrl);
+    const response = await fetchWithPrefetchTimeout(manifestUrl);
     if (!response.ok) {
       return;
     }
@@ -83,7 +106,7 @@ async function warmHlsManifest(manifestUrl: string): Promise<void> {
     }
 
     const segmentUrl = resolvePlaylistSegmentUrl(manifestUrl, segmentRef);
-    await fetch(segmentUrl, {
+    await fetchWithPrefetchTimeout(segmentUrl, {
       method: "GET",
       headers: { Range: `bytes=0-${MP4_WARMUP_BYTES}` },
     });
@@ -106,11 +129,11 @@ async function warmVideoSource(source: VideoSource): Promise<void> {
   await warmMp4Uri(uri);
 }
 
-export function prefetchPostMedia(post: Post): void {
+function prefetchSinglePostMedia(post: Post): void {
   if (post.contentType === "image") {
     const uri = resolveMediaDisplayUrl(post.mediaURL);
     if (uri) {
-      void Image.prefetch(uri);
+      void Image.prefetch(uri, { cachePolicy: "memory-disk" });
     }
     return;
   }
@@ -121,7 +144,7 @@ export function prefetchPostMedia(post: Post): void {
 
   const posterUri = resolveVideoPosterUrl(post);
   if (posterUri) {
-    void Image.prefetch(posterUri);
+    void Image.prefetch(posterUri, { cachePolicy: "memory-disk" });
   }
 
   const sources = resolveReelVideoSources(post);
@@ -133,5 +156,57 @@ export function prefetchPostMedia(post: Post): void {
   const secondary = sources[1];
   if (secondary) {
     void warmVideoSource(secondary);
+  }
+}
+
+export function prefetchPostMedia(post: Post): void {
+  if (isRepostPost(post)) {
+    const embedded = resolveEmbeddedOriginalPost(post);
+    if (embedded) {
+      prefetchSinglePostMedia(embedded);
+    }
+    return;
+  }
+
+  prefetchSinglePostMedia(post);
+}
+
+export function prefetchFeedPostsBatch(posts: Post[]): void {
+  for (const post of posts) {
+    prefetchPostMedia(post);
+  }
+}
+
+function prefetchSinglePostImagesOnly(post: Post): void {
+  const { previewUri, fullUri } = resolveFeedMediaDisplayUrls(post);
+
+  if (previewUri) {
+    void Image.prefetch(previewUri, { cachePolicy: "memory-disk" });
+  }
+
+  if (fullUri && fullUri !== previewUri) {
+    void Image.prefetch(fullUri, { cachePolicy: "memory-disk" });
+  }
+}
+
+/** Scroll sırasında — video manifest/segment warmup yok, sadece görsel/poster. */
+export function prefetchFeedPostsImagesBatch(posts: Post[]): void {
+  const seen = new Set<string>();
+
+  for (const post of posts) {
+    if (seen.has(post.id)) {
+      continue;
+    }
+    seen.add(post.id);
+
+    if (isRepostPost(post)) {
+      const embedded = resolveEmbeddedOriginalPost(post);
+      if (embedded) {
+        prefetchSinglePostImagesOnly(embedded);
+      }
+      continue;
+    }
+
+    prefetchSinglePostImagesOnly(post);
   }
 }

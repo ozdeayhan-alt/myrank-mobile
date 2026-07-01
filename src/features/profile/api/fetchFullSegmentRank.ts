@@ -1,4 +1,4 @@
-import { ensureRankingEntries } from "./ensureRankingEntries";
+import { ensureRankingEntriesIfNeeded } from "./ensureRankingEntriesIfNeeded";
 import { resolveOfficialSegmentRank } from "./resolveOfficialSegmentRank";
 import { buildSegmentKey, type UserMetadata } from "../types";
 
@@ -8,7 +8,7 @@ export async function fetchFullSegmentRank(
   isOwnProfile: boolean
 ): Promise<number | null> {
   if (isOwnProfile) {
-    await ensureRankingEntries().catch(() => undefined);
+    await ensureRankingEntriesIfNeeded().catch(() => undefined);
   }
 
   const segmentKey = buildSegmentKey(metadata);

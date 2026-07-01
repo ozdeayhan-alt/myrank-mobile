@@ -16,7 +16,7 @@ import {
   pickVideoFromCamera,
   pickVideoFromLibrary,
 } from "@/lib/media/pickMedia";
-import { getShareComposerPlaceholder } from "../constants/contentTypeLabels";
+import { getShareComposerPlaceholder, getContentTypeLabel } from "../constants/contentTypeLabels";
 import { SHARE_COMPOSER_OPTIONS } from "../constants/shareComposerOptions";
 import { useShareComposerSubmit } from "../hooks/useShareComposerSubmit";
 import {
@@ -35,16 +35,17 @@ function getActiveMentionQuery(text: string): string | null {
 
 type ShareComposerProps = {
   initialType?: PostContentType;
+  /** Hub'dan tür seçildiyse üstteki pill satırını gizle */
+  showTypePicker?: boolean;
   onClose: () => void;
   onCreated?: () => void;
-  variant: "sheet" | "screen";
 };
 
 export function ShareComposer({
   initialType = "tweet",
+  showTypePicker = true,
   onClose,
   onCreated,
-  variant,
 }: ShareComposerProps) {
   const { user } = useAuth();
   const [selected, setSelected] = useState<PostContentType>(initialType);
@@ -137,20 +138,15 @@ export function ShareComposer({
 
   const selectedHint =
     SHARE_COMPOSER_OPTIONS.find((o) => o.type === selected)?.hint ?? "";
-  const isSheet = variant === "sheet";
+  const headerTitle = showTypePicker
+    ? "Yeni gönderi"
+    : `Yeni ${getContentTypeLabel(selected === "repost" ? "tweet" : selected)}`;
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className={isSheet ? "h-full" : "flex-1"}
-      style={isSheet ? { flex: 1 } : undefined}
+      className="flex-1"
     >
-      {variant === "sheet" ? (
-        <View className="mb-3 items-center">
-          <View className="h-1 w-10 rounded-full bg-gray-300" />
-        </View>
-      ) : null}
-
       <View className="mb-4 flex-row items-center justify-between">
         <Pressable
           onPress={onClose}
@@ -164,7 +160,7 @@ export function ShareComposer({
         </Pressable>
 
         <Text className="text-base font-semibold text-gray-900">
-          Yeni gönderi
+          {headerTitle}
         </Text>
 
         <View className="min-w-[64px]" />
@@ -183,39 +179,48 @@ export function ShareComposer({
         className="flex-1"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={
+          showTypePicker
+            ? undefined
+            : { flexGrow: 1, justifyContent: "flex-end" }
+        }
       >
-        <View className="mb-4 flex-row gap-2">
-          {SHARE_COMPOSER_OPTIONS.map(({ type, label, icon }) => {
-            const active = selected === type;
-            return (
-              <Pressable
-                key={type}
-                className={`flex-1 items-center rounded-2xl border px-2 py-3 ${
-                  active
-                    ? "border-gray-900 bg-gray-50 shadow-sm"
-                    : "border-gray-200 bg-white"
-                }`}
-                onPress={() => handleSelectType(type)}
-                disabled={submitting}
-              >
-                <Ionicons
-                  name={icon}
-                  size={22}
-                  color={active ? "#111827" : "#6B7280"}
-                />
-                <Text
-                  className={`mt-1.5 text-xs font-semibold ${
-                    active ? "text-gray-900" : "text-gray-600"
+        {showTypePicker ? (
+          <View className="mb-4 flex-row gap-2">
+            {SHARE_COMPOSER_OPTIONS.map(({ type, label, icon }) => {
+              const active = selected === type;
+              return (
+                <Pressable
+                  key={type}
+                  className={`flex-1 items-center rounded-2xl border px-2 py-3 ${
+                    active
+                      ? "border-gray-900 bg-gray-50 shadow-sm"
+                      : "border-gray-200 bg-white"
                   }`}
+                  onPress={() => handleSelectType(type)}
+                  disabled={submitting}
                 >
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+                  <Ionicons
+                    name={icon}
+                    size={22}
+                    color={active ? "#111827" : "#6B7280"}
+                  />
+                  <Text
+                    className={`mt-1.5 text-xs font-semibold ${
+                      active ? "text-gray-900" : "text-gray-600"
+                    }`}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
 
-        <Text className="mb-3 text-sm text-gray-500">{selectedHint}</Text>
+        {showTypePicker ? (
+          <Text className="mb-3 text-sm text-gray-500">{selectedHint}</Text>
+        ) : null}
 
         <ShareComposerMediaSection
           selected={selected}

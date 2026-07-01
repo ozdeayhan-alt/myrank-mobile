@@ -60,6 +60,22 @@ export function parseProfileFields(data: Record<string, unknown>): ParsedProfile
   };
 }
 
+/** API / cache yanıtlarında eksik alanlara karşı güvenli metadata. */
+export function sanitizeUserMetadata(input: unknown): UserMetadata {
+  if (!input || typeof input !== "object") {
+    return { ...EMPTY_METADATA };
+  }
+  return parseMetadataFromDoc(input as Record<string, unknown>);
+}
+
+/** Ham profil nesnesini PublicProfile alanlarına normalize eder. */
+export function sanitizeApiPublicProfile(profile: unknown): ParsedProfileFields | null {
+  if (!profile || typeof profile !== "object") {
+    return null;
+  }
+  return parseProfileFields(profile as Record<string, unknown>);
+}
+
 export function metadataToFirestore(metadata: UserMetadata) {
   return {
     country: metadata.country.trim(),

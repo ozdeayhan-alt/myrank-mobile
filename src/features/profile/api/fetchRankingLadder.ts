@@ -1,18 +1,6 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocFromServer,
-  getDocs,
-  getDocsFromServer,
-  limit,
-  orderBy,
-  query,
-  where,
-  type DocumentData,
-} from "firebase/firestore";
 import { GLOBAL_RANKING_SEGMENT } from "@/features/filters/constants";
-import { getFirestoreDb } from "@/lib/firebase";
+import { getApiBaseUrl } from "@/lib/api";
+import { fetchApi } from "@/lib/fetchApi";
 
 export type LadderRung = {
   rank: number;
@@ -26,66 +14,14 @@ export type RankingLadderResult = {
   behindRungs: LadderRung[];
 };
 
-/** Gauge animasyonu için yeterli basamak; tam liste değil. */
-export const RANKING_LADDER_MAX_RUNGS = 20;
+/** Gauge merdiven fetch üst sınırı (yüksek resmi sıralarda pencere). */
+export const RANKING_LADDER_MAX_RUNGS = 100;
 
-function globalEntryRef(userId: string) {
-  return doc(
-    getFirestoreDb(),
-    "rankings",
-    GLOBAL_RANKING_SEGMENT,
-    "entries",
-    userId
-  );
-}
-
-function globalEntriesCollection() {
-  return collection(
-    getFirestoreDb(),
-    "rankings",
-    GLOBAL_RANKING_SEGMENT,
-    "entries"
-  );
-}
-
-function readRung(data: DocumentData): LadderRung | null {
-  const rank = typeof data.rank === "number" ? data.rank : null;
-  const totalScore =
-    typeof data.totalScore === "number" ? data.totalScore : null;
-  if (rank === null || totalScore === null || rank <= 0) {
-    return null;
-  }
-  return { rank, totalScore };
-}
-
-async function readGlobalEntryCached(
-  userId: string
-): Promise<DocumentData | null> {
-  const snap = await getDoc(globalEntryRef(userId));
-  return snap.exists() ? snap.data() : null;
-}
-
-async function readGlobalEntryFresh(
-  userId: string
-): Promise<DocumentData | null> {
-  try {
-    const snap = await getDocFromServer(globalEntryRef(userId));
-    return snap.exists() ? snap.data() : null;
-  } catch {
-    return readGlobalEntryCached(userId);
-  }
-}
-
-async function runDocsQuery(q: ReturnType<typeof query>) {
-  try {
-    return await getDocsFromServer(q);
-  } catch {
-    return await getDocs(q);
-  }
-}
+/** Gauge bar ince ayarı için yeterli komşu rung sayısı. */
+export const GAUGE_LADDER_MAX_RUNGS = 12;
 
 function immediateAheadFromEntry(
-  entryData: DocumentData
+  entryData: Record<string, unknown>
 ): LadderRung | null {
   const aheadRank =
     typeof entryData.aheadRank === "number" ? entryData.aheadRank : null;
@@ -100,7 +36,7 @@ function immediateAheadFromEntry(
 }
 
 function immediateBehindFromEntry(
-  entryData: DocumentData
+  entryData: Record<string, unknown>
 ): LadderRung | null {
   const behindRank =
     typeof entryData.behindRank === "number" ? entryData.behindRank : null;
@@ -119,7 +55,7 @@ function immediateBehindFromEntry(
 }
 
 function buildSnapshotFromEntry(
-  entryData: DocumentData | null
+  entryData: Record<string, unknown> | null
 ): RankingLadderResult {
   if (!entryData) {
     return {
@@ -133,7 +69,6 @@ function buildSnapshotFromEntry(
   const snapshotScore =
     typeof entryData.totalScore === "number" ? entryData.totalScore : 0;
   const myRank = typeof entryData.rank === "number" ? entryData.rank : null;
-
   const aheadImmediate = immediateAheadFromEntry(entryData);
   const behindImmediate = immediateBehindFromEntry(entryData);
 
@@ -145,132 +80,92 @@ function buildSnapshotFromEntry(
   };
 }
 
+async function readSegmentEntryCached(
+  segmentKey: string,
+  userId: string
+): Promise<Record<string, unknown> | null> {
+  const params = new URLSearchParams({ segmentKey });
+  const response = await fetchApi(
+    `${getApiBaseUrl()}/api/profile/${encodeURIComponent(userId)}/ranking-entry?${params.toString()}`,
+    { method: "GET", timeoutMs: 15_000 }
+  );
+
+  const data = (await response.json()) as {
+    ok: boolean;
+    entry: Record<string, unknown> | null;
+  };
+
+  if (!response.ok || !data.entry) {
+    return null;
+  }
+
+  return data.entry;
+}
+
 /**
- * Hızlı ilk paint — tek doc, cache-first; Önündeki/Arkandaki snapshot alanları.
+ * Fallback when profile summary seed is unavailable.
  */
 export async function fetchRankingLadderSnapshot(
-  userId: string
+  userId: string,
+  segmentKey: string = GLOBAL_RANKING_SEGMENT,
+  hintRank?: number | null
 ): Promise<RankingLadderResult> {
-  const entryData = await readGlobalEntryCached(userId);
-  return buildSnapshotFromEntry(entryData);
-}
-
-async function fetchRungsByRank(
-  myRank: number,
-  direction: "ahead" | "behind"
-): Promise<LadderRung[]> {
-  const coll = globalEntriesCollection();
-
-  if (direction === "ahead") {
-    const q = query(
-      coll,
-      where("rank", "<", myRank),
-      orderBy("rank", "desc"),
-      limit(RANKING_LADDER_MAX_RUNGS)
-    );
-    const snap = await runDocsQuery(q);
-    return snap.docs
-      .map((docSnap) => readRung(docSnap.data() as DocumentData))
-      .filter((rung): rung is LadderRung => rung !== null);
-  }
-
-  const q = query(
-    coll,
-    where("rank", ">", myRank),
-    orderBy("rank", "asc"),
-    limit(RANKING_LADDER_MAX_RUNGS)
-  );
-  const snap = await runDocsQuery(q);
-  return snap.docs
-    .map((docSnap) => readRung(docSnap.data() as DocumentData))
-    .filter((rung): rung is LadderRung => rung !== null);
-}
-
-async function fetchRungsByTotalScoreOrder(
-  myRank: number,
-  direction: "ahead" | "behind"
-): Promise<LadderRung[]> {
-  const coll = globalEntriesCollection();
-
-  if (direction === "ahead") {
-    const q = query(coll, orderBy("totalScore", "desc"), limit(myRank));
-    const snap = await runDocsQuery(q);
-    return snap.docs
-      .slice(0, Math.max(0, myRank - 1))
-      .reverse()
-      .map((docSnap) => readRung(docSnap.data() as DocumentData))
-      .filter((rung): rung is LadderRung => rung !== null)
-      .slice(0, RANKING_LADDER_MAX_RUNGS);
-  }
-
-  const q = query(
-    coll,
-    orderBy("totalScore", "desc"),
-    limit(myRank + RANKING_LADDER_MAX_RUNGS)
-  );
-  const snap = await runDocsQuery(q);
-  return snap.docs
-    .slice(myRank)
-    .map((docSnap) => readRung(docSnap.data() as DocumentData))
-    .filter((rung): rung is LadderRung => rung !== null)
-    .slice(0, RANKING_LADDER_MAX_RUNGS);
-}
-
-/**
- * Tam merdiven — arka planda; rank sorguları + fallback.
- */
-export async function fetchRankingLadderFull(
-  userId: string
-): Promise<RankingLadderResult> {
-  const entryData = await readGlobalEntryFresh(userId);
+  const entryData = await readSegmentEntryCached(segmentKey, userId);
   const base = buildSnapshotFromEntry(entryData);
 
-  if (!entryData || base.myRank === null) {
-    return base;
+  if (
+    base.myRank === null &&
+    hintRank != null &&
+    hintRank > 0 &&
+    entryData
+  ) {
+    return { ...base, myRank: hintRank };
   }
 
-  const myRank = base.myRank;
-  let aheadRungs: LadderRung[] = [];
-  let behindRungs: LadderRung[] = [];
+  return base;
+}
 
-  try {
-    [aheadRungs, behindRungs] = await Promise.all([
-      myRank > 1 ? fetchRungsByRank(myRank, "ahead") : Promise.resolve([]),
-      fetchRungsByRank(myRank, "behind"),
-    ]);
-  } catch (error) {
-    console.warn("[fetchRankingLadderFull] rank query failed, fallback:", error);
+/** Tam merdiven — backend API. */
+export async function fetchRankingLadderFull(
+  userId: string,
+  segmentKey: string = GLOBAL_RANKING_SEGMENT,
+  hintRank?: number | null,
+  maxRungs?: number | null
+): Promise<RankingLadderResult> {
+  const params = new URLSearchParams();
+  params.set("segmentKey", segmentKey);
+  if (hintRank != null && hintRank > 0) {
+    params.set("hintRank", String(hintRank));
+  }
+  if (maxRungs != null && maxRungs > 0) {
+    params.set("maxRungs", String(maxRungs));
   }
 
-  if (myRank > 1 && aheadRungs.length === 0) {
-    try {
-      aheadRungs = await fetchRungsByTotalScoreOrder(myRank, "ahead");
-    } catch (error) {
-      console.warn("[fetchRankingLadderFull] ahead score fallback failed:", error);
-      aheadRungs = base.aheadRungs;
+  const response = await fetchApi(
+    `${getApiBaseUrl()}/api/profile/${encodeURIComponent(userId)}/ladder?${params.toString()}`,
+    {
+      method: "GET",
+      timeoutMs: 20_000,
     }
-  }
+  );
 
-  if (behindRungs.length === 0) {
-    try {
-      behindRungs = await fetchRungsByTotalScoreOrder(myRank, "behind");
-    } catch (error) {
-      console.warn("[fetchRankingLadderFull] behind score fallback failed:", error);
-      behindRungs = base.behindRungs;
-    }
-  }
-
-  return {
-    snapshotScore: base.snapshotScore,
-    myRank,
-    aheadRungs,
-    behindRungs,
+  const data = (await response.json()) as {
+    ok: boolean;
+    ladder: RankingLadderResult;
+    error?: string;
   };
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Ladder request failed");
+  }
+
+  return data.ladder;
 }
 
 /** @deprecated Use snapshot + full split */
 export async function fetchRankingLadder(
-  userId: string
+  userId: string,
+  segmentKey: string = GLOBAL_RANKING_SEGMENT
 ): Promise<RankingLadderResult> {
-  return fetchRankingLadderFull(userId);
+  return fetchRankingLadderFull(userId, segmentKey);
 }

@@ -1,196 +1,146 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
-import { PROFILE_VOTE_FLAT_COLORS } from "./profileFollowButtonTheme";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { VoteChevron } from "@/components/VoteChevron";
+import { FERRARI_RED, VOTE_UP_BLUE } from "./profileFollowButtonTheme";
 
-const DEFAULT_DIAMETER = 88;
+const DEFAULT_DIAMETER = 54;
 const HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
 
-const FLAT_THEMES: Record<"up" | "down", { fill: string }> = {
-  up: { fill: PROFILE_VOTE_FLAT_COLORS.up },
-  down: { fill: PROFILE_VOTE_FLAT_COLORS.down },
+const CHROME_GRADIENT = ["#E4E7EC", "#C5CAD3", "#A8B0BA"] as const;
+const CHROME_GRADIENT_GHOST = [
+  "rgba(228,231,236,0.55)",
+  "rgba(197,202,211,0.45)",
+  "rgba(154,163,174,0.4)",
+] as const;
+
+type ZikirmatikTheme = {
+  cap: readonly [string, string, string];
+  capPressed: readonly [string, string, string];
+  recess: string;
+  recessPressed: string;
+  icon: string;
+  label: string;
+  labelActive: string;
+  activeGlow: string;
 };
 
-type LegacyVoteTheme = {
-  gradient: readonly [string, string, string];
-  rim: string;
-  dropShadow: string;
-};
-
-const GHOST_THEMES: Record<"up" | "down", LegacyVoteTheme> = {
+const ZIKIRMATIK_THEMES: Record<"up" | "down", ZikirmatikTheme> = {
   up: {
-    gradient: [
-      "rgba(91,155,213,0.28)",
-      "rgba(37,99,235,0.32)",
-      "rgba(30,58,138,0.36)",
-    ],
-    rim: "rgba(147,197,253,0.45)",
-    dropShadow: "transparent",
+    cap: ["#6A9EE8", VOTE_UP_BLUE, "#0A52C8"],
+    capPressed: ["#5A8FD8", "#0550D0", "#0848B0"],
+    recess: "#1E2836",
+    recessPressed: "#141A24",
+    icon: "#FFFFFF",
+    label: "#9CA3AF",
+    labelActive: "#2563EB",
+    activeGlow: "rgba(37,99,235,0.2)",
   },
   down: {
-    gradient: [
-      "rgba(229,115,115,0.28)",
-      "rgba(220,38,38,0.32)",
-      "rgba(153,27,27,0.36)",
-    ],
-    rim: "rgba(252,165,165,0.45)",
-    dropShadow: "transparent",
+    cap: ["#E86A50", FERRARI_RED, "#C02818"],
+    capPressed: ["#D85A40", "#D02000", "#A82010"],
+    recess: "#2A1E20",
+    recessPressed: "#1A1214",
+    icon: "#FFFFFF",
+    label: "#9CA3AF",
+    labelActive: "#DC2626",
+    activeGlow: "rgba(220,38,38,0.2)",
   },
 };
 
 type ProfileVoteCircleButtonProps = {
   direction: "up" | "down";
   onPress: () => void;
+  onPressIn?: () => void;
+  onPressOut?: () => void;
   disabled: boolean;
   accessibilityLabel: string;
   diameter?: number;
   /** Profil: Yükselt/Alçalt yazısı; gönderi: sadece ok */
   showLabel?: boolean;
+  /** gaugeVoteMode ile eşleşince hafif vurgu */
+  active?: boolean;
   /** Reels overlay gibi yarı saydam yüzey (0–1) */
   visualOpacity?: number;
-  /** Reels: saydam gradient, gölgesiz yüzey — flat stil uygulanmaz */
+  /** Reels: daha saydam metalik yüzey */
   ghost?: boolean;
 };
 
-function VoteChevron({
-  direction,
-  size,
-  color = "#ffffff",
-}: {
-  direction: "up" | "down";
-  size: number;
-  color?: string;
-}) {
-  const pathUp =
-    "M16 3 L27 20.5 Q28.5 24.5 24.5 24.5 L7.5 24.5 Q3.5 24.5 5 20.5 Z";
-  const pathDown =
-    "M16 25 L27 7.5 Q28.5 3.5 24.5 3.5 L7.5 3.5 Q3.5 3.5 5 7.5 Z";
+function createStyles(size: number) {
+  const ringWidth = Math.max(3, Math.round(size * 0.07));
+  const recessInset = ringWidth + 1;
+  const capSize = size - recessInset * 2;
 
-  const height = Math.round((size * 28) / 32);
-
-  return (
-    <Svg width={size} height={height} viewBox="0 0 32 28">
-      <Path d={direction === "up" ? pathUp : pathDown} fill={color} />
-    </Svg>
-  );
-}
-
-function createFlatStyles(size: number, showLabel: boolean) {
   return StyleSheet.create({
     wrapper: {
-      width: size,
-      height: showLabel ? size + 6 : size,
       alignItems: "center",
       justifyContent: "flex-start",
+      minWidth: size,
     },
-    face: {
+    housing: {
       width: size,
       height: size,
       borderRadius: size / 2,
       overflow: "hidden",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
-      elevation: 2,
+      shadowOpacity: Platform.OS === "android" ? 0 : 0.12,
+      shadowRadius: 3,
+      elevation: Platform.OS === "android" ? 2 : 0,
     },
-    content: {
+    chromeRing: {
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      padding: ringWidth,
+    },
+    recess: {
       flex: 1,
-      width: "100%",
-      alignItems: "center",
-      justifyContent: showLabel ? "flex-end" : "center",
-      paddingBottom: showLabel ? Math.max(6, Math.round(size * 0.1)) : 0,
-    },
-    iconWrap: {
-      flex: showLabel ? 1 : undefined,
-      width: "100%",
+      borderRadius: (size - ringWidth * 2) / 2,
       alignItems: "center",
       justifyContent: "center",
+      padding: 2,
     },
-    label: {
-      fontSize: size >= 84 ? 10 : 9,
-      fontWeight: "600",
-      color: "#ffffff",
-      letterSpacing: 0.1,
-      textAlign: "center",
-      alignSelf: "center",
-    },
-  });
-}
-
-function createLegacyStyles(size: number, showLabel: boolean, ghost: boolean) {
-  const borderWidth = size >= 64 ? 2.5 : ghost ? 1.5 : 2;
-
-  return StyleSheet.create({
-    wrapper: {
-      width: size,
-      height: showLabel ? size + 6 : size,
-      alignItems: "center",
-      justifyContent: "flex-start",
-    },
-    dropShadow: {
-      position: "absolute",
-      bottom: 0,
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      opacity: ghost ? 0 : 0.35,
-    },
-    face: {
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      borderWidth,
+    cap: {
+      width: capSize,
+      height: capSize,
+      borderRadius: capSize / 2,
       overflow: "hidden",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: ghost ? 0 : 4 },
-      shadowOpacity: ghost ? 0 : 0.14,
-      shadowRadius: ghost ? 0 : 6,
-      elevation: ghost ? 0 : 5,
-    },
-    content: {
-      flex: 1,
-      width: "100%",
-      alignItems: "center",
-      justifyContent: showLabel ? "flex-end" : "center",
-      paddingBottom: showLabel ? Math.max(6, Math.round(size * 0.1)) : 0,
-    },
-    iconWrap: {
-      flex: showLabel ? 1 : undefined,
-      width: "100%",
       alignItems: "center",
       justifyContent: "center",
     },
-    gloss: {
+    capGloss: {
       position: "absolute",
-      top: 4,
-      left: size * 0.14,
-      right: size * 0.14,
-      height: size * 0.36,
-      borderBottomLeftRadius: size,
-      borderBottomRightRadius: size,
-      backgroundColor: ghost ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.16)",
+      top: capSize * 0.06,
+      left: capSize * 0.14,
+      right: capSize * 0.14,
+      height: capSize * 0.34,
+      borderBottomLeftRadius: capSize,
+      borderBottomRightRadius: capSize,
+      backgroundColor: "rgba(255,255,255,0.08)",
     },
-    innerRim: {
+    capShade: {
       position: "absolute",
-      bottom: 6,
-      left: size * 0.18,
-      right: size * 0.18,
-      height: 2,
-      borderRadius: 2,
-      backgroundColor: ghost ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.12)",
+      bottom: capSize * 0.08,
+      left: capSize * 0.12,
+      right: capSize * 0.12,
+      height: capSize * 0.14,
+      borderRadius: capSize,
+      backgroundColor: "rgba(0,0,0,0.10)",
+    },
+    activeGlow: {
+      position: "absolute",
+      width: size + 6,
+      height: size + 6,
+      borderRadius: (size + 6) / 2,
+      top: -3,
+      left: -3,
     },
     label: {
-      fontSize: size >= 84 ? 10 : 9,
-      fontWeight: "700",
-      color: "#ffffff",
-      letterSpacing: 0.15,
+      marginTop: 5,
+      fontSize: 11,
+      fontWeight: "600",
       textAlign: "center",
-      alignSelf: "center",
-      textShadowColor: "rgba(0,0,0,0.25)",
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 2,
     },
   });
 }
@@ -198,97 +148,131 @@ function createLegacyStyles(size: number, showLabel: boolean, ghost: boolean) {
 export function ProfileVoteCircleButton({
   direction,
   onPress,
+  onPressIn,
+  onPressOut,
   disabled,
   accessibilityLabel,
   diameter = DEFAULT_DIAMETER,
   showLabel = true,
+  active = false,
   visualOpacity = 1,
   ghost = false,
 }: ProfileVoteCircleButtonProps) {
   const label = direction === "up" ? "Yükselt" : "Alçalt";
-  const flatStyles = useMemo(
-    () => createFlatStyles(diameter, showLabel),
-    [diameter, showLabel]
-  );
-  const legacyStyles = useMemo(
-    () => createLegacyStyles(diameter, showLabel, ghost),
-    [diameter, showLabel, ghost]
-  );
-  const triangleSize = Math.round(diameter * (showLabel ? 0.66 : 0.58));
-  const idleOpacity = ghost ? Math.min(visualOpacity, 0.32) : visualOpacity;
-  const disabledOpacity = disabled ? idleOpacity * 0.6 : idleOpacity;
-
-  const pressableStyle = ({ pressed }: { pressed: boolean }) => [
-    ghost ? legacyStyles.wrapper : flatStyles.wrapper,
-    {
-      opacity: disabled
-        ? disabledOpacity
-        : pressed
-          ? Math.min(idleOpacity + 0.45, 0.9)
-          : idleOpacity,
-      transform: [
-        { scale: pressed && !disabled ? 0.94 : 1 },
-        { translateY: pressed && !disabled ? 3 : 0 },
-      ],
-    },
-  ];
-
-  if (ghost) {
-    const theme = GHOST_THEMES[direction];
-
-    return (
-      <Pressable
-        onPress={onPress}
-        disabled={disabled}
-        hitSlop={HIT_SLOP}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        style={pressableStyle}
-      >
-        <View
-          style={[legacyStyles.dropShadow, { backgroundColor: theme.dropShadow }]}
-        />
-
-        <LinearGradient
-          colors={[...theme.gradient]}
-          locations={[0, 0.5, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={[legacyStyles.face, { borderColor: theme.rim }]}
-        >
-          <View style={legacyStyles.gloss} />
-          <View style={legacyStyles.innerRim} />
-
-          <View style={legacyStyles.content}>
-            <View style={legacyStyles.iconWrap}>
-              <VoteChevron direction={direction} size={triangleSize} />
-            </View>
-            {showLabel ? <Text style={legacyStyles.label}>{label}</Text> : null}
-          </View>
-        </LinearGradient>
-      </Pressable>
-    );
-  }
-
-  const flatTheme = FLAT_THEMES[direction];
+  const theme = ZIKIRMATIK_THEMES[direction];
+  const styles = useMemo(() => createStyles(diameter), [diameter]);
+  const triangleSize = Math.round(diameter * (showLabel ? 0.34 : 0.38));
+  const chromeColors = ghost ? CHROME_GRADIENT_GHOST : CHROME_GRADIENT;
+  const baseOpacity = ghost ? Math.min(visualOpacity, 0.92) : visualOpacity;
+  const disabledOpacity = disabled ? baseOpacity * 0.55 : baseOpacity;
 
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       disabled={disabled}
       hitSlop={HIT_SLOP}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      style={pressableStyle}
+      style={[styles.wrapper, { opacity: disabledOpacity }]}
     >
-      <View style={[flatStyles.face, { backgroundColor: flatTheme.fill }]}>
-        <View style={flatStyles.content}>
-          <View style={flatStyles.iconWrap}>
-            <VoteChevron direction={direction} size={triangleSize} />
-          </View>
-          {showLabel ? <Text style={flatStyles.label}>{label}</Text> : null}
-        </View>
-      </View>
+      {({ pressed }) => {
+        const isPressed = pressed && !disabled;
+        const capColors = isPressed ? theme.capPressed : theme.cap;
+
+        return (
+          <>
+            <View style={styles.housing}>
+              {active ? (
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.activeGlow,
+                    { backgroundColor: theme.activeGlow },
+                  ]}
+                />
+              ) : null}
+
+              <LinearGradient
+                colors={[...chromeColors]}
+                locations={[0, 0.45, 1]}
+                start={{ x: 0.15, y: 0 }}
+                end={{ x: 0.85, y: 1 }}
+                style={styles.chromeRing}
+              >
+                <View
+                  style={[
+                    styles.recess,
+                    {
+                      backgroundColor: isPressed
+                        ? theme.recessPressed
+                        : theme.recess,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.cap,
+                      isPressed
+                        ? {
+                            transform: [
+                              { translateY: Math.max(2, diameter * 0.045) },
+                              { scale: 0.94 },
+                            ],
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.35,
+                            shadowRadius: 2,
+                            elevation: 0,
+                          }
+                        : {
+                            transform: [{ translateY: 0 }, { scale: 1 }],
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: Platform.OS === "android" ? 0 : 0.1,
+                            shadowRadius: 2,
+                            elevation: Platform.OS === "android" ? 1 : 0,
+                          },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={[...capColors]}
+                      locations={[0, 0.48, 1]}
+                      start={{ x: 0.2, y: 0 }}
+                      end={{ x: 0.8, y: 1 }}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    {!isPressed ? <View style={styles.capGloss} /> : null}
+                    <View
+                      style={[
+                        styles.capShade,
+                        isPressed ? { opacity: 0.35 } : undefined,
+                      ]}
+                    />
+                    <VoteChevron
+                      direction={direction}
+                      size={triangleSize}
+                      color={theme.icon}
+                    />
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
+
+            {showLabel ? (
+              <Text
+                style={[
+                  styles.label,
+                  { color: active ? theme.labelActive : theme.label },
+                ]}
+              >
+                {label}
+              </Text>
+            ) : null}
+          </>
+        );
+      }}
     </Pressable>
   );
 }

@@ -1,8 +1,9 @@
 import { resolveEmbeddedOriginalPost } from "./repostUtils";
 import type { Post } from "../types";
+import { postHasReelVideo } from "./resolveReelVideoSource";
 
 export function isVideoPost(post: Post): boolean {
-  return post.contentType === "video" && Boolean(post.mediaURL?.trim());
+  return post.contentType === "video" && postHasReelVideo(post);
 }
 
 export function filterVideoPosts(posts: Post[]): Post[] {

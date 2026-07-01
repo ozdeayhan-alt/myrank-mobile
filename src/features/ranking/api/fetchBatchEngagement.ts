@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
-import { getApiAuthToken } from "@/lib/apiAuthToken";
-import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { fetchApi } from "@/lib/fetchApi";
 import type { EngagementStatus } from "../types";
 
 type BatchEngagementResponse = {
@@ -15,14 +14,11 @@ export async function fetchBatchEngagement(
   if (uniqueIds.length === 0) {
     return {};
   }
-
-  const token = await getApiAuthToken();
-  const response = await fetchWithTimeout(
+  const response = await fetchApi(
     `${getApiBaseUrl()}/api/interactions/engagements/batch`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ postIds: uniqueIds }),

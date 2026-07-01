@@ -11,7 +11,6 @@ export {
   type AuthorProfileSnapshot,
 } from "./navigateToAuthorProfile";
 export { ProfilePostFeed } from "./components/ProfilePostFeed";
-export { ProfilePostGrid } from "./components/ProfilePostGrid";
 export { ProfileRankingsAccordion } from "./components/ProfileRankingsAccordion";
 export { useProfileRankings } from "./hooks/useProfileRankings";
 export { useProfileVoteTap } from "./hooks/useProfileVoteTap";

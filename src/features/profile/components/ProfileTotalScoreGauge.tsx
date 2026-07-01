@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -15,10 +14,10 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { PROFILE_METRIC_CARD_MIN_HEIGHT } from "@/components/ProfileMetricCard";
 import type { ProfileSegmentGaugeLayout } from "../profileLayout";
 import type { GaugeVoteMode } from "../lib/gaugeVoteModeStorage";
+import { ProfileEnergyCapsuleBar } from "./ProfileEnergyCapsuleBar";
 import type { VoteFlashDirection } from "./ProfileVoteProvider";
 import {
   PROFILE_TOTAL_SCORE_GAUGE_INFO_MESSAGE,
@@ -26,26 +25,19 @@ import {
 } from "./profileTotalScoreGaugeInfo";
 import {
   computeLadderGaugeProgress,
-  describeUpperSemicircleArc,
   formatGaugeScoreLabel,
-  formatRankLabel,
-  pointOnUpperSemicircle,
   type GaugeDirection,
   type LadderRung,
 } from "./profileTotalScoreGaugeGeometry";
-
-const TRACK_COLOR = "#edf1f3";
-const TRACK_EDGE = "#dfe5ea";
-const TEAL = "#4a7c82";
-const GOLD = "#d4af37";
-const BLUE_START = "#93c5fd";
-const BLUE_END = "#2563eb";
-const RED_START = "#fca5a5";
-const RED_END = "#dc2626";
+import type { ProfileRankingKey } from "../api/fetchProfileRankings";
+import type { UserMetadata } from "../types";
+import { EMPTY_METADATA } from "../types";
+import { formatGaugeTargetLabel } from "../utils/formatGaugeTargetLabel";
+import { getGaugeTargetLoadingLabel } from "../utils/getGaugeTargetLoadingLabel";
 
 const EASE_OUT = Easing.out(Easing.cubic);
 const OPEN_ANIM_MS = 500;
-const VOTE_ANIM_MS = 280;
+const VOTE_ANIM_MS = 120;
 const RUNG_CHANGE_ANIM_MS = 400;
 
 function easeOutCubic(t: number): number {
@@ -62,10 +54,17 @@ type ProfileTotalScoreGaugeProps = {
   includeMeta?: boolean;
   middleSlot?: ReactNode;
   footerSlot?: ReactNode;
-  loadingTarget?: boolean;
+  labelLoading?: boolean;
+  pointsLoading?: boolean;
   snapshotReady?: boolean;
   voteFlash?: VoteFlashDirection;
   gaugeVoteMode?: GaugeVoteMode;
+  metadata?: UserMetadata;
+  labelCategory?: { key: ProfileRankingKey; rank: number } | null;
+  /** Kaydırılmış merdiven anchor'ı — hedef basamak seçimi */
+  gaugeOfficialRank?: number | null;
+  atPinnacle?: boolean;
+  atGlobalLast?: boolean;
 };
 
 function resolveEffectiveDirection(
@@ -95,36 +94,35 @@ function ProfileTotalScoreGaugeInner({
   includeMeta = true,
   middleSlot,
   footerSlot,
-  loadingTarget = false,
+  labelLoading = false,
+  pointsLoading = false,
   snapshotReady = true,
   voteFlash = null,
   gaugeVoteMode = null,
+  metadata = EMPTY_METADATA,
+  labelCategory = null,
+  gaugeOfficialRank = null,
+  atPinnacle = false,
+  atGlobalLast = false,
 }: ProfileTotalScoreGaugeProps) {
   const {
     gaugeWidth,
     gaugeHeight,
-    cx,
-    cy,
-    radius,
-    stroke,
-    trackStroke,
-    arcLength,
-    scoreTop,
-    metaAreaHeight,
-    dotsTop,
-    metaTop,
+    barX,
+    barY,
+    barLength,
+    barStroke,
     tpFontSize,
     tpLineHeight,
     metaLabelFontSize,
     metaValueFontSize,
-    rankBottomInset,
+    metaTargetFontSize,
     segmentLabelGap,
     stackedMeta,
     gaugeInfoIconSize,
   } = layout;
 
   const effectiveDirection = resolveEffectiveDirection(gaugeVoteMode);
-  const isNeutralMode = gaugeVoteMode === null;
   const showCard = variant === "card";
 
   const showGaugeInfo = useCallback(() => {
@@ -144,6 +142,7 @@ function ProfileTotalScoreGaugeInner({
       direction: effectiveDirection,
       aheadRungs,
       behindRungs,
+      officialRank: gaugeOfficialRank ?? labelCategory?.rank ?? null,
     });
   }, [
     snapshotReady,
@@ -152,6 +151,8 @@ function ProfileTotalScoreGaugeInner({
     effectiveDirection,
     aheadRungs,
     behindRungs,
+    gaugeOfficialRank,
+    labelCategory?.rank,
   ]);
 
   const activeRungKey = gauge?.activeRung
@@ -264,107 +265,147 @@ function ProfileTotalScoreGaugeInner({
     transform: [{ scale: scoreScale.value }],
   }));
 
-  const trackPath = describeUpperSemicircleArc(cx, cy, radius, 0, 1);
-  const fillDashoffset = arcLength * (1 - fillProgress);
-  const leftCap = pointOnUpperSemicircle(cx, cy, radius, 0);
-  const rightCap = pointOnUpperSemicircle(cx, cy, radius, 1);
-
-  const gradientId =
-    gaugeVoteMode === "down"
-      ? "scoreGaugeGradientDown"
-      : gaugeVoteMode === "up"
-        ? "scoreGaugeGradientUp"
-        : "scoreGaugeGradientNeutral";
-
   const neighborLabel =
     effectiveDirection === "down" ? "Arkandaki" : "Önündeki";
 
   const noNeighbor =
     effectiveDirection === "down" ? gauge?.isLast : gauge?.isLeader;
 
-  const leftDotColor =
-    effectiveDirection === "down" && !isNeutralMode ? RED_END : TEAL;
-  const rightDotColor =
-    effectiveDirection === "up" && !isNeutralMode ? BLUE_END : GOLD;
+  const showZeroRemaining = atPinnacle || atGlobalLast;
 
-  const metaInFlow = Boolean(middleSlot);
-  const useEmbeddedStack = metaInFlow && !showCard;
+  const targetLabel = useMemo(() => {
+    if (atPinnacle) {
+      return formatGaugeTargetLabel({
+        key: "global",
+        metadata,
+        targetRank: null,
+        direction: effectiveDirection,
+        atPinnacle: true,
+      });
+    }
+    if (atGlobalLast) {
+      return formatGaugeTargetLabel({
+        key: "global",
+        metadata,
+        targetRank: null,
+        direction: effectiveDirection,
+        atGlobalLast: true,
+      });
+    }
+    if (!labelCategory || labelLoading) {
+      return "";
+    }
+    const label = formatGaugeTargetLabel({
+      key: labelCategory.key,
+      metadata,
+      targetRank:
+        gauge?.activeRung?.rank ??
+        (labelCategory.rank > 1 ? labelCategory.rank - 1 : null),
+      direction: effectiveDirection,
+      noTarget: noNeighbor && !gauge?.activeRung,
+    });
+    if (label) {
+      return label;
+    }
+    return neighborLabel;
+  }, [
+    atPinnacle,
+    atGlobalLast,
+    labelCategory,
+    metadata,
+    effectiveDirection,
+    noNeighbor,
+    neighborLabel,
+    gauge?.activeRung,
+    labelLoading,
+  ]);
+
+  const loadingLabel = getGaugeTargetLoadingLabel(gaugeVoteMode);
 
   const metaRow = includeMeta ? (
     <View
       className={
-        stackedMeta ? "items-stretch gap-1" : "flex-row items-end justify-between"
+        stackedMeta ? "items-stretch gap-2" : "flex-row items-start justify-between gap-2"
       }
-      style={
-        useEmbeddedStack
-          ? { width: gaugeWidth, marginTop: 4 }
-          : { width: "100%", paddingHorizontal: 2 }
-      }
+      style={{ width: gaugeWidth, marginTop: segmentLabelGap }}
     >
+      {labelLoading || !snapshotReady ? (
+        <View
+          className={stackedMeta ? "items-start" : "max-w-[56%] flex-1 items-start"}
+        >
+          <Text
+            className="text-left font-medium leading-snug text-gray-400"
+            style={{ fontSize: metaTargetFontSize }}
+            numberOfLines={3}
+          >
+            {loadingLabel}
+          </Text>
+        </View>
+      ) : (
+        <View
+          className={stackedMeta ? "items-start" : "max-w-[56%] flex-1 items-start"}
+        >
+          <Text
+            className="text-left font-semibold leading-snug text-gray-500"
+            style={{ fontSize: metaTargetFontSize }}
+            numberOfLines={3}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+          >
+            {targetLabel}
+          </Text>
+        </View>
+      )}
+
       <View
-        className={stackedMeta ? "items-start" : "max-w-[48%] items-start"}
-        style={useEmbeddedStack ? { marginLeft: leftCap.x } : undefined}
+        className={
+          stackedMeta ? "items-end self-end" : "max-w-[42%] items-end"
+        }
       >
         <Text
-          className="font-semibold uppercase tracking-wide text-gray-400"
+          className="text-right font-semibold uppercase tracking-wide text-gray-400"
           style={{ fontSize: metaLabelFontSize }}
           numberOfLines={1}
         >
           Kalan Puan
         </Text>
         <Text
-          className="font-bold tabular-nums text-gray-700"
+          className="text-right font-bold tabular-nums text-gray-700"
           style={{ fontSize: metaValueFontSize }}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
-          {!snapshotReady || loadingTarget
+          {!snapshotReady || pointsLoading
             ? "…"
-            : noNeighbor
+            : showZeroRemaining
               ? "0"
-              : formatGaugeScoreLabel(displayedRemaining)}
+              : gauge?.activeRung
+                ? formatGaugeScoreLabel(displayedRemaining)
+                : noNeighbor
+                  ? "…"
+                  : formatGaugeScoreLabel(displayedRemaining)}
         </Text>
       </View>
-
-      {loadingTarget || !snapshotReady ? (
-        <ActivityIndicator size="small" color="#9ca3af" />
-      ) : (
-        <View
-          className={stackedMeta ? "items-start" : "max-w-[48%] items-end"}
-          style={
-            useEmbeddedStack
-              ? stackedMeta
-                ? { marginLeft: leftCap.x }
-                : { marginRight: gaugeWidth - rightCap.x }
-              : undefined
-          }
-        >
-          <Text
-            className="font-semibold uppercase tracking-wide text-gray-400"
-            style={{ fontSize: metaLabelFontSize }}
-            numberOfLines={1}
-          >
-            {neighborLabel}
-          </Text>
-          <Text
-            className="font-bold tabular-nums text-gray-700"
-            style={{ fontSize: metaValueFontSize }}
-            numberOfLines={1}
-          >
-            {noNeighbor
-              ? "—"
-              : formatRankLabel(gauge?.neighborRank ?? null)}
-          </Text>
-        </View>
-      )}
     </View>
   ) : null;
 
-  const gaugeArc = (
-    <View
-      className="relative"
-      style={{ width: gaugeWidth, height: gaugeHeight }}
-    >
+  const energyBar = (
+    <View style={{ marginTop: 8 }}>
+      <ProfileEnergyCapsuleBar
+        gaugeWidth={gaugeWidth}
+        gaugeHeight={gaugeHeight}
+        barX={barX}
+        barY={barY}
+        barLength={barLength}
+        pillHeight={barStroke}
+        fillProgress={fillProgress}
+        gaugeVoteMode={gaugeVoteMode}
+      />
+    </View>
+  );
+
+  const gaugeBody = (
+    <View className="items-center self-center" style={{ width: gaugeWidth }}>
       {!showCard ? (
         <Pressable
           onPress={showGaugeInfo}
@@ -381,94 +422,7 @@ function ProfileTotalScoreGaugeInner({
         </Pressable>
       ) : null}
 
-      <Svg
-        width={gaugeWidth}
-        height={gaugeHeight}
-        viewBox={`0 0 ${gaugeWidth} ${gaugeHeight}`}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <Defs>
-          <LinearGradient
-            id="scoreGaugeGradientNeutral"
-            x1="0%"
-            y1="0%"
-            x2="100%"
-            y2="0%"
-          >
-            <Stop offset="0%" stopColor={TEAL} />
-            <Stop offset="45%" stopColor="#6d9b7a" />
-            <Stop offset="100%" stopColor={GOLD} />
-          </LinearGradient>
-          <LinearGradient
-            id="scoreGaugeGradientUp"
-            x1="0%"
-            y1="0%"
-            x2="100%"
-            y2="0%"
-          >
-            <Stop offset="0%" stopColor={BLUE_START} />
-            <Stop offset="100%" stopColor={BLUE_END} />
-          </LinearGradient>
-          <LinearGradient
-            id="scoreGaugeGradientDown"
-            x1="0%"
-            y1="0%"
-            x2="100%"
-            y2="0%"
-          >
-            <Stop offset="0%" stopColor={RED_END} />
-            <Stop offset="100%" stopColor={RED_START} />
-          </LinearGradient>
-          <LinearGradient id="scoreGaugeSheen" x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.35" />
-            <Stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-          </LinearGradient>
-        </Defs>
-
-        <Path
-          d={trackPath}
-          stroke={TRACK_EDGE}
-          strokeWidth={trackStroke + 2}
-          fill="none"
-          strokeLinecap="round"
-          opacity={0.45}
-        />
-
-        <Path
-          d={trackPath}
-          stroke={TRACK_COLOR}
-          strokeWidth={trackStroke}
-          fill="none"
-          strokeLinecap="round"
-        />
-
-        <Path
-          d={trackPath}
-          stroke={`url(#${gradientId})`}
-          strokeWidth={stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={[arcLength, arcLength]}
-          strokeDashoffset={fillDashoffset}
-        />
-
-        <Path
-          d={trackPath}
-          stroke="url(#scoreGaugeSheen)"
-          strokeWidth={Math.max(4, stroke - 3)}
-          fill="none"
-          strokeLinecap="round"
-          opacity={0.5}
-        />
-      </Svg>
-
-      <Animated.View
-        className="absolute items-center justify-center"
-        style={[
-          { top: scoreTop, left: 0, right: 0 },
-          scoreAnimatedStyle,
-        ]}
-      >
+      <Animated.View style={scoreAnimatedStyle}>
         <Text
           className={`text-center font-bold tabular-nums ${scoreTextClass(voteFlash, gaugeVoteMode)}`}
           style={{ fontSize: tpFontSize, lineHeight: tpLineHeight }}
@@ -479,42 +433,13 @@ function ProfileTotalScoreGaugeInner({
         </Text>
       </Animated.View>
 
-      <View
-        className="absolute flex-row items-center justify-between"
-        style={{
-          top: dotsTop,
-          left: leftCap.x - 4,
-          width: rightCap.x - leftCap.x + 8,
-        }}
-      >
-        <View
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: leftDotColor, opacity: 0.85 }}
-        />
-        <View
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: rightDotColor, opacity: 0.9 }}
-        />
-      </View>
-
       {middleSlot ? (
-        <View
-          className="absolute items-center"
-          style={{
-            left: 0,
-            right: 0,
-            bottom: rankBottomInset,
-          }}
-        >
+        <View className="items-center" style={{ marginTop: 2 }}>
           {middleSlot}
         </View>
       ) : null}
-    </View>
-  );
 
-  const gaugeBody = useEmbeddedStack ? (
-    <View className="items-center self-center" style={{ width: gaugeWidth }}>
-      {gaugeArc}
+      {energyBar}
       {metaRow}
       {footerSlot ? (
         <View
@@ -522,24 +447,6 @@ function ProfileTotalScoreGaugeInner({
           style={{ marginTop: segmentLabelGap }}
         >
           {footerSlot}
-        </View>
-      ) : null}
-    </View>
-  ) : (
-    <View
-      className="relative items-center self-center"
-      style={{
-        width: gaugeWidth,
-        height: includeMeta ? gaugeHeight + metaAreaHeight : gaugeHeight,
-      }}
-    >
-      {gaugeArc}
-      {includeMeta ? (
-        <View
-          className="absolute left-0 right-0 px-0.5"
-          style={{ top: metaTop }}
-        >
-          {metaRow}
         </View>
       ) : null}
     </View>

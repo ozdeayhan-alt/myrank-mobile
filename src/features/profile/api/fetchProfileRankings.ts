@@ -1,5 +1,5 @@
-import { GLOBAL_RANKING_SEGMENT } from "@/features/filters/constants";
-import { resolveSegmentRank } from "./resolveSegmentRank";
+import { getApiBaseUrl } from "@/lib/api";
+import { fetchApi } from "@/lib/fetchApi";
 import {
   buildSegmentKey,
   EMPTY_METADATA,
@@ -14,45 +14,13 @@ export type CategoryRanking = {
   isOfficial: boolean;
 };
 
-const CATEGORY_KEYS: (keyof UserMetadata)[] = [
-  "country",
-  "city",
-  "age",
-  "gender",
-  "profession",
-  "maritalStatus",
-];
+type ProfileRankingsApiResponse = {
+  ok: boolean;
+  rankings?: CategoryRanking[];
+  error?: string;
+};
 
-function hasMetadataValue(
-  metadata: UserMetadata,
-  key: keyof UserMetadata
-): boolean {
-  if (key === "age") {
-    return metadata.age !== null && metadata.age > 0;
-  }
-  const value = metadata[key];
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-async function fetchCategoryRanking(
-  userId: string,
-  metadata: UserMetadata,
-  key: keyof UserMetadata
-): Promise<CategoryRanking> {
-  const segmentKey = buildCategorySegmentKey(metadata, key);
-  const { rank, isOfficial } = await resolveSegmentRank(segmentKey, userId);
-  return { key, rank, isOfficial };
-}
-
-async function fetchGlobalRanking(userId: string): Promise<CategoryRanking> {
-  const { rank, isOfficial } = await resolveSegmentRank(
-    GLOBAL_RANKING_SEGMENT,
-    userId
-  );
-  return { key: "global", rank, isOfficial };
-}
-
-function buildCategorySegmentKey(
+export function buildCategorySegmentKey(
   metadata: UserMetadata,
   field: keyof UserMetadata
 ): string {
@@ -62,16 +30,22 @@ function buildCategorySegmentKey(
 
 export async function fetchProfileRankings(
   userId: string,
-  metadata: UserMetadata
+  _metadata: UserMetadata
 ): Promise<CategoryRanking[]> {
-  const activeKeys = CATEGORY_KEYS.filter((key) =>
-    hasMetadataValue(metadata, key)
+  const response = await fetchApi(
+    `${getApiBaseUrl()}/api/profile/${encodeURIComponent(userId)}/rankings`,
+    { method: "GET", timeoutMs: 15_000 }
   );
 
-  const categoryRankings = await Promise.all(
-    activeKeys.map((key) => fetchCategoryRanking(userId, metadata, key))
-  );
-  const globalRanking = await fetchGlobalRanking(userId);
+  const data = (await response.json()) as ProfileRankingsApiResponse;
 
-  return [...categoryRankings, globalRanking];
+  if (!response.ok) {
+    throw new Error(data.error ?? "Profile rankings request failed");
+  }
+
+  return (data.rankings ?? []).map((ranking) => ({
+    key: ranking.key,
+    rank: typeof ranking.rank === "number" ? ranking.rank : null,
+    isOfficial: ranking.isOfficial === true,
+  }));
 }

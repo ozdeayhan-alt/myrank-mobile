@@ -1,23 +1,43 @@
-import { useScrollToTop } from "@react-navigation/native";
+import {
+  useNavigation,
+  useScrollToTop,
+  type ParamListBase,
+} from "@react-navigation/native";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { FlashListRef } from "@shopify/flash-list";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
+import { HomeFeedContentFilter } from "@/components/HomeFeedContentFilter";
 import { useAuth } from "@/features/auth";
 import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
+import { ReelsTabFeed } from "@/features/posts/components/ReelsTabFeed";
+import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
+import type { HomeFeedContentFilter as HomeFeedContentFilterValue } from "@/features/posts/store/useHomeFeedContentStore";
+import { useReelsActiveIndexStore } from "@/features/posts/store/useReelsActiveIndexStore";
+import { useReelsNavigationStore } from "@/features/posts/store/useReelsNavigationStore";
+import { useFeedRefreshStore } from "@/features/posts/store/useFeedRefreshStore";
+import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
 import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
 import type { UserMetadata } from "../types";
 import type { BioCategoryVisibility } from "../utils/bioCategoryVisibility";
 import { isMetadataComplete } from "../types";
 import { getProfile } from "../api/getProfile";
 import { useAuthorPosts } from "../hooks/useAuthorPosts";
-import { useProfileSummarySeed } from "../hooks/useProfileSummarySeed";
-import { publicProfileQueryKey } from "../hooks/usePublicProfile";
+import {
+  profileSummaryQueryKey,
+  useProfileSummary,
+} from "../hooks/useProfileSummary";
+import {
+  profileGaugeBootstrapQueryKey,
+  useProfileGaugeBootstrap,
+} from "../hooks/useProfileGaugeBootstrap";
 import { useProfileStore } from "../store/useProfileStore";
 import { ProfileContentHeader } from "./ProfileContentHeader";
+import { ProfileVoteArrowFountainOverlay } from "./ProfileVoteArrowFountainOverlay";
 import { ProfileVoteProvider } from "./ProfileVoteProvider";
 import { PROFILE_HORIZONTAL_PADDING } from "../profileLayout";
 
@@ -36,6 +56,8 @@ type ProfileContentProps = {
 type ProfileFeedBodyProps = Omit<ProfileContentProps, "loadedTotalScore"> & {
   rankingsReady: boolean;
   currentUserId: string | null;
+  contentFilter: HomeFeedContentFilterValue;
+  onContentFilterChange: (filter: HomeFeedContentFilterValue) => void;
 };
 
 function ProfileFeedBody({
@@ -48,14 +70,46 @@ function ProfileFeedBody({
   isOwnProfile = false,
   rankingsReady,
   currentUserId,
+  contentFilter,
+  onContentFilterChange,
 }: ProfileFeedBodyProps) {
+  const navigation = useNavigation<BottomTabNavigationProp<ParamListBase>>();
   const listRef = useRef<FlashListRef<FeedListItem>>(null);
   useScrollToTop(listRef);
 
-  useProfileSummarySeed(userId, rankingsReady);
+  const ownProfileHydrated = useProfileStore(
+    (s) =>
+      isOwnProfile &&
+      s.profileOwnerId === userId &&
+      isMetadataComplete(s.metadata) &&
+      s.profileSavedOnServer
+  );
+
+  const gaugeBootstrapQuery = useProfileGaugeBootstrap(
+    userId,
+    metadata,
+    isOwnProfile && Boolean(userId)
+  );
+  const summaryQuery = useProfileSummary(
+    userId,
+    metadata,
+    Boolean(userId) && !isOwnProfile
+  );
+
+  const profileBootstrapReady = isOwnProfile
+    ? gaugeBootstrapQuery.isFetched
+    : summaryQuery.isFetched;
 
   const queryClient = useQueryClient();
+  const feedVersion = useFeedRefreshStore((s) => s.version);
   const setStoreTotalScore = useProfileStore((s) => s.setTotalScore);
+
+  const listContentFilter = contentFilter === "video" ? null : contentFilter;
+  const feedEnabled = contentFilter !== "video";
+  const authorPostsEnabled =
+    feedEnabled &&
+    Boolean(userId) &&
+    (ownProfileHydrated || profileBootstrapReady);
 
   const {
     posts,
@@ -68,19 +122,44 @@ function ProfileFeedBody({
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-  } = useAuthorPosts(userId);
+  } = useAuthorPosts(userId, authorPostsEnabled);
+
+  useEffect(() => {
+    if (!isOwnProfile) {
+      return;
+    }
+
+    const unsubscribe = navigation.addListener("tabPress", () => {
+      if (contentFilter === "video") {
+        useReelsNavigationStore.getState().clearNavigation();
+        onContentFilterChange(null);
+      }
+    });
+
+    return unsubscribe;
+  }, [contentFilter, isOwnProfile, navigation, onContentFilterChange]);
 
   const items = useMemo(
     (): FeedListItem[] =>
-      posts.map((post) => ({
+      filterPostsByContentType(posts, listContentFilter).map((post) => ({
         kind: "post",
         key: post.id,
         post,
       })),
+    [posts, listContentFilter]
+  );
+
+  const videoPosts = useMemo(
+    () => collectVideoPostsForPlaylist(posts),
     [posts]
   );
 
-  const videoPosts = useMemo(() => collectVideoPostsForPlaylist(posts), [posts]);
+  const emptyMessage = useMemo(() => {
+    if (listContentFilter === "tweet" || listContentFilter === "image") {
+      return getEmptyFeedMessage(listContentFilter);
+    }
+    return "Henüz gönderi yok.";
+  }, [listContentFilter]);
 
   const handleRefresh = useCallback(() => {
     const tasks: Promise<unknown>[] = [refresh()];
@@ -91,41 +170,63 @@ function ProfileFeedBody({
           if (remote) {
             setStoreTotalScore(remote.totalScore);
           }
+        }),
+        queryClient.refetchQueries({
+          queryKey: profileGaugeBootstrapQueryKey(userId, feedVersion),
         })
       );
     } else {
       tasks.push(
-        queryClient.refetchQueries({ queryKey: publicProfileQueryKey(userId) })
+        queryClient.refetchQueries({
+          queryKey: profileSummaryQueryKey(userId, feedVersion),
+        })
       );
     }
 
     void Promise.all(tasks);
-  }, [refresh, isOwnProfile, userId, setStoreTotalScore, queryClient]);
+  }, [
+    refresh,
+    isOwnProfile,
+    userId,
+    setStoreTotalScore,
+    queryClient,
+    feedVersion,
+  ]);
 
   const listHeader = useMemo(
     () => (
-      <ProfileContentHeader
-        userId={userId}
-        displayName={displayName}
-        photoURL={photoURL}
-        bio={bio}
-        bioCategoryVisibility={bioCategoryVisibility}
-        metadata={metadata}
-        isOwnProfile={isOwnProfile}
-        rankingsReady={rankingsReady}
-        currentUserId={currentUserId}
-      />
+      <View>
+        <ProfileContentHeader
+          userId={userId}
+          displayName={displayName}
+          photoURL={photoURL}
+          bio={bio}
+          bioCategoryVisibility={bioCategoryVisibility}
+          metadata={metadata}
+          isOwnProfile={isOwnProfile}
+          rankingsReady={rankingsReady}
+          currentUserId={currentUserId}
+        />
+        <View className="mb-4 mt-2">
+          <HomeFeedContentFilter
+            contentFilter={contentFilter}
+            onContentFilterChange={onContentFilterChange}
+          />
+        </View>
+      </View>
     ),
     [
-      userId,
-      displayName,
-      photoURL,
       bio,
       bioCategoryVisibility,
-      metadata,
-      isOwnProfile,
-      rankingsReady,
+      contentFilter,
       currentUserId,
+      displayName,
+      isOwnProfile,
+      metadata,
+      onContentFilterChange,
+      photoURL,
+      rankingsReady,
+      userId,
     ]
   );
 
@@ -137,13 +238,27 @@ function ProfileFeedBody({
     []
   );
 
+  if (contentFilter === "video") {
+    return (
+      <View className="flex-1 bg-black">
+        <ReelsTabFeed
+          currentUserId={currentUserId}
+          fullscreen
+          profileBrowse
+          profileAuthorId={userId}
+          profileSeedPosts={videoPosts}
+        />
+      </View>
+    );
+  }
+
   return (
     <FeedFlashList
       items={items}
       videoPosts={videoPosts}
       loading={loading}
       error={error}
-      emptyMessage="Henüz gönderi yok."
+      emptyMessage={emptyMessage}
       onRefresh={handleRefresh}
       isRefetching={isRefetching}
       engagementResetKey={`profile-${userId}`}
@@ -177,6 +292,19 @@ export function ProfileContent({
 }: ProfileContentProps) {
   const { user } = useAuth();
   const rankingsReady = isMetadataComplete(metadata);
+  const [contentFilter, setContentFilter] =
+    useState<HomeFeedContentFilterValue>(null);
+
+  const handleContentFilterChange = useCallback(
+    (filter: HomeFeedContentFilterValue) => {
+      useReelsNavigationStore.getState().clearNavigation();
+      if (filter === "video") {
+        useReelsActiveIndexStore.getState().resetActiveIndex();
+      }
+      setContentFilter(filter);
+    },
+    []
+  );
 
   return (
     <ProfileVoteProvider
@@ -184,17 +312,22 @@ export function ProfileContent({
       loadedTotalScore={loadedTotalScore}
       isOwnProfile={isOwnProfile}
     >
-      <ProfileFeedBody
-        userId={userId}
-        displayName={displayName}
-        photoURL={photoURL}
-        bio={bio}
-        bioCategoryVisibility={bioCategoryVisibility}
-        metadata={metadata}
-        isOwnProfile={isOwnProfile}
-        rankingsReady={rankingsReady}
-        currentUserId={user?.uid ?? null}
-      />
+      <View style={{ flex: 1 }}>
+        <ProfileFeedBody
+          userId={userId}
+          displayName={displayName}
+          photoURL={photoURL}
+          bio={bio}
+          bioCategoryVisibility={bioCategoryVisibility}
+          metadata={metadata}
+          isOwnProfile={isOwnProfile}
+          rankingsReady={rankingsReady}
+          currentUserId={user?.uid ?? null}
+          contentFilter={contentFilter}
+          onContentFilterChange={handleContentFilterChange}
+        />
+        {contentFilter !== "video" ? <ProfileVoteArrowFountainOverlay /> : null}
+      </View>
     </ProfileVoteProvider>
   );
 }

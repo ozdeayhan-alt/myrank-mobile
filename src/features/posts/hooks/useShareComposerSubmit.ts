@@ -1,11 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Alert } from "react-native";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
-import { recordError } from "@/lib/crashReporting";
 import { invalidateServerFeedCache } from "../api/invalidateServerFeedCache";
-import { notifyPostFanOut } from "../api/notifyPostFanOut";
 import { createPost } from "../api/createPost";
-import { notifyMentions } from "../api/notifyMentions";
 import { uploadPostMedia } from "../api/uploadPostMedia";
 import { useFeedRefreshStore } from "../store/useFeedRefreshStore";
 import type { PostContentType } from "../types";
@@ -39,6 +36,17 @@ export function useShareComposerSubmit({
   setPrepareProgress,
   setSuccessMessage,
 }: UseShareComposerSubmitOptions) {
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+    };
+  }, []);
+
   return useCallback(async () => {
     if (!userId) {
       Alert.alert("Hata", "Oturum açık değil.");
@@ -93,22 +101,16 @@ export function useShareComposerSubmit({
         mediaHeight,
       });
 
-      if (created.mentionUserIds.length > 0) {
-        void notifyMentions(created.id, created.mentionUserIds).catch(() => {
-          // non-blocking
-        });
-      }
-
       useFeedRefreshStore.getState().bump();
       void invalidateServerFeedCache();
-      void notifyPostFanOut(created.id).catch((error) => {
-        console.error("[createPost] fan-out failed:", error);
-        recordError(error, "createPost:fanOut");
-      });
 
       setSuccessMessage("Gönderiniz paylaşıldı");
       onCreated?.();
-      setTimeout(() => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+      closeTimerRef.current = setTimeout(() => {
+        closeTimerRef.current = null;
         onClose();
       }, 700);
     } catch (error) {

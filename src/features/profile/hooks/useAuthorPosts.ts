@@ -12,7 +12,7 @@ export const authorPostsQueryKey = (authorId: string, feedVersion: number) =>
 
 type AuthorPostsPage = Awaited<ReturnType<typeof fetchPostsByAuthorPage>>;
 
-export function useAuthorPosts(authorId: string) {
+export function useAuthorPosts(authorId: string, enabled = true) {
   const queryClient = useQueryClient();
   const feedVersion = useFeedRefreshStore((s) => s.version);
 
@@ -25,7 +25,7 @@ export function useAuthorPosts(authorId: string) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.cursor : undefined,
-    enabled: Boolean(authorId),
+    enabled: enabled && Boolean(authorId),
     staleTime: 60_000,
   });
 

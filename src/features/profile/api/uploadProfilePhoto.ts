@@ -1,13 +1,16 @@
 import { prepareImageForUpload } from "@/lib/media/prepareImageForUpload";
 import { uploadFileToStorage } from "@/lib/media/uploadToStorage";
 import { updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import { getFirebaseAuth, getFirestoreDb } from "@/lib/firebase";
-import { useProfileStore } from "../store/useProfileStore";
+import { getFirebaseAuth } from "@/lib/firebase";
+import { getApiBaseUrl } from "@/lib/api";
+import { fetchApi } from "@/lib/fetchApi";
 import { ensureProfileSavedOnServer } from "./ensureProfileSavedOnServer";
-import { syncPublicProfile } from "./syncPublicProfile";
 
-const USERS_COLLECTION = "users";
+type UpdatePhotoApiResponse = {
+  ok: boolean;
+  photoURL?: string;
+  error?: string;
+};
 
 export async function uploadProfilePhoto(
   userId: string,
@@ -24,28 +27,22 @@ export async function uploadProfilePhoto(
     prepared.sizeBytes
   );
 
-  const db = getFirestoreDb();
-  await setDoc(
-    doc(db, USERS_COLLECTION, userId),
-    { photoURL: downloadURL },
-    { merge: true }
-  );
+  const response = await fetchApi(`${getApiBaseUrl()}/api/profile/me/photo`, {
+    method: "PATCH",
+    timeoutMs: 15_000,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ photoURL: downloadURL }),
+  });
+
+  const data = (await response.json()) as UpdatePhotoApiResponse;
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Profil fotoğrafı kaydedilemedi");
+  }
 
   const auth = getFirebaseAuth();
   if (auth.currentUser) {
     await updateProfile(auth.currentUser, { photoURL: downloadURL });
-  }
-
-  const state = useProfileStore.getState();
-  if (state.metadata && state.displayName.trim()) {
-    await syncPublicProfile(userId, {
-      displayName: state.displayName,
-      photoURL: downloadURL,
-      bio: state.bio,
-      bioCategoryVisibility: state.bioCategoryVisibility,
-      metadata: state.metadata,
-      totalScore: state.totalScore,
-    }).catch(() => undefined);
   }
 
   return downloadURL;

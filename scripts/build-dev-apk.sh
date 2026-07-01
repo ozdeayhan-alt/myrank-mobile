@@ -22,9 +22,8 @@ EOF
 source "$ROOT/scripts/apply-gradle-low-ram-tuning.sh"
 apply_gradle_low_ram_tuning "$ROOT"
 
-echo "[dev] gradle assembleRelease (arm64-v8a, max-workers=1, lint skipped)..."
-cd "$ROOT/android"
-./gradlew assembleRelease "${GRADLE_LOW_RAM_ARGS[@]}"
+echo "[dev] gradle assembleRelease..."
+"$ROOT/scripts/gradle-assemble-with-retry.sh" assembleRelease
 
 APK="$ROOT/android/app/build/outputs/apk/release/app-release.apk"
 DEV_APK="$ROOT/android/app/build/outputs/apk/release/myrank-dev.apk"

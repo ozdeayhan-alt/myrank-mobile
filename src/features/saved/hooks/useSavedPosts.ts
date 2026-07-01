@@ -1,23 +1,59 @@
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { flattenFeedPages } from "@/features/explore/utils/flattenFeedPages";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
-import { fetchSavedPosts } from "../api/fetchSavedPosts";
+import { fetchSavedPostsPage } from "../api/fetchSavedPosts";
 
 export const savedPostsQueryKey = (userId: string) =>
   ["savedPosts", userId] as const;
 
+const SAVED_FEED_STALE_MS = 60_000;
+
 export function useSavedPosts(userId: string | undefined) {
-  const query = useQuery({
+  const query = useInfiniteQuery({
     queryKey: savedPostsQueryKey(userId ?? ""),
-    queryFn: () => fetchSavedPosts(userId!),
+    queryFn: ({ pageParam }) =>
+      fetchSavedPostsPage(pageParam as string | null),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? lastPage.cursor : undefined,
     enabled: Boolean(userId),
-    staleTime: 60_000,
+    staleTime: SAVED_FEED_STALE_MS,
   });
 
+  const posts = useMemo(
+    () => flattenFeedPages(query.data),
+    [query.data]
+  );
+
+  const loading = query.isLoading && !query.data;
+  const error = useMemo(
+    () => (query.error ? getUserFacingErrorMessage(query.error) : null),
+    [query.error]
+  );
+
+  const refresh = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
+
+  const fetchNextPage = useCallback(() => {
+    if (
+      query.hasNextPage &&
+      !query.isFetchingNextPage &&
+      !query.isFetching
+    ) {
+      void query.fetchNextPage();
+    }
+  }, [query]);
+
   return {
-    posts: query.data ?? [],
-    loading: query.isLoading && query.data === undefined,
-    error: query.error ? getUserFacingErrorMessage(query.error) : null,
-    refresh: query.refetch,
+    posts,
+    loading,
+    error,
+    refresh,
     isRefetching: query.isRefetching,
+    hasNextPage: query.hasNextPage ?? false,
+    isFetchingNextPage: query.isFetchingNextPage,
+    fetchNextPage,
   };
 }

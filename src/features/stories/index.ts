@@ -1,4 +1,4 @@
-export type { Story, StoryMediaType } from "./constants/types";
+export type { Story, StoryMediaType, StoryInsights, StoryEngagement, StoryActorSummary } from "./constants/types";
 export {
   CAPTION_MAX_LENGTH,
   STORY_IMAGE_DURATION_MS,
@@ -9,6 +9,8 @@ export { fetchStoriesFeed, fetchStoryById } from "./api/fetchStoriesFeed";
 export { uploadStoryMedia } from "./api/uploadStoryMedia";
 export { StoryRingsRow } from "./components/StoryRingsRow";
 export { StoryViewer } from "./components/StoryViewer";
+export { StoryViewerOverlay } from "./components/StoryViewerOverlay";
+export { StoryInsightsSheet } from "./components/StoryInsightsSheet";
 export { ProfileStoryAvatar } from "./components/ProfileStoryAvatar";
 export { StoryRingAvatar } from "./components/StoryRingAvatar";
 export { StoriesRingBootstrap } from "./components/StoriesRingBootstrap";

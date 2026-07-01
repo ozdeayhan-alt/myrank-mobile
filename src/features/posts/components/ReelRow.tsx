@@ -6,6 +6,7 @@ import { resolveVideoPosterUrl } from "@/lib/media/resolveMediaDisplayUrl";
 import type { Post } from "../types";
 import { useReelRowPlayback } from "../hooks/useReelRowPlayback";
 import { useReelRowMode, type ReelRowMode } from "../store/useReelsActiveIndexStore";
+import { postHasReelVideo } from "../utils/resolveReelVideoSource";
 import { VideoReelOverlay } from "./VideoReelOverlay";
 
 export type { ReelRowMode };
@@ -43,16 +44,29 @@ function ReelRowInner({
   overlayBottomInset,
 }: ReelRowProps) {
   const mode = useReelRowMode(index);
-  const { player, showPoster, shouldRenderVideo } = useReelRowPlayback({
-    post,
-    mode,
-    enabled,
-  });
+  const { player, showPoster, shouldRenderVideo, shouldPreload } =
+    useReelRowPlayback({
+      post,
+      mode,
+      enabled,
+    });
 
-  const posterUri = showPoster ? resolveVideoPosterUrl(post) : undefined;
+  const showAdjacentPoster =
+    shouldPreload && mode === "adjacent" && postHasReelVideo(post);
+  const posterUri =
+    showPoster || showAdjacentPoster
+      ? resolveVideoPosterUrl(post)
+      : undefined;
 
   return (
-    <View style={{ width, height, backgroundColor: "#000" }}>
+    <View
+      style={{
+        width,
+        height,
+        backgroundColor: "#000",
+        overflow: "hidden",
+      }}
+    >
       {posterUri ? (
         <Image
           source={{ uri: posterUri }}
@@ -78,6 +92,8 @@ function ReelRowInner({
           post={post}
           onScoreUpdate={onScoreUpdate}
           bottomInset={overlayBottomInset}
+          layoutWidth={width}
+          layoutHeight={height}
         />
       ) : null}
     </View>
