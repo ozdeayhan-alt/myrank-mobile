@@ -1,9 +1,7 @@
-import { router } from "expo-router";
 import type { UserMetadata } from "@/features/profile/types";
 import type { Post } from "./types";
 import type { ReelsPlaylistSource } from "./store/useReelsNavigationStore";
-import { openHomeVideoReels } from "./store/useHomeFeedContentStore";
-import { ensureVideoInPlaylist } from "./utils/videoPosts";
+import { openFlow } from "@/features/feed-v2/renderers/flow/FlowNavigator";
 
 export type NavigateToReelsOptions = {
   source?: ReelsPlaylistSource;
@@ -17,7 +15,5 @@ export function navigateToReels(
   anchorPost?: Post | null,
   options?: NavigateToReelsOptions
 ): void {
-  const playlist = ensureVideoInPlaylist(postId, seedPosts ?? [], anchorPost);
-  openHomeVideoReels(postId, playlist, options);
-  router.navigate("/(tabs)/");
+  openFlow(postId, seedPosts ?? [], anchorPost, options);
 }
