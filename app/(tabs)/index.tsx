@@ -58,14 +58,19 @@ export default function HomeScreen() {
 
   const handleContentFilterChange = useCallback(
     (filter: Parameters<typeof setContentFilter>[0]) => {
-      useReelsNavigationStore.getState().clearNavigation();
-      if (filter === "video") {
-        useReelsActiveIndexStore.getState().resetActiveIndex();
-        if (feedV2) {
-          openFlow(null, [], null, { navigateHome: false });
-        }
-      } else if (feedV2 && contentFilter === "video") {
+      const leavingVideo = contentFilter === "video" && filter !== "video";
+      const enteringVideo = filter === "video";
+
+      if (leavingVideo) {
         closeFlow();
+      } else if (enteringVideo) {
+        if (feedV2) {
+          useReelsNavigationStore.getState().clearNavigation();
+          openFlow(null, [], null, { navigateHome: false });
+        } else {
+          useReelsNavigationStore.getState().clearNavigation();
+          useReelsActiveIndexStore.getState().resetActiveIndex();
+        }
       }
       setContentFilter(filter);
     },
@@ -101,16 +106,12 @@ export default function HomeScreen() {
   useEffect(() => {
     const unsubscribe = navigation.addListener("tabPress", () => {
       if (contentFilter === "video") {
-        useReelsNavigationStore.getState().clearNavigation();
-        if (feedV2) {
-          closeFlow();
-        }
-        setContentFilter(null);
+        closeFlow();
       }
     });
 
     return unsubscribe;
-  }, [navigation, contentFilter, feedV2, setContentFilter]);
+  }, [navigation, contentFilter]);
 
   const handleRefresh = useCallback(() => {
     setStoryReloadSignal((value) => value + 1);
