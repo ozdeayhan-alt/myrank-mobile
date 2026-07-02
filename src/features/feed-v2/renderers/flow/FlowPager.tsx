@@ -292,9 +292,7 @@ export function FlowPager({
   useLayoutEffect(() => {
     if (targetPostId) return;
     navigationScrollLockRef.current = null;
-    activeIndexRef.current = 0;
-    resetActiveIndex();
-  }, [resetActiveIndex, targetPostId]);
+  }, [targetPostId]);
 
   useEffect(() => {
     if (!targetPostId || videoPosts.length === 0) return;

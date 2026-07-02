@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   type ReactNode,
@@ -34,7 +35,8 @@ type SlotAssignment = {
 
 type PlayerPoolContextValue = {
   getAssignment: (index: number) => SlotAssignment | null;
-  getPlayer: (slotId: PlayerSlotId) => VideoPlayer;
+  getPlayer: (slotId: PlayerSlotId) => VideoPlayer | null;
+  getPlayerGeneration: (slotId: PlayerSlotId) => number;
   showPoster: (index: number) => boolean;
   loadFailed: (index: number) => boolean;
   shouldRenderVideo: (index: number) => boolean;
@@ -55,11 +57,40 @@ function sourcesFingerprint(post: Post): string {
     .join("|");
 }
 
+function safeIsPlayerReady(player: VideoPlayer | null | undefined): boolean {
+  if (!player) {
+    return false;
+  }
+  try {
+    return isPlayerReady(player);
+  } catch {
+    return false;
+  }
+}
+
+function safePausePlayer(player: VideoPlayer) {
+  try {
+    player.pause();
+    player.muted = true;
+  } catch {
+    // Player already released by useVideoPlayer teardown.
+  }
+}
+
+function isBoundPlayer(
+  playersRef: React.MutableRefObject<Partial<Record<PlayerSlotId, VideoPlayer>>>,
+  slotId: PlayerSlotId,
+  player: VideoPlayer
+): boolean {
+  return playersRef.current[slotId] === player;
+}
+
 function PooledPlayer({
   slotId,
   assignment,
   enabled,
   playersRef,
+  playerGenerationRef,
   loadedRef,
   failedRef,
   maskingRef,
@@ -67,7 +98,8 @@ function PooledPlayer({
   slotId: PlayerSlotId;
   assignment: SlotAssignment | null;
   enabled: boolean;
-  playersRef: React.MutableRefObject<Record<PlayerSlotId, VideoPlayer>>;
+  playersRef: React.MutableRefObject<Partial<Record<PlayerSlotId, VideoPlayer>>>;
+  playerGenerationRef: React.MutableRefObject<Record<PlayerSlotId, number>>;
   loadedRef: React.MutableRefObject<Record<PlayerSlotId, string | null>>;
   failedRef: React.MutableRefObject<Record<PlayerSlotId, boolean>>;
   maskingRef: React.MutableRefObject<Record<PlayerSlotId, boolean>>;
@@ -78,15 +110,17 @@ function PooledPlayer({
     assignment.mode !== "idle" &&
     postHasReelVideo(assignment.post);
 
-  const initialSource = shouldMount
-    ? (resolveReelVideoSources(assignment.post)[0] ?? null)
-    : null;
-
-  const player = useVideoPlayer(initialSource, configurePreloadPlayer);
-  playersRef.current[slotId] = player;
+  // Stable player instance per slot — source changes go through replaceAsync only.
+  const player = useVideoPlayer(null, configurePreloadPlayer);
 
   const mode = assignment?.mode ?? "idle";
   const post = assignment?.post;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const prevModeRef = useRef<PlayerSlotMode>(mode);
+  const shouldMountRef = useRef(shouldMount);
+  shouldMountRef.current = shouldMount;
+  const appliedModeRef = useRef<PlayerSlotMode | null>(null);
   const generationRef = useRef(0);
   const parkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -97,26 +131,62 @@ function PooledPlayer({
     }
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    playersRef.current[slotId] = player;
+    playerGenerationRef.current[slotId] += 1;
+
     return () => {
       clearParkTimer();
+      generationRef.current += 1;
+      safePausePlayer(player);
+      if (playersRef.current[slotId] === player) {
+        delete playersRef.current[slotId];
+      }
+      playerGenerationRef.current[slotId] += 1;
     };
-  }, [clearParkTimer]);
+  }, [clearParkTimer, player, playerGenerationRef, playersRef, slotId]);
+
+  // VideoView kalkmadan önce aktif oynatıcıyı durdur (native surface çakışmasını önler).
+  useLayoutEffect(() => {
+    const previousMode = prevModeRef.current;
+    prevModeRef.current = mode;
+
+    if (!isBoundPlayer(playersRef, slotId, player)) {
+      return;
+    }
+
+    if (previousMode === "active" && mode !== "active") {
+      clearParkTimer();
+      safePausePlayer(player);
+      appliedModeRef.current = null;
+    }
+  }, [clearParkTimer, mode, player, playersRef, slotId]);
 
   useEffect(() => {
     if (!shouldMount || !post) {
       clearParkTimer();
-      player.pause();
-      player.muted = true;
+      if (isBoundPlayer(playersRef, slotId, player)) {
+        safePausePlayer(player);
+      }
       loadedRef.current[slotId] = null;
       failedRef.current[slotId] = false;
       maskingRef.current[slotId] = false;
+      appliedModeRef.current = null;
       return;
     }
 
     const fingerprint = sourcesFingerprint(post);
-    if (loadedRef.current[slotId] === fingerprint && isPlayerReady(player)) {
-      applyModePolicy(player, mode, clearParkTimer, parkTimerRef);
+    if (loadedRef.current[slotId] === fingerprint && safeIsPlayerReady(player)) {
+      if (appliedModeRef.current !== mode) {
+        applyModePolicy(player, mode, clearParkTimer, parkTimerRef, {
+          shouldMountRef,
+          modeRef,
+          playersRef,
+          slotId,
+          player,
+        });
+        appliedModeRef.current = mode;
+      }
       return;
     }
 
@@ -131,37 +201,63 @@ function PooledPlayer({
       if (generation !== generationRef.current) {
         return;
       }
+      if (!isBoundPlayer(playersRef, slotId, player)) {
+        return;
+      }
       if (loaded == null) {
         loadedRef.current[slotId] = null;
         failedRef.current[slotId] = true;
-        player.pause();
-        player.muted = true;
+        safePausePlayer(player);
         return;
       }
       loadedRef.current[slotId] = fingerprint;
-      applyModePolicy(player, mode, clearParkTimer, parkTimerRef);
+      applyModePolicy(player, mode, clearParkTimer, parkTimerRef, {
+        shouldMountRef,
+        modeRef,
+        playersRef,
+        slotId,
+        player,
+      });
+      appliedModeRef.current = mode;
     })();
 
     return () => {
       generationRef.current += 1;
     };
-  }, [shouldMount, post?.id, post?.mediaURL, post?.hlsURL, mode, player, slotId, clearParkTimer, failedRef, loadedRef, maskingRef]);
+  }, [shouldMount, post?.id, post?.mediaURL, post?.hlsURL, mode, player, slotId, clearParkTimer, failedRef, loadedRef, maskingRef, playersRef]);
 
   useEventListener(player, "statusChange", ({ status }) => {
-    if (!shouldMount || mode === "idle") {
+    if (!shouldMountRef.current || modeRef.current === "idle") {
       return;
     }
-    if (mode === "adjacent" && status === "readyToPlay") {
+    if (!isBoundPlayer(playersRef, slotId, player)) {
+      return;
+    }
+    if (modeRef.current === "adjacent" && status === "readyToPlay") {
       clearParkTimer();
       parkTimerRef.current = setTimeout(() => {
-        player.currentTime = 0;
-        player.pause();
-        player.muted = true;
+        if (!shouldMountRef.current || modeRef.current !== "adjacent") {
+          return;
+        }
+        if (!isBoundPlayer(playersRef, slotId, player)) {
+          return;
+        }
+        try {
+          player.currentTime = 0;
+          player.pause();
+          player.muted = true;
+        } catch {
+          // released
+        }
       }, REEL_ADJACENT_PARK_DELAY_MS);
     }
-    if (mode === "active" && status === "readyToPlay") {
-      player.muted = false;
-      player.play();
+    if (modeRef.current === "active" && status === "readyToPlay") {
+      try {
+        player.muted = false;
+        player.play();
+      } catch {
+        // released
+      }
     }
   });
 
@@ -172,29 +268,54 @@ function applyModePolicy(
   player: VideoPlayer,
   mode: PlayerSlotMode,
   clearParkTimer: () => void,
-  parkTimerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>
+  parkTimerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
+  guard: {
+    shouldMountRef: React.MutableRefObject<boolean>;
+    modeRef: React.MutableRefObject<PlayerSlotMode>;
+    playersRef: React.MutableRefObject<Partial<Record<PlayerSlotId, VideoPlayer>>>;
+    slotId: PlayerSlotId;
+    player: VideoPlayer;
+  }
 ) {
-  player.loop = true;
-  if (mode === "active") {
-    clearParkTimer();
-    configureActivePlayer(player);
-    player.play();
+  if (!isBoundPlayer(guard.playersRef, guard.slotId, guard.player)) {
     return;
   }
-  if (mode === "adjacent") {
-    configurePreloadPlayer(player);
-    player.muted = true;
-    player.play();
-    clearParkTimer();
-    parkTimerRef.current = setTimeout(() => {
-      player.currentTime = 0;
-      player.pause();
+
+  try {
+    player.loop = true;
+    if (mode === "active") {
+      clearParkTimer();
+      configureActivePlayer(player);
+      player.play();
+      return;
+    }
+    if (mode === "adjacent") {
+      configurePreloadPlayer(player);
       player.muted = true;
-    }, REEL_ADJACENT_PARK_DELAY_MS);
-    return;
+      player.play();
+      clearParkTimer();
+      parkTimerRef.current = setTimeout(() => {
+        if (!guard.shouldMountRef.current || guard.modeRef.current !== "adjacent") {
+          return;
+        }
+        if (!isBoundPlayer(guard.playersRef, guard.slotId, guard.player)) {
+          return;
+        }
+        try {
+          player.currentTime = 0;
+          player.pause();
+          player.muted = true;
+        } catch {
+          // released
+        }
+      }, REEL_ADJACENT_PARK_DELAY_MS);
+      return;
+    }
+    player.pause();
+    player.muted = true;
+  } catch {
+    // released
   }
-  player.pause();
-  player.muted = true;
 }
 
 type PlayerPoolProviderProps = {
@@ -210,10 +331,12 @@ export function PlayerPoolProvider({
   enabled,
   children,
 }: PlayerPoolProviderProps) {
-  const playersRef = useRef<Record<PlayerSlotId, VideoPlayer>>({} as Record<
-    PlayerSlotId,
-    VideoPlayer
-  >);
+  const playersRef = useRef<Partial<Record<PlayerSlotId, VideoPlayer>>>({});
+  const playerGenerationRef = useRef<Record<PlayerSlotId, number>>({
+    A: 0,
+    B: 0,
+    C: 0,
+  });
   const loadedRef = useRef<Record<PlayerSlotId, string | null>>({
     A: null,
     B: null,
@@ -258,19 +381,33 @@ export function PlayerPoolProvider({
     return reverse;
   }, [assignments]);
 
+  const assignmentBySlotId = useMemo(() => {
+    const slots: Record<PlayerSlotId, SlotAssignment | null> = {
+      A: null,
+      B: null,
+      C: null,
+    };
+    for (const assignment of assignments.values()) {
+      slots[assignment.slotId] = assignment;
+    }
+    return slots;
+  }, [assignments]);
+
   const value = useMemo<PlayerPoolContextValue>(
     () => ({
       getAssignment: (index) => slotByIndex.get(index) ?? null,
-      getPlayer: (slotId) => playersRef.current[slotId],
+      getPlayer: (slotId) => playersRef.current[slotId] ?? null,
+      getPlayerGeneration: (slotId) => playerGenerationRef.current[slotId] ?? 0,
       showPoster: (index) => {
         const assignment = slotByIndex.get(index);
         if (!assignment || assignment.mode !== "active") {
           return false;
         }
         const slotId = assignment.slotId;
+        const player = playersRef.current[slotId];
         return (
           failedRef.current[slotId] ||
-          !isPlayerReady(playersRef.current[slotId]) ||
+          !safeIsPlayerReady(player) ||
           maskingRef.current[slotId]
         );
       },
@@ -283,7 +420,10 @@ export function PlayerPoolProvider({
       },
       shouldRenderVideo: (index) => {
         const assignment = slotByIndex.get(index);
-        return assignment?.mode === "active";
+        if (!assignment || assignment.mode !== "active") {
+          return false;
+        }
+        return Boolean(playersRef.current[assignment.slotId]);
       },
     }),
     [slotByIndex]
@@ -291,22 +431,19 @@ export function PlayerPoolProvider({
 
   return (
     <PlayerPoolContext.Provider value={value}>
-      {SLOT_IDS.map((slotId) => {
-        const assignment =
-          [...assignments.values()].find((a) => a.slotId === slotId) ?? null;
-        return (
-          <PooledPlayer
-            key={slotId}
-            slotId={slotId}
-            assignment={assignment}
-            enabled={enabled}
-            playersRef={playersRef}
-            loadedRef={loadedRef}
-            failedRef={failedRef}
-            maskingRef={maskingRef}
-          />
-        );
-      })}
+      {SLOT_IDS.map((slotId) => (
+        <PooledPlayer
+          key={slotId}
+          slotId={slotId}
+          assignment={assignmentBySlotId[slotId]}
+          enabled={enabled}
+          playersRef={playersRef}
+          playerGenerationRef={playerGenerationRef}
+          loadedRef={loadedRef}
+          failedRef={failedRef}
+          maskingRef={maskingRef}
+        />
+      ))}
       {children}
     </PlayerPoolContext.Provider>
   );

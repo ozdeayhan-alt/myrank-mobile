@@ -37,7 +37,9 @@ function FlowRowSurfaceInner({
       ? resolveVideoPosterUrl(post)
       : undefined;
 
-  const player = assignment ? pool.getPlayer(assignment.slotId) : null;
+  const slotId = assignment?.slotId ?? null;
+  const player = slotId ? pool.getPlayer(slotId) : null;
+  const playerGeneration = slotId ? pool.getPlayerGeneration(slotId) : 0;
 
   return (
     <View style={{ width, height, backgroundColor: "#000", overflow: "hidden" }}>
@@ -54,6 +56,7 @@ function FlowRowSurfaceInner({
 
       {shouldRenderVideo && player ? (
         <VideoView
+          key={`${slotId}-${playerGeneration}`}
           player={player}
           style={StyleSheet.absoluteFillObject}
           contentFit="cover"
