@@ -39,7 +39,7 @@ function WhispRowInner({
 export const WhispRow = memo(function WhispRow(props: WhispRowProps) {
   return (
     <FeedPostErrorBoundary post={props.post}>
-      <WhispRowInner {...props} />
+      <WhispRowInner key={props.post.id} {...props} />
     </FeedPostErrorBoundary>
   );
 });

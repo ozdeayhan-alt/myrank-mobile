@@ -271,7 +271,7 @@ export function FeedScroller({
 
       // Whisp: içerik yüksekliğine göre ölçülür. Glow/Flow/Repost: sabit slot.
       if (item.kind === "whisp") {
-        return row;
+        return <View collapsable={false}>{row}</View>;
       }
 
       const estimatedRowHeight = estimateFeedStreamRowHeight(
