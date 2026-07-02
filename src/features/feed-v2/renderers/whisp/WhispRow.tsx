@@ -2,9 +2,6 @@ import { memo } from "react";
 import type { EngagementStatus } from "@/features/ranking/types";
 import type { Post } from "@/features/posts/types";
 import { FeedPostErrorBoundary } from "@/features/posts/components/FeedPostErrorBoundary";
-import { estimateFeedStreamRowHeight } from "@/features/posts/utils/feedStreamLayout";
-import { View, useWindowDimensions } from "react-native";
-import { DEFAULT_LIST_HORIZONTAL_INSET } from "@/features/posts/constants/feedMediaLayout";
 import { FeedRowChrome } from "../shared/FeedRowChrome";
 import { useFeedRowInteractions } from "../shared/useFeedRowInteractions";
 
@@ -40,21 +37,9 @@ function WhispRowInner({
 }
 
 export const WhispRow = memo(function WhispRow(props: WhispRowProps) {
-  const { width: screenWidth } = useWindowDimensions();
-  const containerWidth = Math.max(
-    0,
-    screenWidth - DEFAULT_LIST_HORIZONTAL_INSET * 2
-  );
-  const estimatedHeight = estimateFeedStreamRowHeight(
-    props.post,
-    containerWidth
-  );
-
   return (
     <FeedPostErrorBoundary post={props.post}>
-      <View style={{ minHeight: estimatedHeight }}>
-        <WhispRowInner {...props} />
-      </View>
+      <WhispRowInner {...props} />
     </FeedPostErrorBoundary>
   );
 });
