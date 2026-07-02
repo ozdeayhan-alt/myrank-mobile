@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { VideoView } from "expo-video";
@@ -27,19 +27,33 @@ function FlowRowSurfaceInner({
 }: FlowRowSurfaceProps) {
   const pool = usePlayerPool();
   const assignment = pool.getAssignment(index);
-  const showPoster = pool.showPoster(index);
   const loadFailed = pool.loadFailed(index);
   const shouldRenderVideo = pool.shouldRenderVideo(index);
   const isActive = assignment?.mode === "active";
-
-  const posterUri =
-    showPoster || (assignment?.mode === "adjacent" && postHasReelVideo(post))
-      ? resolveVideoPosterUrl(post)
-      : undefined;
+  const hasVideo = postHasReelVideo(post);
 
   const slotId = assignment?.slotId ?? null;
   const player = slotId ? pool.getPlayer(slotId) : null;
   const playerGeneration = slotId ? pool.getPlayerGeneration(slotId) : 0;
+
+  const [firstFrameRendered, setFirstFrameRendered] = useState(false);
+
+  useEffect(() => {
+    setFirstFrameRendered(false);
+  }, [post.id, playerGeneration]);
+
+  const handleFirstFrameRender = useCallback(() => {
+    setFirstFrameRendered(true);
+  }, []);
+
+  const posterUrl = hasVideo ? resolveVideoPosterUrl(post) : undefined;
+  const showAdjacentPoster =
+    assignment?.mode === "adjacent" && Boolean(posterUrl);
+  // readyToPlay ≠ first frame painted; keep poster until VideoView reports a frame.
+  const showActivePosterCover =
+    isActive && Boolean(posterUrl) && (!player || !firstFrameRendered);
+  const posterUri =
+    showActivePosterCover || showAdjacentPoster ? posterUrl : undefined;
 
   return (
     <View style={{ width, height, backgroundColor: "#000", overflow: "hidden" }}>
@@ -61,6 +75,7 @@ function FlowRowSurfaceInner({
           style={StyleSheet.absoluteFillObject}
           contentFit="cover"
           nativeControls={false}
+          onFirstFrameRender={handleFirstFrameRender}
         />
       ) : null}
 
