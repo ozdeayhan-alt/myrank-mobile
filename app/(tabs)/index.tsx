@@ -32,15 +32,26 @@ import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabel
 import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
 import { useStoriesRingStore } from "@/features/stories/store/useStoriesRingStore";
 import { useProfileStore } from "@/features/profile/store/useProfileStore";
-import { isFixedSlotFeedEnabled } from "@/lib/featureFlags/feedFlags";
+import { isFixedSlotFeedEnabled, isFeedV2Enabled } from "@/lib/featureFlags/feedFlags";
 import { useFeedBuffer } from "@/features/feed/useFeedBuffer";
+import {
+  FeedScroller,
+  FlowPager,
+  useHomeFeedEngine,
+  openFlow,
+  closeFlow,
+  type FeedV2ListItem,
+} from "@/features/feed-v2";
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const isFocused = useIsFocused();
   const navigation = useNavigation<BottomTabNavigationProp<ParamListBase>>();
-  const listRef = useRef<FlashListRef<FeedListItem>>(null);
-  useScrollToTop(listRef);
+  const feedV2 = isFeedV2Enabled(user?.uid ?? null);
+
+  const legacyListRef = useRef<FlashListRef<FeedListItem>>(null);
+  const v2ListRef = useRef<FlashListRef<FeedV2ListItem>>(null);
+  useScrollToTop(feedV2 ? v2ListRef : legacyListRef);
 
   const contentFilter = useHomeFeedContentStore((s) => s.contentFilter);
   const setContentFilter = useHomeFeedContentStore((s) => s.setContentFilter);
@@ -50,18 +61,27 @@ export default function HomeScreen() {
       useReelsNavigationStore.getState().clearNavigation();
       if (filter === "video") {
         useReelsActiveIndexStore.getState().resetActiveIndex();
+        if (feedV2) {
+          openFlow(null, [], null, { navigateHome: false });
+        }
+      } else if (feedV2 && contentFilter === "video") {
+        closeFlow();
       }
       setContentFilter(filter);
     },
-    [setContentFilter]
+    [contentFilter, feedV2, setContentFilter]
   );
+
   const [feedMode, setFeedMode] = useState<HomeFeedMode>("global");
   const [storyReloadSignal, setStoryReloadSignal] = useState(0);
   const displayName = useProfileStore((s) => s.displayName);
   const photoURL = useProfileStore((s) => s.photoURL);
 
-  const globalFeed = useHomeFeedInfinite(feedMode === "global");
-  const followingFeed = useFollowingFeedInfinite(feedMode === "following");
+  const globalFeed = useHomeFeedInfinite(feedMode === "global" && !feedV2);
+  const followingFeed = useFollowingFeedInfinite(
+    feedMode === "following" && !feedV2
+  );
+  const v2Engine = useHomeFeedEngine(feedMode, contentFilter, feedV2);
 
   const activeFeed = feedMode === "global" ? globalFeed : followingFeed;
   const fixedSlotFeed = isFixedSlotFeedEnabled(user?.uid ?? null);
@@ -82,30 +102,42 @@ export default function HomeScreen() {
     const unsubscribe = navigation.addListener("tabPress", () => {
       if (contentFilter === "video") {
         useReelsNavigationStore.getState().clearNavigation();
+        if (feedV2) {
+          closeFlow();
+        }
         setContentFilter(null);
       }
     });
 
     return unsubscribe;
-  }, [navigation, contentFilter, setContentFilter]);
+  }, [navigation, contentFilter, feedV2, setContentFilter]);
 
   const handleRefresh = useCallback(() => {
     setStoryReloadSignal((value) => value + 1);
     void useStoriesRingStore.getState().reload();
-    void activeFeed.refresh();
-  }, [activeFeed]);
+    if (feedV2) {
+      void v2Engine.refresh();
+    } else {
+      void activeFeed.refresh();
+    }
+  }, [activeFeed, feedV2, v2Engine]);
 
   const listContentFilter =
     contentFilter === "video" ? null : contentFilter;
 
-  const videoPosts = useMemo(() => {
+  const legacyVideoPosts = useMemo(() => {
     if (feedMode === "global") {
       return collectVideoPostsForPlaylist(globalFeed.recentPosts);
     }
     return collectVideoPostsForPlaylist(followingFeed.posts);
   }, [feedMode, globalFeed.recentPosts, followingFeed.posts]);
 
+  const videoPosts = feedV2 ? v2Engine.videoPosts : legacyVideoPosts;
+
   const feedItems = useMemo((): FeedListItem[] => {
+    if (feedV2) {
+      return [];
+    }
     if (feedMode === "following") {
       return filterPostsByContentType(
         bufferedFollowingPosts,
@@ -126,6 +158,7 @@ export default function HomeScreen() {
       post,
     }));
   }, [
+    feedV2,
     feedMode,
     bufferedFollowingPosts,
     bufferedGlobalPosts,
@@ -166,7 +199,6 @@ export default function HomeScreen() {
       feedMode,
       handleContentFilterChange,
       photoURL,
-      setFeedMode,
       storyReloadSignal,
       user?.photoURL,
       user?.uid,
@@ -185,13 +217,51 @@ export default function HomeScreen() {
   if (contentFilter === "video") {
     return (
       <View className="flex-1 bg-black">
-        <ReelsTabFeed
-          currentUserId={user?.uid ?? null}
-          feedMode={feedMode}
-          fullscreen
-          homeSeedPosts={videoPosts}
-        />
+        {feedV2 ? (
+          <FlowPager
+            currentUserId={user?.uid ?? null}
+            feedMode={feedMode}
+            fullscreen
+            homeSeedPosts={videoPosts}
+          />
+        ) : (
+          <ReelsTabFeed
+            currentUserId={user?.uid ?? null}
+            feedMode={feedMode}
+            fullscreen
+            homeSeedPosts={videoPosts}
+          />
+        )}
       </View>
+    );
+  }
+
+  if (feedV2) {
+    return (
+      <TabScreenSafeArea className="flex-1 bg-white">
+        <StoriesRingBootstrap />
+        <View className="min-h-0 flex-1">
+          <FeedScroller
+            items={v2Engine.items}
+            videoPosts={v2Engine.videoPosts}
+            loading={v2Engine.loading}
+            error={v2Engine.error}
+            emptyMessage={emptyMessage}
+            onRefresh={handleRefresh}
+            onScoreUpdate={v2Engine.updatePostScore}
+            ListHeaderComponent={listHeader}
+            hasNextPage={v2Engine.hasNextPage}
+            isFetchingNextPage={v2Engine.isFetchingNextPage}
+            onLoadMore={v2Engine.fetchNextPage}
+            isRefetching={v2Engine.isRefetching}
+            listRef={v2ListRef}
+            currentUserId={user?.uid ?? null}
+            contentContainerStyle={feedListContentStyle}
+            reelsSource="home"
+            prefetchEnabled={isFocused}
+          />
+        </View>
+      </TabScreenSafeArea>
     );
   }
 
@@ -215,7 +285,7 @@ export default function HomeScreen() {
           isFetchingNextPage={activeFeed.isFetchingNextPage}
           onLoadMore={activeFeed.fetchNextPage}
           isRefetching={activeFeed.isRefetching}
-          listRef={listRef}
+          listRef={legacyListRef}
           currentUserId={user?.uid ?? null}
           contentContainerStyle={feedListContentStyle}
           reelsSource="home"

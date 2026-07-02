@@ -6,6 +6,7 @@ export { PostFeedMedia } from "./components/PostFeedMedia";
 export { PostHeader } from "./components/PostHeader";
 export { VideoReelsViewer } from "./components/VideoReelsViewer";
 export { ReelsTabFeed } from "./components/ReelsTabFeed";
+export { FlowPager, FeedScroller, openFlow, closeFlow } from "@/features/feed-v2";
 export { navigateToReels } from "./navigateToReels";
 export { PostCommentsSheet } from "./components/PostCommentsSheet";
 export { PostInteractionRail } from "./components/PostInteractionRail";

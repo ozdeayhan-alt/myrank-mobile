@@ -73,3 +73,20 @@ export function isFeedRenderIsolationEnabled(): boolean {
 export function isFeedPerfLogEnabled(): boolean {
   return parseEnvFlag(process.env.EXPO_PUBLIC_FEED_PERF_LOG);
 }
+
+/** Feed V2 architecture — type-specific renderers + FlowPager + PlayerPool. */
+export function isFeedV2Enabled(userId?: string | null): boolean {
+  return isFlagEnabledForUser(process.env.EXPO_PUBLIC_FEED_V2, userId);
+}
+
+/** PlayerPool in FlowPager (sub-flag; requires FEED_V2). */
+export function isFeedV2PlayerPoolEnabled(): boolean {
+  if (!parseEnvFlag(process.env.EXPO_PUBLIC_FEED_V2)) {
+    return false;
+  }
+  const raw = process.env.EXPO_PUBLIC_FEED_V2_PLAYER_POOL;
+  if (raw == null || raw === "") {
+    return true;
+  }
+  return parseEnvFlag(raw);
+}
