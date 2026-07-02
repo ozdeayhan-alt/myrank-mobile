@@ -241,10 +241,6 @@ export function FeedScroller({
 
   const renderItem = useCallback(
     ({ item }: { item: FeedV2ListItem }) => {
-      const estimatedRowHeight = estimateFeedStreamRowHeight(
-        item.post,
-        streamContainerWidth
-      );
       const rowProps = {
         post: item.post,
         patchEngagement,
@@ -273,6 +269,15 @@ export function FeedScroller({
         }
       })();
 
+      // Whisp: içerik yüksekliğine göre ölçülür. Glow/Flow/Repost: sabit slot.
+      if (item.kind === "whisp") {
+        return row;
+      }
+
+      const estimatedRowHeight = estimateFeedStreamRowHeight(
+        item.post,
+        streamContainerWidth
+      );
       return <View style={{ minHeight: estimatedRowHeight }}>{row}</View>;
     },
     [
