@@ -72,6 +72,7 @@
     "build:dev:local": "bash scripts/build-dev-apk.sh",
     "build:preview:local": "bash scripts/build-preview-apk.sh",
     "build:preview:fast": "bash scripts/build-preview-apk-fast.sh",
+    "build:flow:debug": "bash scripts/build-flow-debug-apk.sh",
     "build:preview:clean": "PREBUILD_CLEAN=1 bash scripts/build-preview-apk.sh",
     "build:prod:local": "bash scripts/build-prod-local.sh",
     "build:setup-fcm": "node scripts/setup-expo-fcm-v1.js",

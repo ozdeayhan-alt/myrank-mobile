@@ -1,15 +1,14 @@
 import { router } from "expo-router";
-import { useReelsActiveIndexStore } from "@/features/posts/store/useReelsActiveIndexStore";
-import { useReelsNavigationStore } from "@/features/posts/store/useReelsNavigationStore";
+import { closeFlow } from "@/features/feed-v2/renderers/flow/FlowNavigator";
 
 export type AuthorProfileSnapshot = {
   displayName?: string;
   photoURL?: string;
 };
 
+/** Clears Flow session + reels navigation before opening a profile screen. */
 export function clearReelsNavigationForProfileVisit(): void {
-  useReelsNavigationStore.getState().clearNavigation();
-  useReelsActiveIndexStore.getState().resetActiveIndex();
+  closeFlow();
 }
 
 export function navigateToAuthorProfile(

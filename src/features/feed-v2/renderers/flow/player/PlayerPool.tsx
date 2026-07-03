@@ -22,6 +22,7 @@ import {
   REEL_ADJACENT_PARK_DELAY_MS,
   replaceWithSourceFallback,
 } from "@/features/posts/utils/videoReelsPlayerUtils";
+import { devFlowLog, safePlayerStatus } from "@/lib/devLog";
 
 export type PlayerSlotId = "A" | "B" | "C";
 
@@ -68,13 +69,32 @@ function safeIsPlayerReady(player: VideoPlayer | null | undefined): boolean {
   }
 }
 
-function safePausePlayer(player: VideoPlayer) {
+function safePausePlayer(player: VideoPlayer, slotId?: PlayerSlotId, postId?: string) {
+  devFlowLog("PlayerPool", "pause()", {
+    postId: postId ?? null,
+    slot: slotId ?? null,
+    status: safePlayerStatus(player),
+  });
   try {
     player.pause();
     player.muted = true;
   } catch {
     // Player already released by useVideoPlayer teardown.
   }
+}
+
+function logPlay(
+  player: VideoPlayer,
+  slotId: PlayerSlotId,
+  postId: string | undefined,
+  mode: PlayerSlotMode
+) {
+  devFlowLog("PlayerPool", "play()", {
+    postId: postId ?? null,
+    slot: slotId,
+    mode,
+    status: safePlayerStatus(player),
+  });
 }
 
 function isBoundPlayer(
@@ -134,17 +154,38 @@ function PooledPlayer({
   useLayoutEffect(() => {
     playersRef.current[slotId] = player;
     playerGenerationRef.current[slotId] += 1;
+    devFlowLog("PlayerPool", "generation++", {
+      postId: post?.id ?? null,
+      slot: slotId,
+      generation: playerGenerationRef.current[slotId],
+      mode,
+      status: "layout-mount",
+    });
 
     return () => {
       clearParkTimer();
       generationRef.current += 1;
-      safePausePlayer(player);
+      devFlowLog("PlayerPool", "generation++", {
+        postId: post?.id ?? null,
+        slot: slotId,
+        generation: generationRef.current,
+        mode,
+        status: "layout-cleanup",
+      });
+      safePausePlayer(player, slotId, post?.id);
       if (playersRef.current[slotId] === player) {
         delete playersRef.current[slotId];
       }
       playerGenerationRef.current[slotId] += 1;
+      devFlowLog("PlayerPool", "generation++", {
+        postId: post?.id ?? null,
+        slot: slotId,
+        generation: playerGenerationRef.current[slotId],
+        mode,
+        status: "playerGeneration-cleanup",
+      });
     };
-  }, [clearParkTimer, player, playerGenerationRef, playersRef, slotId]);
+  }, [clearParkTimer, mode, player, playerGenerationRef, playersRef, post?.id, slotId]);
 
   // VideoView kalkmadan önce aktif oynatıcıyı durdur (native surface çakışmasını önler).
   useLayoutEffect(() => {
@@ -157,16 +198,16 @@ function PooledPlayer({
 
     if (previousMode === "active" && mode !== "active") {
       clearParkTimer();
-      safePausePlayer(player);
+      safePausePlayer(player, slotId, post?.id);
       appliedModeRef.current = null;
     }
-  }, [clearParkTimer, mode, player, playersRef, slotId]);
+  }, [clearParkTimer, mode, player, playersRef, post?.id, slotId]);
 
   useEffect(() => {
     if (!shouldMount || !post) {
       clearParkTimer();
       if (isBoundPlayer(playersRef, slotId, player)) {
-        safePausePlayer(player);
+        safePausePlayer(player, slotId, post?.id);
       }
       loadedRef.current[slotId] = null;
       failedRef.current[slotId] = false;
@@ -184,6 +225,7 @@ function PooledPlayer({
           playersRef,
           slotId,
           player,
+          postId: post.id,
         });
         appliedModeRef.current = mode;
       }
@@ -192,6 +234,13 @@ function PooledPlayer({
 
     failedRef.current[slotId] = false;
     const generation = ++generationRef.current;
+    devFlowLog("PlayerPool", "replaceAsync START", {
+      postId: post.id,
+      slot: slotId,
+      generation,
+      mode,
+      status: safePlayerStatus(player),
+    });
 
     void (async () => {
       const loaded = await replaceWithSourceFallback(
@@ -199,30 +248,66 @@ function PooledPlayer({
         resolveReelVideoSources(post)
       );
       if (generation !== generationRef.current) {
+        devFlowLog("PlayerPool", "replaceAsync CANCEL", {
+          postId: post.id,
+          slot: slotId,
+          generation,
+          mode,
+          status: `stale=${generationRef.current}`,
+        });
         return;
       }
       if (!isBoundPlayer(playersRef, slotId, player)) {
+        devFlowLog("PlayerPool", "replaceAsync CANCEL", {
+          postId: post.id,
+          slot: slotId,
+          generation,
+          mode,
+          status: "unbound",
+        });
         return;
       }
       if (loaded == null) {
         loadedRef.current[slotId] = null;
         failedRef.current[slotId] = true;
-        safePausePlayer(player);
+        devFlowLog("PlayerPool", "replaceAsync END", {
+          postId: post.id,
+          slot: slotId,
+          generation,
+          mode,
+          status: "failed",
+        });
+        safePausePlayer(player, slotId, post.id);
         return;
       }
       loadedRef.current[slotId] = fingerprint;
+      devFlowLog("PlayerPool", "replaceAsync END", {
+        postId: post.id,
+        slot: slotId,
+        generation,
+        mode,
+        status: "loaded",
+      });
       applyModePolicy(player, mode, clearParkTimer, parkTimerRef, {
         shouldMountRef,
         modeRef,
         playersRef,
         slotId,
         player,
+        postId: post.id,
       });
       appliedModeRef.current = mode;
     })();
 
     return () => {
       generationRef.current += 1;
+      devFlowLog("PlayerPool", "generation++", {
+        postId: post.id,
+        slot: slotId,
+        generation: generationRef.current,
+        mode,
+        status: "effect-cleanup",
+      });
     };
   }, [shouldMount, post?.id, post?.mediaURL, post?.hlsURL, mode, player, slotId, clearParkTimer, failedRef, loadedRef, maskingRef, playersRef]);
 
@@ -233,6 +318,13 @@ function PooledPlayer({
     if (!isBoundPlayer(playersRef, slotId, player)) {
       return;
     }
+    devFlowLog("PlayerPool", "statusChange", {
+      postId: post?.id ?? null,
+      slot: slotId,
+      generation: playerGenerationRef.current[slotId],
+      mode: modeRef.current,
+      status,
+    });
     if (modeRef.current === "adjacent" && status === "readyToPlay") {
       clearParkTimer();
       parkTimerRef.current = setTimeout(() => {
@@ -244,6 +336,12 @@ function PooledPlayer({
         }
         try {
           player.currentTime = 0;
+          devFlowLog("PlayerPool", "pause()", {
+            postId: post?.id ?? null,
+            slot: slotId,
+            mode: modeRef.current,
+            status: "adjacent-park",
+          });
           player.pause();
           player.muted = true;
         } catch {
@@ -254,6 +352,7 @@ function PooledPlayer({
     if (modeRef.current === "active" && status === "readyToPlay") {
       try {
         player.muted = false;
+        logPlay(player, slotId, post?.id, modeRef.current);
         player.play();
       } catch {
         // released
@@ -275,23 +374,33 @@ function applyModePolicy(
     playersRef: React.MutableRefObject<Partial<Record<PlayerSlotId, VideoPlayer>>>;
     slotId: PlayerSlotId;
     player: VideoPlayer;
+    postId?: string;
   }
 ) {
   if (!isBoundPlayer(guard.playersRef, guard.slotId, guard.player)) {
     return;
   }
 
+  devFlowLog("PlayerPool", "applyModePolicy", {
+    postId: guard.postId ?? null,
+    slot: guard.slotId,
+    mode,
+    status: safePlayerStatus(player),
+  });
+
   try {
     player.loop = true;
     if (mode === "active") {
       clearParkTimer();
       configureActivePlayer(player);
+      logPlay(player, guard.slotId, guard.postId, mode);
       player.play();
       return;
     }
     if (mode === "adjacent") {
       configurePreloadPlayer(player);
       player.muted = true;
+      logPlay(player, guard.slotId, guard.postId, mode);
       player.play();
       clearParkTimer();
       parkTimerRef.current = setTimeout(() => {
@@ -303,6 +412,12 @@ function applyModePolicy(
         }
         try {
           player.currentTime = 0;
+          devFlowLog("PlayerPool", "pause()", {
+            postId: guard.postId ?? null,
+            slot: guard.slotId,
+            mode: guard.modeRef.current,
+            status: "adjacent-park",
+          });
           player.pause();
           player.muted = true;
         } catch {
@@ -311,6 +426,12 @@ function applyModePolicy(
       }, REEL_ADJACENT_PARK_DELAY_MS);
       return;
     }
+    devFlowLog("PlayerPool", "pause()", {
+      postId: guard.postId ?? null,
+      slot: guard.slotId,
+      mode,
+      status: "idle-policy",
+    });
     player.pause();
     player.muted = true;
   } catch {
@@ -392,6 +513,22 @@ export function PlayerPoolProvider({
     }
     return slots;
   }, [assignments]);
+
+  useEffect(() => {
+    const summary = SLOT_IDS.map((slotId) => {
+      const assignment = assignmentBySlotId[slotId];
+      if (!assignment) {
+        return `${slotId}=-`;
+      }
+      const index = posts.findIndex((post) => post.id === assignment.post.id);
+      return `${slotId}@${index}:${assignment.post.id.slice(0, 8)}:${assignment.mode}`;
+    }).join(" ");
+    devFlowLog("PlayerPool", "assignmentMap", {
+      postId: posts[activeIndex]?.id ?? null,
+      activeIndex,
+      status: summary,
+    });
+  }, [activeIndex, assignmentBySlotId, assignments, posts]);
 
   const value = useMemo<PlayerPoolContextValue>(
     () => ({

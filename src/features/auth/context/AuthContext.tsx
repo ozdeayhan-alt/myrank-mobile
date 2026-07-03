@@ -19,7 +19,7 @@ import { signInWithGoogleCredential } from "../lib/googleSignIn";
 import { deleteAccount as deleteAccountApi } from "@/features/account";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { recordError } from "@/lib/crashReporting";
-import { useProfileStore } from "@/features/profile/store/useProfileStore";
+import { resetAppSessionState } from "@/lib/resetAppSessionState";
 
 type AuthContextValue = {
   user: User | null;
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     const auth = getFirebaseAuth();
     await firebaseSignOut(auth);
-    useProfileStore.getState().reset();
+    await resetAppSessionState();
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await deleteAccountApi();
     const auth = getFirebaseAuth();
     await firebaseSignOut(auth);
-    useProfileStore.getState().reset();
+    await resetAppSessionState();
   }, []);
 
   const value = useMemo(

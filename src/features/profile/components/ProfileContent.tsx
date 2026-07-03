@@ -16,6 +16,7 @@ import {
 } from "@/features/posts/components/FeedFlashList";
 import { ReelsTabFeed } from "@/features/posts/components/ReelsTabFeed";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
+import { closeFlow } from "@/features/feed-v2/renderers/flow/FlowNavigator";
 import type { HomeFeedContentFilter as HomeFeedContentFilterValue } from "@/features/posts/store/useHomeFeedContentStore";
 import { useReelsActiveIndexStore } from "@/features/posts/store/useReelsActiveIndexStore";
 import { useReelsNavigationStore } from "@/features/posts/store/useReelsNavigationStore";
@@ -131,7 +132,7 @@ function ProfileFeedBody({
 
     const unsubscribe = navigation.addListener("tabPress", () => {
       if (contentFilter === "video") {
-        useReelsNavigationStore.getState().clearNavigation();
+        closeFlow();
         onContentFilterChange(null);
       }
     });
@@ -297,13 +298,18 @@ export function ProfileContent({
 
   const handleContentFilterChange = useCallback(
     (filter: HomeFeedContentFilterValue) => {
-      useReelsNavigationStore.getState().clearNavigation();
-      if (filter === "video") {
+      const leavingVideo = contentFilter === "video" && filter !== "video";
+      const enteringVideo = filter === "video";
+
+      if (leavingVideo) {
+        closeFlow();
+      } else if (enteringVideo) {
+        useReelsNavigationStore.getState().clearNavigation();
         useReelsActiveIndexStore.getState().resetActiveIndex();
       }
       setContentFilter(filter);
     },
-    []
+    [contentFilter]
   );
 
   return (

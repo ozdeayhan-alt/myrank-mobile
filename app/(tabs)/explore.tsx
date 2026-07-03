@@ -26,6 +26,7 @@ import {
 import { ReelsTabFeed } from "@/features/posts/components/ReelsTabFeed";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
 import { hasActiveSegmentFilters } from "@/features/posts/api/matchesSegmentFilters";
+import { closeFlow } from "@/features/feed-v2/renderers/flow/FlowNavigator";
 import type { HomeFeedContentFilter } from "@/features/posts/store/useHomeFeedContentStore";
 import { useReelsActiveIndexStore } from "@/features/posts/store/useReelsActiveIndexStore";
 import { useReelsNavigationStore } from "@/features/posts/store/useReelsNavigationStore";
@@ -48,13 +49,18 @@ export default function ExploreScreen() {
 
   const handleContentFilterChange = useCallback(
     (filter: HomeFeedContentFilter) => {
-      useReelsNavigationStore.getState().clearNavigation();
-      if (filter === "video") {
+      const leavingVideo = contentFilter === "video" && filter !== "video";
+      const enteringVideo = filter === "video";
+
+      if (leavingVideo) {
+        closeFlow();
+      } else if (enteringVideo) {
+        useReelsNavigationStore.getState().clearNavigation();
         useReelsActiveIndexStore.getState().resetActiveIndex();
       }
       setContentFilter(filter);
     },
-    []
+    [contentFilter]
   );
 
   useFocusEffect(
@@ -68,7 +74,7 @@ export default function ExploreScreen() {
   useEffect(() => {
     const unsubscribe = navigation.addListener("tabPress", () => {
       if (contentFilter === "video") {
-        useReelsNavigationStore.getState().clearNavigation();
+        closeFlow();
         setContentFilter(null);
       }
     });

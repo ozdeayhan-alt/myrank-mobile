@@ -34,6 +34,7 @@ import { FlowRowSurface } from "./FlowRowSurface";
 import { PlayerPoolProvider } from "./player/PlayerPool";
 import { isFeedV2PlayerPoolEnabled } from "@/lib/featureFlags/feedFlags";
 import { ReelRow } from "@/features/posts/components/ReelRow";
+import { devFlowLog } from "@/lib/devLog";
 
 const VIEWABILITY_CONFIG = {
   itemVisiblePercentThreshold: 55,
@@ -99,8 +100,10 @@ export function FlowPager({
   const listRef = useRef<FlashListRef<Post>>(null);
   const [screenFocused, setScreenFocused] = useState(true);
   const activeIndexRef = useRef(0);
+  const activeIndexChangeSourceRef = useRef<"scroll" | "viewability" | "init">("init");
   const navigationScrollLockRef = useRef<number | null>(null);
   const activeIndex = useReelsActiveIndexStore((s) => s.activeIndex);
+  const prevActiveIndexLogRef = useRef(activeIndex);
   const setActiveIndex = useReelsActiveIndexStore((s) => s.setActiveIndex);
   const resetActiveIndex = useReelsActiveIndexStore((s) => s.resetActiveIndex);
   const usePlayerPool = isFeedV2PlayerPoolEnabled();
@@ -266,6 +269,18 @@ export function FlowPager({
   const postIds = useMemo(() => videoPosts.map((post) => post.id), [videoPosts]);
   useIncrementalEngagement(postIds, engagementResetKey);
 
+  useEffect(() => {
+    if (prevActiveIndexLogRef.current === activeIndex) {
+      return;
+    }
+    devFlowLog("FlowPager", "activeIndex", {
+      postId: videoPosts[activeIndex]?.id ?? null,
+      activeIndex,
+      status: `${prevActiveIndexLogRef.current}->${activeIndex} source=${activeIndexChangeSourceRef.current}`,
+    });
+    prevActiveIndexLogRef.current = activeIndex;
+  }, [activeIndex, videoPosts]);
+
   useFocusEffect(
     useCallback(() => {
       setScreenFocused(true);
@@ -285,6 +300,7 @@ export function FlowPager({
   useLayoutEffect(() => {
     const index = resolveTargetIndex();
     if (index < 0) return;
+    activeIndexChangeSourceRef.current = "init";
     activeIndexRef.current = index;
     setActiveIndex(index);
   }, [resolveTargetIndex, setActiveIndex]);
@@ -307,6 +323,7 @@ export function FlowPager({
       return;
     }
 
+    activeIndexChangeSourceRef.current = "init";
     activeIndexRef.current = index;
     setActiveIndex(index);
     navigationScrollLockRef.current = index;
@@ -440,6 +457,7 @@ export function FlowPager({
       const clamped = Math.max(0, Math.min(predictedIndex, videoPosts.length - 1));
 
       if (clamped !== activeIndexRef.current) {
+        activeIndexChangeSourceRef.current = "scroll";
         activeIndexRef.current = clamped;
         setActiveIndex(clamped);
       }
@@ -464,6 +482,7 @@ export function FlowPager({
       );
 
       if (primary?.index != null && primary.index !== activeIndexRef.current) {
+        activeIndexChangeSourceRef.current = "viewability";
         activeIndexRef.current = primary.index;
         setIndex(primary.index);
       }
@@ -472,9 +491,25 @@ export function FlowPager({
 
   const onMomentumScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      setActiveIndexFromOffset(event.nativeEvent.contentOffset.y);
+      const offsetY = event.nativeEvent.contentOffset.y;
+      const predictedIndex =
+        videoPosts.length === 0 || reelHeight <= 0
+          ? -1
+          : Math.max(
+              0,
+              Math.min(
+                Math.round(offsetY / reelHeight),
+                videoPosts.length - 1
+              )
+            );
+      devFlowLog("FlowPager", "onMomentumScrollEnd", {
+        postId: predictedIndex >= 0 ? videoPosts[predictedIndex]?.id ?? null : null,
+        activeIndex: predictedIndex >= 0 ? predictedIndex : null,
+        status: `offsetY=${offsetY}`,
+      });
+      setActiveIndexFromOffset(offsetY);
     },
-    [setActiveIndexFromOffset]
+    [reelHeight, setActiveIndexFromOffset, videoPosts]
   );
 
   const handleEndReached = useCallback(() => {
