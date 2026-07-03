@@ -1,6 +1,6 @@
 # myrank-mobile
 
-MyRank iOS/Android uygulaması — Expo Router, React Native, Feed V2 + Flow mimarisi.
+MyRank iOS/Android uygulaması — Expo Router, React Native, Feed V2 + Reels mimarisi.
 
 ## Gereksinimler
 

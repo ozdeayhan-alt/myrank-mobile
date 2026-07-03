@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { Text, View } from "react-native";
 import { DoubleTapToLike } from "@/components/DoubleTapToLike";
 import {
@@ -12,7 +11,6 @@ import {
   resolveEmbeddedOriginalPost,
 } from "../utils/repostUtils";
 import { resolvePostAuthorDisplayName } from "../utils/resolvePostAuthor";
-import { isVideoPost } from "../utils/videoPosts";
 import { EmbeddedOriginalPost } from "./EmbeddedOriginalPost";
 import { PostFeedMedia } from "./PostFeedMedia";
 import { RichPostText } from "./RichPostText";
@@ -24,10 +22,8 @@ type PostCardBodyProps = PostFeedMediaLayoutOptions & {
   voteBurstDirection: VoteBurstDirection;
   onLike: () => void;
   onLikeAnimated: () => void;
-  onOpenVideo?: (postId: string) => void;
   currentUserId?: string | null;
   mediaImagePriority?: "low" | "normal" | "high";
-  inlineAutoplay?: boolean;
 };
 
 export function PostCardBody({
@@ -36,10 +32,8 @@ export function PostCardBody({
   voteBurstDirection,
   onLike,
   onLikeAnimated,
-  onOpenVideo,
   currentUserId = null,
   mediaImagePriority = "normal",
-  inlineAutoplay = false,
   listHorizontalInset,
   mediaEdgeBleed,
 }: PostCardBodyProps) {
@@ -49,12 +43,6 @@ export function PostCardBody({
       ? `${resolvePostAuthorDisplayName(post)}, ${resolvePostAuthorDisplayName(embeddedOriginal)} adlı kullanıcının gönderisini paylaştı`
       : null;
   const bodyText = postBodyText(post);
-
-  const openVideo = useCallback(() => {
-    if (isVideoPost(post)) {
-      onOpenVideo?.(post.id);
-    }
-  }, [post, onOpenVideo]);
 
   return (
     <View className="relative" style={{ minHeight: 80 }}>
@@ -73,7 +61,6 @@ export function PostCardBody({
           {embeddedOriginal ? (
             <EmbeddedOriginalPost
               post={embeddedOriginal}
-              onOpenVideo={onOpenVideo}
               currentUserId={currentUserId}
               listHorizontalInset={listHorizontalInset}
               mediaEdgeBleed={mediaEdgeBleed}
@@ -84,12 +71,7 @@ export function PostCardBody({
         <DoubleTapToLike
           onLike={onLike}
           onLikeAnimated={onLikeAnimated}
-          onSinglePress={isVideoPost(post) ? openVideo : undefined}
-          accessibilityLabel={
-            isVideoPost(post)
-              ? "Tek dokunuşla videoyu aç, çift dokunarak beğen"
-              : "Çift dokunarak beğen"
-          }
+          accessibilityLabel="Çift dokunarak beğen"
         >
           {bodyText && post.contentType === "tweet" ? (
             <View className="px-4 pb-3">
@@ -101,7 +83,6 @@ export function PostCardBody({
             <PostFeedMedia
               post={post}
               imagePriority={mediaImagePriority}
-              inlineAutoplay={inlineAutoplay}
               listHorizontalInset={listHorizontalInset}
               mediaEdgeBleed={mediaEdgeBleed}
             />

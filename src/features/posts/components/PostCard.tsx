@@ -17,7 +17,6 @@ import { PostShareModals } from "./PostShareModals";
 type PostCardProps = {
   post: Post;
   onScoreUpdate?: (postId: string, postScore: number) => void;
-  onOpenVideo?: (postId: string) => void;
   engagement?: EngagementStatus;
   onEngagementPatch?: (patch: Partial<EngagementStatus>) => void;
   onPostDeleted?: (postId: string) => void;
@@ -29,7 +28,6 @@ type PostCardProps = {
 export const PostCard = memo(function PostCard({
   post,
   onScoreUpdate,
-  onOpenVideo,
   engagement: externalEngagement,
   onEngagementPatch,
   onPostDeleted,
@@ -89,7 +87,6 @@ export const PostCard = memo(function PostCard({
     handleReposted,
     canRepost,
     handleRepostSelect,
-    handleStorySelect,
     handleExternalShareSelect,
   } = useShareAndRepost({
     post,
@@ -135,7 +132,6 @@ export const PostCard = memo(function PostCard({
           voteBurstDirection={voteBurstDirection}
           onLike={handleLike}
           onLikeAnimated={() => triggerVoteBurst("up")}
-          onOpenVideo={onOpenVideo}
           currentUserId={currentUserId}
           mediaImagePriority={mediaImagePriority}
         />
@@ -199,10 +195,8 @@ export const PostCard = memo(function PostCard({
         canRepost={canRepost}
         shareLoading={loading}
         onRepostSelect={handleRepostSelect}
-        onStorySelect={handleStorySelect}
         onExternalShare={handleExternalShareSelect}
         onReposted={handleReposted}
-        onOpenVideo={onOpenVideo}
       />
     </>
   );

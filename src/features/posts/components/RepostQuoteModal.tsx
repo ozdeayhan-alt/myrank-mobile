@@ -25,7 +25,6 @@ type RepostQuoteModalProps = {
   post: Post;
   onClose: () => void;
   onReposted?: () => void;
-  onOpenVideo?: (postId: string) => void;
 };
 
 export function RepostQuoteModal({
@@ -33,7 +32,6 @@ export function RepostQuoteModal({
   post,
   onClose,
   onReposted,
-  onOpenVideo,
 }: RepostQuoteModalProps) {
   const { height: windowHeight } = useWindowDimensions();
   const [caption, setCaption] = useState("");
@@ -133,11 +131,7 @@ export function RepostQuoteModal({
                 {caption.length}/{REPOST_CAPTION_MAX_LENGTH}
               </Text>
 
-              <EmbeddedOriginalPost
-                post={embedded}
-                onOpenVideo={onOpenVideo}
-                variant="compact"
-              />
+              <EmbeddedOriginalPost post={embedded} variant="compact" />
 
               {error ? (
                 <View className="mt-3 rounded-xl bg-red-50 px-4 py-3">

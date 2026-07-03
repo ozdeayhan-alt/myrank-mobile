@@ -39,72 +39,28 @@ export function ChatComposer({ sending, onSend, onFocus }: ChatComposerProps) {
   const handleAttachMedia = () => {
     if (busy || !user?.uid) return;
 
-    Alert.alert("Medya ekle", "Göndermek istediğiniz türü seçin", [
-      {
-        text: "Fotoğraf",
-        onPress: () => {
-          showMediaSourcePicker("image", (asset) => {
-            void (async () => {
-              setUploading(true);
-              try {
-                const uploaded = await uploadMessageMedia(
-                  user.uid,
-                  asset.uri,
-                  "image",
-                  asset.mimeType
-                );
-                await onSend({
-                  type: "image",
-                  mediaURL: uploaded.mediaURL,
-                  ...(text.trim() ? { text: text.trim() } : {}),
-                });
-                setText("");
-              } catch (error) {
-                Alert.alert(
-                  "Gönderilemedi",
-                  getUserFacingErrorMessage(error)
-                );
-              } finally {
-                setUploading(false);
-              }
-            })();
+    showMediaSourcePicker((asset) => {
+      void (async () => {
+        setUploading(true);
+        try {
+          const uploaded = await uploadMessageMedia(
+            user.uid,
+            asset.uri,
+            "image"
+          );
+          await onSend({
+            type: "image",
+            mediaURL: uploaded.mediaURL,
+            ...(text.trim() ? { text: text.trim() } : {}),
           });
-        },
-      },
-      {
-        text: "Video",
-        onPress: () => {
-          showMediaSourcePicker("video", (asset) => {
-            void (async () => {
-              setUploading(true);
-              try {
-                const uploaded = await uploadMessageMedia(
-                  user.uid,
-                  asset.uri,
-                  "video",
-                  asset.mimeType
-                );
-                await onSend({
-                  type: "video",
-                  mediaURL: uploaded.mediaURL,
-                  posterURL: uploaded.posterURL,
-                  ...(text.trim() ? { text: text.trim() } : {}),
-                });
-                setText("");
-              } catch (error) {
-                Alert.alert(
-                  "Gönderilemedi",
-                  getUserFacingErrorMessage(error)
-                );
-              } finally {
-                setUploading(false);
-              }
-            })();
-          });
-        },
-      },
-      { text: "Vazgeç", style: "cancel" },
-    ]);
+          setText("");
+        } catch (error) {
+          Alert.alert("Gönderilemedi", getUserFacingErrorMessage(error));
+        } finally {
+          setUploading(false);
+        }
+      })();
+    });
   };
 
   return (

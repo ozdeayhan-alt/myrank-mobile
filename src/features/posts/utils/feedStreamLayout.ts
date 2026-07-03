@@ -9,7 +9,7 @@ import {
   isRepostPost,
   resolveEmbeddedOriginalPost,
 } from "./repostUtils";
-import { isVideoPost } from "./videoPosts";
+import { isVideoPost } from "./filterPostsByContentType";
 
 /** Görsel boyutu yoksa Instagram benzeri 4:5 (w/h = 0.8). */
 const DEFAULT_IMAGE_ASPECT_RATIO = 4 / 5;
@@ -159,16 +159,10 @@ export function getFeedStreamItemType(post: Post): string {
     if (embedded?.contentType === "image") {
       return "post-repost-image";
     }
-    if (embedded && isVideoPost(embedded)) {
-      return "post-repost-video";
-    }
     return "post-repost-text";
   }
   if (post.contentType === "image") {
     return "post-image";
-  }
-  if (isVideoPost(post)) {
-    return "post-video";
   }
   return "post-text";
 }

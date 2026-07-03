@@ -1,12 +1,7 @@
-import {
-  useNavigation,
-  useScrollToTop,
-  type ParamListBase,
-} from "@react-navigation/native";
-import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { useScrollToTop } from "@react-navigation/native";
 import type { FlashListRef } from "@shopify/flash-list";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import { HomeFeedContentFilter } from "@/components/HomeFeedContentFilter";
 import { useAuth } from "@/features/auth";
@@ -14,15 +9,9 @@ import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
-import { ReelsTabFeed } from "@/features/posts/components/ReelsTabFeed";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
-import { closeFlow } from "@/features/feed-v2/renderers/flow/FlowNavigator";
-import type { HomeFeedContentFilter as HomeFeedContentFilterValue } from "@/features/posts/store/useHomeFeedContentStore";
-import { useReelsActiveIndexStore } from "@/features/posts/store/useReelsActiveIndexStore";
-import { useReelsNavigationStore } from "@/features/posts/store/useReelsNavigationStore";
 import { useFeedRefreshStore } from "@/features/posts/store/useFeedRefreshStore";
 import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
-import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
 import type { UserMetadata } from "../types";
 import type { BioCategoryVisibility } from "../utils/bioCategoryVisibility";
 import { isMetadataComplete } from "../types";
@@ -61,6 +50,8 @@ type ProfileFeedBodyProps = Omit<ProfileContentProps, "loadedTotalScore"> & {
   onContentFilterChange: (filter: HomeFeedContentFilterValue) => void;
 };
 
+type HomeFeedContentFilterValue = import("@/features/posts/store/useHomeFeedContentStore").HomeFeedContentFilter;
+
 function ProfileFeedBody({
   userId,
   displayName,
@@ -74,7 +65,6 @@ function ProfileFeedBody({
   contentFilter,
   onContentFilterChange,
 }: ProfileFeedBodyProps) {
-  const navigation = useNavigation<BottomTabNavigationProp<ParamListBase>>();
   const listRef = useRef<FlashListRef<FeedListItem>>(null);
   useScrollToTop(listRef);
 
@@ -105,12 +95,8 @@ function ProfileFeedBody({
   const feedVersion = useFeedRefreshStore((s) => s.version);
   const setStoreTotalScore = useProfileStore((s) => s.setTotalScore);
 
-  const listContentFilter = contentFilter === "video" ? null : contentFilter;
-  const feedEnabled = contentFilter !== "video";
   const authorPostsEnabled =
-    feedEnabled &&
-    Boolean(userId) &&
-    (ownProfileHydrated || profileBootstrapReady);
+    Boolean(userId) && (ownProfileHydrated || profileBootstrapReady);
 
   const {
     posts,
@@ -125,42 +111,22 @@ function ProfileFeedBody({
     fetchNextPage,
   } = useAuthorPosts(userId, authorPostsEnabled);
 
-  useEffect(() => {
-    if (!isOwnProfile) {
-      return;
-    }
-
-    const unsubscribe = navigation.addListener("tabPress", () => {
-      if (contentFilter === "video") {
-        closeFlow();
-        onContentFilterChange(null);
-      }
-    });
-
-    return unsubscribe;
-  }, [contentFilter, isOwnProfile, navigation, onContentFilterChange]);
-
   const items = useMemo(
     (): FeedListItem[] =>
-      filterPostsByContentType(posts, listContentFilter).map((post) => ({
+      filterPostsByContentType(posts, contentFilter).map((post) => ({
         kind: "post",
         key: post.id,
         post,
       })),
-    [posts, listContentFilter]
-  );
-
-  const videoPosts = useMemo(
-    () => collectVideoPostsForPlaylist(posts),
-    [posts]
+    [posts, contentFilter]
   );
 
   const emptyMessage = useMemo(() => {
-    if (listContentFilter === "tweet" || listContentFilter === "image") {
-      return getEmptyFeedMessage(listContentFilter);
+    if (contentFilter === "tweet" || contentFilter === "image") {
+      return getEmptyFeedMessage(contentFilter);
     }
     return "Henüz gönderi yok.";
-  }, [listContentFilter]);
+  }, [contentFilter]);
 
   const handleRefresh = useCallback(() => {
     const tasks: Promise<unknown>[] = [refresh()];
@@ -239,24 +205,9 @@ function ProfileFeedBody({
     []
   );
 
-  if (contentFilter === "video") {
-    return (
-      <View className="flex-1 bg-black">
-        <ReelsTabFeed
-          currentUserId={currentUserId}
-          fullscreen
-          profileBrowse
-          profileAuthorId={userId}
-          profileSeedPosts={videoPosts}
-        />
-      </View>
-    );
-  }
-
   return (
     <FeedFlashList
       items={items}
-      videoPosts={videoPosts}
       loading={loading}
       error={error}
       emptyMessage={emptyMessage}
@@ -275,8 +226,6 @@ function ProfileFeedBody({
       onLoadMore={fetchNextPage}
       listHorizontalInset={PROFILE_HORIZONTAL_PADDING}
       mediaEdgeBleed={false}
-      reelsSource="profile"
-      reelsAuthorId={userId}
     />
   );
 }
@@ -296,22 +245,6 @@ export function ProfileContent({
   const [contentFilter, setContentFilter] =
     useState<HomeFeedContentFilterValue>(null);
 
-  const handleContentFilterChange = useCallback(
-    (filter: HomeFeedContentFilterValue) => {
-      const leavingVideo = contentFilter === "video" && filter !== "video";
-      const enteringVideo = filter === "video";
-
-      if (leavingVideo) {
-        closeFlow();
-      } else if (enteringVideo) {
-        useReelsNavigationStore.getState().clearNavigation();
-        useReelsActiveIndexStore.getState().resetActiveIndex();
-      }
-      setContentFilter(filter);
-    },
-    [contentFilter]
-  );
-
   return (
     <ProfileVoteProvider
       targetUserId={userId}
@@ -330,9 +263,9 @@ export function ProfileContent({
           rankingsReady={rankingsReady}
           currentUserId={user?.uid ?? null}
           contentFilter={contentFilter}
-          onContentFilterChange={handleContentFilterChange}
+          onContentFilterChange={setContentFilter}
         />
-        {contentFilter !== "video" ? <ProfileVoteArrowFountainOverlay /> : null}
+        <ProfileVoteArrowFountainOverlay />
       </View>
     </ProfileVoteProvider>
   );

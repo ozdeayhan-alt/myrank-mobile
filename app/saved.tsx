@@ -4,7 +4,6 @@ import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
-import { filterVideoPosts } from "@/features/posts/utils/videoPosts";
 import { useSavedPosts } from "@/features/saved/hooks/useSavedPosts";
 
 export default function SavedScreen() {
@@ -30,8 +29,6 @@ export default function SavedScreen() {
     [posts]
   );
 
-  const videoPosts = useMemo(() => filterVideoPosts(posts), [posts]);
-
   const handleRefresh = useCallback(() => {
     void refresh();
   }, [refresh]);
@@ -39,7 +36,6 @@ export default function SavedScreen() {
   return (
     <FeedFlashList
         items={items}
-        videoPosts={videoPosts}
         loading={loading}
         error={error}
         emptyMessage="Henüz kaydettiğiniz gönderi yok."

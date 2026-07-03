@@ -48,12 +48,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="reels"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="explore"
         options={{
           title: "Keşfet",

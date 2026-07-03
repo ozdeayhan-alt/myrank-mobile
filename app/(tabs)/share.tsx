@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
@@ -10,10 +9,10 @@ import {
   SHARE_HUB_SUBTITLES,
 } from "@/features/posts/constants/contentTypeLabels";
 import { useTabBarContentInset } from "@/hooks/useTabBarContentInset";
-import type { PostContentType } from "@/features/posts/types";
+import type { ShareContentType } from "@/features/posts/types";
 
 type HubOption = {
-  type: PostContentType;
+  type: ShareContentType;
   title: string;
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -31,12 +30,6 @@ const HUB_OPTIONS: HubOption[] = [
     title: CONTENT_TYPE_LABELS.image,
     subtitle: SHARE_HUB_SUBTITLES.image,
     icon: "image-outline",
-  },
-  {
-    type: "video",
-    title: CONTENT_TYPE_LABELS.video,
-    subtitle: SHARE_HUB_SUBTITLES.video,
-    icon: "videocam-outline",
   },
 ];
 
@@ -69,16 +62,11 @@ function HubOptionCard({
 }
 
 export default function ShareScreen() {
-  const router = useRouter();
   const { bottom: tabBarInset } = useTabBarContentInset();
-  const [fullScreenType, setFullScreenType] = useState<PostContentType | null>(
+  const [fullScreenType, setFullScreenType] = useState<ShareContentType | null>(
     null
   );
   const bumpFeed = useFeedRefreshStore((s) => s.bump);
-
-  const openCompose = (type: PostContentType) => {
-    setFullScreenType(type);
-  };
 
   const closeCompose = () => {
     setFullScreenType(null);
@@ -128,15 +116,9 @@ export default function ShareScreen() {
                 title={title}
                 subtitle={subtitle}
                 icon={icon}
-                onPress={() => openCompose(type)}
+                onPress={() => setFullScreenType(type)}
               />
             ))}
-            <HubOptionCard
-              title="Story"
-              subtitle="Fotoğraf veya video — 24 saat görünür"
-              icon="ellipse-outline"
-              onPress={() => router.push("/stories/create")}
-            />
           </View>
         </View>
       </View>

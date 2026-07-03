@@ -15,7 +15,6 @@ import type { FeedRowInteractionState } from "./useFeedRowInteractions";
 type FeedRowChromeProps = {
   row: FeedRowInteractionState;
   currentUserId?: string | null;
-  onOpenVideo?: (postId: string) => void;
   children?: React.ReactNode;
   bodyAbove?: React.ReactNode;
   bodyBelow?: React.ReactNode;
@@ -26,7 +25,6 @@ type FeedRowChromeProps = {
 export function FeedRowChrome({
   row,
   currentUserId = null,
-  onOpenVideo,
   children,
   bodyAbove,
   bodyBelow,
@@ -125,10 +123,8 @@ export function FeedRowChrome({
         canRepost={row.canRepost}
         shareLoading={row.loading}
         onRepostSelect={row.handleRepostSelect}
-        onStorySelect={row.handleStorySelect}
         onExternalShare={row.handleExternalShareSelect}
         onReposted={row.handleReposted}
-        onOpenVideo={onOpenVideo}
       />
     </>
   );

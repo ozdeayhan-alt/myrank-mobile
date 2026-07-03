@@ -1,4 +1,1 @@
-export {
-  showMediaSourcePicker,
-  type MediaPickMode,
-} from "./pickMedia";
+export { showMediaSourcePicker } from "./pickMedia";

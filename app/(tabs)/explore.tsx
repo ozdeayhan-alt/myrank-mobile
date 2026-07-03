@@ -1,10 +1,7 @@
 import {
   useFocusEffect,
-  useNavigation,
   useScrollToTop,
-  type ParamListBase,
 } from "@react-navigation/native";
-import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { FlashListRef } from "@shopify/flash-list";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
@@ -23,15 +20,10 @@ import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
-import { ReelsTabFeed } from "@/features/posts/components/ReelsTabFeed";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
 import { hasActiveSegmentFilters } from "@/features/posts/api/matchesSegmentFilters";
-import { closeFlow } from "@/features/feed-v2/renderers/flow/FlowNavigator";
 import type { HomeFeedContentFilter } from "@/features/posts/store/useHomeFeedContentStore";
-import { useReelsActiveIndexStore } from "@/features/posts/store/useReelsActiveIndexStore";
-import { useReelsNavigationStore } from "@/features/posts/store/useReelsNavigationStore";
 import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
-import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
 import {
   ExploreSearchBar,
   useUserSearch,
@@ -40,28 +32,11 @@ import {
 
 export default function ExploreScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation<BottomTabNavigationProp<ParamListBase>>();
   const listRef = useRef<FlashListRef<FeedListItem>>(null);
   useScrollToTop(listRef);
 
   const [searchPanelOpen, setSearchPanelOpen] = useState(false);
   const [contentFilter, setContentFilter] = useState<HomeFeedContentFilter>(null);
-
-  const handleContentFilterChange = useCallback(
-    (filter: HomeFeedContentFilter) => {
-      const leavingVideo = contentFilter === "video" && filter !== "video";
-      const enteringVideo = filter === "video";
-
-      if (leavingVideo) {
-        closeFlow();
-      } else if (enteringVideo) {
-        useReelsNavigationStore.getState().clearNavigation();
-        useReelsActiveIndexStore.getState().resetActiveIndex();
-      }
-      setContentFilter(filter);
-    },
-    [contentFilter]
-  );
 
   useFocusEffect(
     useCallback(() => {
@@ -70,17 +45,6 @@ export default function ExploreScreen() {
       };
     }, [])
   );
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("tabPress", () => {
-      if (contentFilter === "video") {
-        closeFlow();
-        setContentFilter(null);
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation, contentFilter]);
 
   const {
     query: searchQuery,
@@ -105,8 +69,7 @@ export default function ExploreScreen() {
   } = useMetadataFilters({ initialFilters: DEFAULT_COUNTRY_FILTERS });
 
   const showSearchUI = searchPanelOpen || isSearchActive;
-  const listContentFilter = contentFilter === "video" ? null : contentFilter;
-  const feedEnabled = !showSearchUI && contentFilter !== "video";
+  const feedEnabled = !showSearchUI;
 
   const {
     posts,
@@ -152,13 +115,13 @@ export default function ExploreScreen() {
   }, [showSearchUI, searchQuery, refresh]);
 
   const emptyMessage = useMemo(() => {
-    if (listContentFilter === "tweet" || listContentFilter === "image") {
-      return getEmptyFeedMessage(listContentFilter);
+    if (contentFilter === "tweet" || contentFilter === "image") {
+      return getEmptyFeedMessage(contentFilter);
     }
     return isGlobal
       ? "Henüz gönderi yok."
       : "Bu filtrelere uyan gönderi bulunamadı.";
-  }, [isGlobal, listContentFilter]);
+  }, [isGlobal, contentFilter]);
 
   const listHeader = useMemo(
     () => (
@@ -169,13 +132,12 @@ export default function ExploreScreen() {
         onResetToGlobal={resetToGlobal}
         onResetToProfile={resetToProfile}
         contentFilter={contentFilter}
-        onContentFilterChange={handleContentFilterChange}
+        onContentFilterChange={setContentFilter}
       />
     ),
     [
       contentFilter,
       filters,
-      handleContentFilterChange,
       handlePressSearch,
       openField,
       resetToGlobal,
@@ -194,17 +156,12 @@ export default function ExploreScreen() {
 
   const feedItems = useMemo(
     (): FeedListItem[] =>
-      filterPostsByContentType(posts, listContentFilter).map((post) => ({
+      filterPostsByContentType(posts, contentFilter).map((post) => ({
         kind: "post" as const,
         key: post.id,
         post,
       })),
-    [posts, listContentFilter]
-  );
-
-  const videoPosts = useMemo(
-    () => collectVideoPostsForPlaylist(posts),
-    [posts]
+    [posts, contentFilter]
   );
 
   const handleRefresh = useCallback(() => {
@@ -223,71 +180,57 @@ export default function ExploreScreen() {
         onClose={closeModal}
       />
 
-      {contentFilter === "video" && !showSearchUI ? (
-        <View className="flex-1 bg-black">
-          <ReelsTabFeed
-            currentUserId={user?.uid ?? null}
-            fullscreen
-            exploreBrowse
-            exploreFilters={filters}
-            exploreSeedPosts={videoPosts}
-          />
-        </View>
-      ) : (
-        <TabScreenSafeArea className="flex-1 bg-gray-50">
-          {showSearchUI ? (
-            <View className="min-h-0 flex-1">
-              <ExploreSearchBar
-                query={searchQuery}
-                onChangeQuery={setSearchQuery}
-                onClear={handleClearSearch}
-              />
-              <FilterChipsBar
-                filters={filters}
-                onOpenField={openField}
-                onResetToGlobal={resetToGlobal}
-                onResetToProfile={resetToProfile}
-                hideModeRow
-                layout="exploreRow"
-              />
-              <View className="flex-row items-center border-b border-gray-200 bg-white px-4 py-2.5">
-                <Text className="flex-1 text-sm font-semibold leading-5 text-gray-900">
-                  {filterTitle}
-                </Text>
-              </View>
-              <UserSearchResults
-                query={searchQuery}
-                users={searchUsers}
-                loading={searchLoading}
-                error={searchError}
-              />
+      <TabScreenSafeArea className="flex-1 bg-gray-50">
+        {showSearchUI ? (
+          <View className="min-h-0 flex-1">
+            <ExploreSearchBar
+              query={searchQuery}
+              onChangeQuery={setSearchQuery}
+              onClear={handleClearSearch}
+            />
+            <FilterChipsBar
+              filters={filters}
+              onOpenField={openField}
+              onResetToGlobal={resetToGlobal}
+              onResetToProfile={resetToProfile}
+              hideModeRow
+              layout="exploreRow"
+            />
+            <View className="flex-row items-center border-b border-gray-200 bg-white px-4 py-2.5">
+              <Text className="flex-1 text-sm font-semibold leading-5 text-gray-900">
+                {filterTitle}
+              </Text>
             </View>
-          ) : (
-            <View className="min-h-0 flex-1">
-              <FeedFlashList
-                items={feedItems}
-                videoPosts={videoPosts}
-                loading={loading}
-                error={error}
-                emptyMessage={emptyMessage}
-                onRefresh={handleRefresh}
-                onScoreUpdate={updatePostScore}
-                ListHeaderComponent={listHeader}
-                contentContainerStyle={feedListContentStyle}
-                hasNextPage={hasNextPage}
-                isFetchingNextPage={isFetchingNextPage}
-                onLoadMore={fetchNextPage}
-                isRefetching={isRefetching}
-                engagementResetKey={engagementResetKey}
-                listRef={listRef}
-                currentUserId={user?.uid ?? null}
-                reelsSource="explore"
-                exploreFilters={filters}
-              />
-            </View>
-          )}
-        </TabScreenSafeArea>
-      )}
+            <UserSearchResults
+              query={searchQuery}
+              users={searchUsers}
+              loading={searchLoading}
+              error={searchError}
+            />
+          </View>
+        ) : (
+          <View className="min-h-0 flex-1">
+            <FeedFlashList
+              items={feedItems}
+              loading={loading}
+              error={error}
+              emptyMessage={emptyMessage}
+              onRefresh={handleRefresh}
+              onScoreUpdate={updatePostScore}
+              ListHeaderComponent={listHeader}
+              contentContainerStyle={feedListContentStyle}
+              hasNextPage={hasNextPage}
+              isFetchingNextPage={isFetchingNextPage}
+              onLoadMore={fetchNextPage}
+              isRefetching={isRefetching}
+              engagementResetKey={engagementResetKey}
+              listRef={listRef}
+              currentUserId={user?.uid ?? null}
+              exploreFilters={filters}
+            />
+          </View>
+        )}
+      </TabScreenSafeArea>
     </>
   );
 }

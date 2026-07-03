@@ -17,7 +17,6 @@ type FeedStreamRowProps = PostFeedMediaLayoutOptions & {
     patch: Partial<EngagementStatus>
   ) => void;
   onScoreUpdate?: (postId: string, postScore: number) => void;
-  onOpenVideo?: (postId: string) => void;
   currentUserId?: string | null;
 };
 
@@ -25,7 +24,6 @@ export const FeedStreamRow = memo(function FeedStreamRow({
   post,
   patchEngagement,
   onScoreUpdate,
-  onOpenVideo,
   currentUserId = null,
   listHorizontalInset,
   mediaEdgeBleed,
@@ -103,7 +101,6 @@ export const FeedStreamRow = memo(function FeedStreamRow({
       onSave={handleSave}
       onOwnerMenu={() => openOwnerMenu(post)}
       onMoreMenu={() => openMoreMenu(post)}
-      onOpenVideo={onOpenVideo}
       imagePriority={mediaHighPriority ? "high" : "normal"}
       listHorizontalInset={listHorizontalInset}
       mediaEdgeBleed={mediaEdgeBleed}

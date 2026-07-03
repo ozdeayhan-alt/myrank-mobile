@@ -1,5 +1,4 @@
 import {
-  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -32,15 +31,10 @@ import {
 import { isFeedRenderIsolationEnabled } from "@/lib/featureFlags/feedFlags";
 import { FeedPostSkeleton } from "@/features/posts/components/FeedPostSkeleton";
 import type { FeedV2ListItem } from "../engine/FeedEngine.types";
-import { openFlow } from "../renderers/flow/FlowNavigator";
-import { findVideoPostForOpen } from "@/features/posts/utils/videoPosts";
-import type { ReelsPlaylistSource } from "@/features/posts/store/useReelsNavigationStore";
 import { WhispRow } from "../renderers/whisp/WhispRow";
 import { GlowRow } from "../renderers/glow/GlowRow";
-import { FlowTeaserRow } from "../renderers/flow/FlowTeaserRow";
 import { RepostRow } from "../renderers/RepostRow";
 
-const FEED_DRAW_DISTANCE = 1400;
 const FEED_STREAM_DRAW_DISTANCE_MULTIPLIER = 1.9;
 const PREFETCH_AHEAD_COUNT = 6;
 const PREFETCH_BEHIND_COUNT = 2;
@@ -55,7 +49,6 @@ const viewabilityConfig = {
 
 export type FeedScrollerProps = {
   items: FeedV2ListItem[];
-  videoPosts: Post[];
   loading: boolean;
   error: string | null;
   emptyMessage: string;
@@ -73,8 +66,6 @@ export type FeedScrollerProps = {
   onPostContentUpdated?: (postId: string, content: string) => void;
   listKey?: string;
   currentUserId?: string | null;
-  reelsSource?: ReelsPlaylistSource;
-  reelsAuthorId?: string;
   exploreFilters?: UserMetadata | null;
   prefetchEnabled?: boolean;
 };
@@ -85,7 +76,6 @@ function getItemType(item: FeedV2ListItem): string {
 
 export function FeedScroller({
   items,
-  videoPosts,
   loading,
   error,
   emptyMessage,
@@ -103,9 +93,6 @@ export function FeedScroller({
   onPostContentUpdated,
   listKey,
   currentUserId = null,
-  reelsSource = "home",
-  reelsAuthorId,
-  exploreFilters,
   prefetchEnabled = true,
 }: FeedScrollerProps) {
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
@@ -126,16 +113,6 @@ export function FeedScroller({
   const postIds = useMemo(
     () => items.map((item) => item.post.id),
     [items]
-  );
-
-  const playlist = useMemo(
-    () =>
-      videoPosts.length > 0
-        ? videoPosts
-        : items
-            .filter((item) => item.kind === "flow-teaser")
-            .map((item) => item.post),
-    [items, videoPosts]
   );
 
   const engagementFetchEnabled = !loading || postIds.length > 0;
@@ -225,20 +202,6 @@ export function FeedScroller({
     }
   ).current;
 
-  const feedPosts = useMemo(() => items.map((item) => item.post), [items]);
-
-  const handleOpenFlow = useCallback(
-    (postId: string) => {
-      const anchorPost = findVideoPostForOpen(feedPosts, postId);
-      openFlow(postId, playlist, anchorPost, {
-        source: reelsSource,
-        ...(reelsAuthorId ? { authorId: reelsAuthorId } : {}),
-        ...(reelsSource === "explore" ? { exploreFilters: exploreFilters ?? null } : {}),
-      });
-    },
-    [exploreFilters, feedPosts, playlist, reelsAuthorId, reelsSource]
-  );
-
   const renderItem = useCallback(
     ({ item }: { item: FeedV2ListItem }) => {
       const rowProps = {
@@ -256,20 +219,13 @@ export function FeedScroller({
             return <WhispRow {...rowProps} />;
           case "glow":
             return <GlowRow {...rowProps} />;
-          case "flow-teaser":
-            return (
-              <FlowTeaserRow {...rowProps} onOpenFlow={handleOpenFlow} />
-            );
           case "repost":
-            return (
-              <RepostRow {...rowProps} onOpenFlow={handleOpenFlow} />
-            );
+            return <RepostRow {...rowProps} />;
           default:
             return <WhispRow {...rowProps} />;
         }
       })();
 
-      // Whisp: içerik yüksekliğine göre ölçülür. Glow/Flow/Repost: sabit slot.
       if (item.kind === "whisp") {
         return <View collapsable={false}>{row}</View>;
       }
@@ -282,7 +238,6 @@ export function FeedScroller({
     },
     [
       currentUserId,
-      handleOpenFlow,
       onPostContentUpdated,
       onPostDeleted,
       onScoreUpdate,

@@ -189,9 +189,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           photosPermission:
             "Profil fotoğrafı ve paylaşım için galeriye erişim gerekir.",
           cameraPermission:
-            "Fotoğraf ve video çekmek için kamera erişimi gerekir.",
-          microphonePermission:
-            "Video kaydı için mikrofon erişimi gerekir.",
+            "Fotoğraf çekmek için kamera erişimi gerekir.",
         },
       ],
       ...getGoogleSignInPlugins(),
@@ -199,8 +197,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
       "expo-splash-screen",
-      "expo-video",
-      "react-native-compressor",
       "./plugins/withAndroidLegacyStoragePermission",
     ],
     extra: {

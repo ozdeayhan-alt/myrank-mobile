@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { useRouter } from "expo-router";
 import { usePostEngagement } from "@/features/ranking/store/useEngagementStore";
 import type { EngagementStatus } from "@/features/ranking/types";
 import { useFeedRefreshStore } from "../store/useFeedRefreshStore";
@@ -22,7 +21,6 @@ type FeedInteractionHostInnerProps = {
   onScoreUpdate?: (postId: string, postScore: number) => void;
   onPostDeleted?: (postId: string) => void;
   onPostContentUpdated?: (postId: string, content: string) => void;
-  onOpenVideo?: (postId: string) => void;
 };
 
 function FeedInteractionHostInner({
@@ -32,9 +30,7 @@ function FeedInteractionHostInner({
   onScoreUpdate,
   onPostDeleted,
   onPostContentUpdated,
-  onOpenVideo,
 }: FeedInteractionHostInnerProps) {
-  const router = useRouter();
   const bumpFeed = useFeedRefreshStore((s) => s.bump);
 
   const shareSheetOpen = useFeedInteractionStore((s) => s.shareSheetOpen);
@@ -90,14 +86,6 @@ function FeedInteractionHostInner({
     setShareSheetOpen(false);
     setRepostOpen(true);
   }, [setRepostOpen, setShareSheetOpen]);
-
-  const handleStorySelect = useCallback(() => {
-    setShareSheetOpen(false);
-    router.push({
-      pathname: "/stories/share-from-post",
-      params: { postId: post.id },
-    });
-  }, [post.id, router, setShareSheetOpen]);
 
   const handleExternalShareSelect = useCallback(() => {
     setShareSheetOpen(false);
@@ -157,10 +145,8 @@ function FeedInteractionHostInner({
         canRepost={canRepost}
         shareLoading={loading}
         onRepostSelect={handleRepostSelect}
-        onStorySelect={handleStorySelect}
         onExternalShare={handleExternalShareSelect}
         onReposted={handleReposted}
-        onOpenVideo={onOpenVideo}
       />
     </>
   );

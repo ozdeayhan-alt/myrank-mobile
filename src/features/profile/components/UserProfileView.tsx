@@ -1,7 +1,4 @@
-import { useFocusEffect } from "@react-navigation/native";
-import { useCallback } from "react";
 import { Text, View } from "react-native";
-import { clearReelsNavigationForProfileVisit } from "../navigateToAuthorProfile";
 import { useRemoteProfileScreen } from "../hooks/useRemoteProfileScreen";
 import { ProfileContent } from "./ProfileContent";
 
@@ -16,12 +13,6 @@ export function UserProfileView({
   displayName,
   photoURL,
 }: UserProfileViewProps) {
-  useFocusEffect(
-    useCallback(() => {
-      clearReelsNavigationForProfileVisit();
-    }, [])
-  );
-
   const profile = useRemoteProfileScreen(userId, { displayName, photoURL });
 
   if (profile.fatalError) {

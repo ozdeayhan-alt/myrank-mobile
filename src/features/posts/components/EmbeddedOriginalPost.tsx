@@ -9,15 +9,12 @@ import {
   resolvePostAuthorPhotoURL,
 } from "../utils/resolvePostAuthor";
 import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
-import { isRepostPost } from "../utils/repostUtils";
 import { FeedStreamMedia } from "./FeedStreamMedia";
 import { PostFeedMedia } from "./PostFeedMedia";
 import { getContentTypeLabel } from "../constants/contentTypeLabels";
-import { isVideoPost } from "../utils/videoPosts";
 
 type EmbeddedOriginalPostProps = PostFeedMediaLayoutOptions & {
   post: Post;
-  onOpenVideo?: (postId: string) => void;
   variant?: "feed" | "compact";
   currentUserId?: string | null;
   streamMedia?: boolean;
@@ -34,7 +31,6 @@ function postBodyText(post: Post): string | null {
 
 export function EmbeddedOriginalPost({
   post,
-  onOpenVideo,
   variant = "feed",
   currentUserId = null,
   listHorizontalInset,
@@ -61,15 +57,9 @@ export function EmbeddedOriginalPost({
     });
   };
 
-  const openVideo = () => {
-    if (isVideoPost(post) && post.id) {
-      onOpenVideo?.(post.id);
-    }
-  };
-
   return (
     <Pressable
-      onPress={isVideoPost(post) ? openVideo : openOriginal}
+      onPress={openOriginal}
       className={`${compact ? "mx-0" : "mx-4"} mb-3 overflow-hidden rounded-xl border border-gray-200 bg-gray-50`}
       accessibilityRole="button"
       accessibilityLabel="Orijinal gönderiyi aç"
@@ -107,11 +97,6 @@ export function EmbeddedOriginalPost({
         <FeedStreamMedia
           post={post}
           imagePriority={imagePriority}
-          onOpenVideo={() => {
-            if (isVideoPost(post) && post.id) {
-              onOpenVideo?.(post.id);
-            }
-          }}
           listHorizontalInset={listHorizontalInset}
           mediaEdgeBleed={mediaEdgeBleed}
         />

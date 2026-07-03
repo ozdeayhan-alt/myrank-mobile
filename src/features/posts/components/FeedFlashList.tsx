@@ -11,12 +11,7 @@ import {
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import type { UserMetadata } from "@/features/profile/types";
 import { useIncrementalEngagement } from "@/features/ranking/hooks/useIncrementalEngagement";
-import { isFeedInlineAutoplayEnabled } from "@/lib/feedInlineAutoplayEnabled";
 import { PostInteractionProvider } from "../context/PostInteractionContext";
-import {
-  FeedAutoplayProvider,
-  useFeedAutoplayPostId,
-} from "../context/FeedAutoplayContext";
 import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 import type { Post } from "../types";
 import {
@@ -31,14 +26,6 @@ import { FeedPostSkeleton } from "./FeedPostSkeleton";
 import { FeedPostRow } from "./FeedPostRow";
 import { FeedStreamRow } from "./FeedStreamRow";
 import { FeedInteractionHost } from "./FeedInteractionHost";
-import { navigateToReels } from "../navigateToReels";
-import type { ReelsPlaylistSource } from "../store/useReelsNavigationStore";
-import {
-  collectVideoPostsForPlaylist,
-  filterVideoPosts,
-  findVideoPostForOpen,
-  isVideoPost,
-} from "../utils/videoPosts";
 
 const FEED_DRAW_DISTANCE = 1400;
 const FEED_STREAM_DRAW_DISTANCE_MULTIPLIER = 1.9;
@@ -70,7 +57,6 @@ export type FeedListItem =
 
 type FeedFlashListProps = PostFeedMediaLayoutOptions & {
   items: FeedListItem[];
-  videoPosts: Post[];
   loading: boolean;
   error: string | null;
   emptyMessage: string;
@@ -89,8 +75,6 @@ type FeedFlashListProps = PostFeedMediaLayoutOptions & {
   extraData?: unknown;
   listKey?: string;
   currentUserId?: string | null;
-  reelsSource?: ReelsPlaylistSource;
-  reelsAuthorId?: string;
   exploreFilters?: UserMetadata | null;
   streamCell?: boolean;
   /** Tab odakta değilken prefetch kapalı — arka planda JS yükünü azaltır. */
@@ -109,11 +93,9 @@ type FeedPostListItemProps = PostFeedMediaLayoutOptions & {
     patch: Partial<import("@/features/ranking/types").EngagementStatus>
   ) => void;
   onScoreUpdate?: (postId: string, postScore: number) => void;
-  onOpenVideo?: (postId: string) => void;
   onPostDeleted?: (postId: string) => void;
   onPostContentUpdated?: (postId: string, content: string) => void;
   currentUserId?: string | null;
-  inlineAutoplayEnabled: boolean;
   streamCell?: boolean;
 };
 
@@ -121,17 +103,13 @@ function FeedPostListItem({
   post,
   patchEngagement,
   onScoreUpdate,
-  onOpenVideo,
   onPostDeleted,
   onPostContentUpdated,
   currentUserId,
-  inlineAutoplayEnabled,
   streamCell = false,
   listHorizontalInset,
   mediaEdgeBleed,
 }: FeedPostListItemProps) {
-  const autoplayPostId = useFeedAutoplayPostId();
-
   if (streamCell) {
     return (
       <FeedPostErrorBoundary post={post}>
@@ -139,7 +117,6 @@ function FeedPostListItem({
           post={post}
           patchEngagement={patchEngagement}
           onScoreUpdate={onScoreUpdate}
-          onOpenVideo={onOpenVideo}
           currentUserId={currentUserId}
           listHorizontalInset={listHorizontalInset}
           mediaEdgeBleed={mediaEdgeBleed}
@@ -154,13 +131,9 @@ function FeedPostListItem({
         post={post}
         patchEngagement={patchEngagement}
         onScoreUpdate={onScoreUpdate}
-        onOpenVideo={onOpenVideo}
         onPostDeleted={onPostDeleted}
         onPostContentUpdated={onPostContentUpdated}
         currentUserId={currentUserId}
-        inlineAutoplay={
-          inlineAutoplayEnabled && autoplayPostId === post.id
-        }
         listHorizontalInset={listHorizontalInset}
         mediaEdgeBleed={mediaEdgeBleed}
       />
@@ -170,7 +143,6 @@ function FeedPostListItem({
 
 export function FeedFlashList({
   items,
-  videoPosts,
   loading,
   error,
   emptyMessage,
@@ -191,9 +163,6 @@ export function FeedFlashList({
   currentUserId = null,
   listHorizontalInset,
   mediaEdgeBleed,
-  reelsSource = "home",
-  reelsAuthorId,
-  exploreFilters,
   streamCell = false,
   prefetchEnabled = true,
 }: FeedFlashListProps) {
@@ -204,11 +173,9 @@ export function FeedFlashList({
   const drawDistance = streamCell
     ? Math.round(screenHeight * FEED_STREAM_DRAW_DISTANCE_MULTIPLIER)
     : FEED_DRAW_DISTANCE;
-  const [autoplayPostId, setAutoplayPostId] = useState<string | null>(null);
   const [visiblePostIds, setVisiblePostIds] = useState<Set<string>>(
     () => new Set()
   );
-  const autoplayPostIdRef = useRef<string | null>(null);
   const visiblePostIdsRef = useRef<Set<string>>(new Set());
   const visibleIdsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -222,8 +189,6 @@ export function FeedFlashList({
   const itemsRef = useRef(items);
   itemsRef.current = items;
 
-  const inlineAutoplayEnabled = isFeedInlineAutoplayEnabled();
-
   const postIds = useMemo(
     () =>
       items
@@ -233,21 +198,6 @@ export function FeedFlashList({
         )
         .map((item) => item.post.id),
     [items]
-  );
-
-  const playlist = useMemo(
-    () =>
-      videoPosts.length > 0
-        ? videoPosts
-        : collectVideoPostsForPlaylist(
-            items
-              .filter(
-                (item): item is Extract<FeedListItem, { kind: "post" }> =>
-                  item.kind === "post"
-              )
-              .map((item) => item.post)
-          ),
-    [items, videoPosts]
   );
 
   const engagementFetchEnabled = !loading || postIds.length > 0;
@@ -368,26 +318,12 @@ export function FeedFlashList({
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken<FeedListItem>[] }) => {
       const nextVisible = new Set<string>();
-      let nextAutoplayPostId: string | null = null;
 
       for (const token of viewableItems) {
         const item = token.item;
         if (item?.kind === "post") {
           nextVisible.add(item.post.id);
-          if (
-            inlineAutoplayEnabled &&
-            !nextAutoplayPostId &&
-            isVideoPost(item.post) &&
-            (token.isViewable ?? true)
-          ) {
-            nextAutoplayPostId = item.post.id;
-          }
         }
-      }
-
-      if (nextAutoplayPostId !== autoplayPostIdRef.current) {
-        autoplayPostIdRef.current = nextAutoplayPostId;
-        setAutoplayPostId(nextAutoplayPostId);
       }
 
       visiblePostIdsRef.current = nextVisible;
@@ -434,29 +370,6 @@ export function FeedFlashList({
 
   const listExtraData = extraData;
 
-  const feedPosts = useMemo(
-    () =>
-      items
-        .filter(
-          (item): item is Extract<FeedListItem, { kind: "post" }> =>
-            item.kind === "post"
-        )
-        .map((item) => item.post),
-    [items]
-  );
-
-  const handleOpenVideo = useCallback(
-    (postId: string) => {
-      const anchorPost = findVideoPostForOpen(feedPosts, postId);
-      navigateToReels(postId, playlist, anchorPost, {
-        source: reelsSource,
-        ...(reelsAuthorId ? { authorId: reelsAuthorId } : {}),
-        ...(reelsSource === "explore" ? { exploreFilters: exploreFilters ?? null } : {}),
-      });
-    },
-    [exploreFilters, feedPosts, playlist, reelsAuthorId, reelsSource]
-  );
-
   const renderItem = useCallback(
     ({ item }: { item: FeedListItem }) => {
       if (item.kind === "placeholder") {
@@ -495,11 +408,9 @@ export function FeedFlashList({
           post={item.post}
           patchEngagement={patchEngagement}
           onScoreUpdate={onScoreUpdate}
-          onOpenVideo={handleOpenVideo}
           onPostDeleted={onPostDeleted}
           onPostContentUpdated={onPostContentUpdated}
           currentUserId={currentUserId}
-          inlineAutoplayEnabled={inlineAutoplayEnabled}
           streamCell={streamCell}
           listHorizontalInset={listHorizontalInset}
           mediaEdgeBleed={mediaEdgeBleed}
@@ -507,13 +418,11 @@ export function FeedFlashList({
       );
     },
     [
-      handleOpenVideo,
       patchEngagement,
       onScoreUpdate,
       onPostDeleted,
       onPostContentUpdated,
       currentUserId,
-      inlineAutoplayEnabled,
       streamCell,
       listHorizontalInset,
       mediaEdgeBleed,
@@ -565,49 +474,46 @@ export function FeedFlashList({
 
   return (
     <PostInteractionProvider currentUserId={currentUserId}>
-      <FeedAutoplayProvider autoplayPostId={autoplayPostId}>
-        <FeedVisiblePostsProvider visiblePostIds={visiblePostIds}>
+      <FeedVisiblePostsProvider visiblePostIds={visiblePostIds}>
         <FlashList
-        key={listKey}
-        ref={listRef}
-        data={items}
-        extraData={listExtraData}
-        renderItem={renderItem}
-        keyExtractor={(item: FeedListItem) => item.key}
-        getItemType={getItemType}
-        style={{ flex: 1, backgroundColor: streamCell ? "#ffffff" : undefined }}
-        contentContainerStyle={listContentStyle}
-        ListHeaderComponent={ListHeaderComponent ?? undefined}
-        ListEmptyComponent={!hasPostItems && items.length === 0 ? listEmpty : undefined}
-        ListFooterComponent={listFooter ?? undefined}
-        refreshing={showRefreshing}
-        onRefresh={onRefresh}
-        onEndReached={handleEndReached}
-        onEndReachedThreshold={0.4}
-        drawDistance={drawDistance}
-        keyboardDismissMode="on-drag"
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        {...(streamCell
-          ? {
-              overrideProps: {
-                initialDrawBatchSize: 12,
-              },
-            }
-          : {})}
-      />
-      {streamCell ? (
-        <FeedInteractionHost
-          currentUserId={currentUserId}
-          patchEngagement={patchEngagement}
-          onScoreUpdate={onScoreUpdate}
-          onPostDeleted={onPostDeleted}
-          onPostContentUpdated={onPostContentUpdated}
-          onOpenVideo={handleOpenVideo}
+          key={listKey}
+          ref={listRef}
+          data={items}
+          extraData={listExtraData}
+          renderItem={renderItem}
+          keyExtractor={(item: FeedListItem) => item.key}
+          getItemType={getItemType}
+          style={{ flex: 1, backgroundColor: streamCell ? "#ffffff" : undefined }}
+          contentContainerStyle={listContentStyle}
+          ListHeaderComponent={ListHeaderComponent ?? undefined}
+          ListEmptyComponent={!hasPostItems && items.length === 0 ? listEmpty : undefined}
+          ListFooterComponent={listFooter ?? undefined}
+          refreshing={showRefreshing}
+          onRefresh={onRefresh}
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.4}
+          drawDistance={drawDistance}
+          keyboardDismissMode="on-drag"
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          {...(streamCell
+            ? {
+                overrideProps: {
+                  initialDrawBatchSize: 12,
+                },
+              }
+            : {})}
         />
-      ) : null}
-        </FeedVisiblePostsProvider>
-      </FeedAutoplayProvider>
+        {streamCell ? (
+          <FeedInteractionHost
+            currentUserId={currentUserId}
+            patchEngagement={patchEngagement}
+            onScoreUpdate={onScoreUpdate}
+            onPostDeleted={onPostDeleted}
+            onPostContentUpdated={onPostContentUpdated}
+          />
+        ) : null}
+      </FeedVisiblePostsProvider>
     </PostInteractionProvider>
   );
 }

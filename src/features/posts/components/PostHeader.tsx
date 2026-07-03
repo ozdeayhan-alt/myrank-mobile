@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 import { formatRelativeTime } from "@/features/notifications/utils/formatRelativeTime";
 import { navigateToAuthorProfile } from "@/features/profile/navigateToAuthorProfile";
-import { StoryRingAvatar } from "@/features/stories/components/StoryRingAvatar";
+import { ProfileAvatar } from "@/features/profile/components/ProfileAvatar";
 import { isSystemProfileUserId } from "@/lib/profile/isSystemProfile";
 import type { Post } from "../types";
 import {
@@ -79,12 +79,10 @@ export function PostHeader({
   return (
     <View className="flex-row items-center justify-between px-4 pb-2.5 pt-3.5">
       <View className="mr-3 flex-1 flex-row items-center">
-        <StoryRingAvatar
-          userId={post.authorId}
+        <ProfileAvatar
+          size={FEED_AVATAR_SIZE}
           photoURL={photoURL}
           fallbackLetter={resolvePostAuthorInitial(post)}
-          size={FEED_AVATAR_SIZE}
-          onPressWithoutStory={openAuthorProfile}
         />
         <Pressable
           className="ml-3 flex-1"

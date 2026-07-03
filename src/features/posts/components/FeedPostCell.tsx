@@ -20,11 +20,9 @@ type FeedPostCellProps = PostFeedMediaLayoutOptions & {
   engagement: EngagementStatus;
   patchEngagement: (patch: Partial<EngagementStatus>) => void;
   onScoreUpdate?: (postId: string, postScore: number) => void;
-  onOpenVideo?: (postId: string) => void;
   onPostDeleted?: (postId: string) => void;
   onPostContentUpdated?: (postId: string, content: string) => void;
   currentUserId?: string | null;
-  inlineAutoplay?: boolean;
 };
 
 export const FeedPostCell = memo(function FeedPostCell({
@@ -32,11 +30,9 @@ export const FeedPostCell = memo(function FeedPostCell({
   engagement,
   patchEngagement,
   onScoreUpdate,
-  onOpenVideo,
   onPostDeleted,
   onPostContentUpdated,
   currentUserId = null,
-  inlineAutoplay = false,
   listHorizontalInset,
   mediaEdgeBleed,
 }: FeedPostCellProps) {
@@ -92,7 +88,6 @@ export const FeedPostCell = memo(function FeedPostCell({
     handleReposted,
     canRepost,
     handleRepostSelect,
-    handleStorySelect,
     handleExternalShareSelect,
   } = useShareAndRepost({
     post,
@@ -138,10 +133,8 @@ export const FeedPostCell = memo(function FeedPostCell({
           voteBurstDirection={voteBurstDirection}
           onLike={handleLike}
           onLikeAnimated={() => triggerVoteBurst("up")}
-          onOpenVideo={onOpenVideo}
           currentUserId={currentUserId}
           mediaImagePriority="high"
-          inlineAutoplay={inlineAutoplay}
           listHorizontalInset={listHorizontalInset}
           mediaEdgeBleed={mediaEdgeBleed}
         />
@@ -205,10 +198,8 @@ export const FeedPostCell = memo(function FeedPostCell({
         canRepost={canRepost}
         shareLoading={loading}
         onRepostSelect={handleRepostSelect}
-        onStorySelect={handleStorySelect}
         onExternalShare={handleExternalShareSelect}
         onReposted={handleReposted}
-        onOpenVideo={onOpenVideo}
       />
     </>
   );

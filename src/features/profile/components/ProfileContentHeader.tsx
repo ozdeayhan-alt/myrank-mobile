@@ -17,7 +17,7 @@ import {
   PROFILE_MENU_RIGHT_INSET,
 } from "../profileLayout";
 import { isSystemProfileUserId } from "@/lib/profile/isSystemProfile";
-import { ProfileStoryAvatar } from "@/features/stories/components/ProfileStoryAvatar";
+import { ProfileAvatar } from "./ProfileAvatar";
 import { ProfileRankMedal } from "./ProfileRankMedal";
 import { ProfileRankingsAccordion } from "./ProfileRankingsAccordion";
 import { ProfileSegmentScoreBadge } from "./ProfileSegmentScoreBadge";
@@ -153,12 +153,10 @@ function ProfileContentHeaderInner({
             }}
             collapsable={false}
           >
-            <ProfileStoryAvatar
-              userId={userId}
+            <ProfileAvatar
+              size={PROFILE_AVATAR_SIZE}
               photoURL={photoURL}
               fallbackLetter={displayName}
-              size={PROFILE_AVATAR_SIZE}
-              isOwnProfile={isOwnProfile}
             />
             <View
               style={{

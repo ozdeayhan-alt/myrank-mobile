@@ -64,12 +64,10 @@ export function useShareComposerSubmit({
 
     try {
       let mediaURL: string | undefined;
-      let hlsURL: string | undefined;
-      let posterURL: string | undefined;
       let mediaWidth: number | undefined;
       let mediaHeight: number | undefined;
 
-      if (mediaUri && (selected === "image" || selected === "video")) {
+      if (mediaUri && selected === "image") {
         const uploaded = await uploadPostMedia(
           userId,
           mediaUri,
@@ -85,8 +83,6 @@ export function useShareComposerSubmit({
           }
         );
         mediaURL = uploaded.mediaURL;
-        hlsURL = uploaded.hlsURL;
-        posterURL = uploaded.posterURL;
         mediaWidth = uploaded.mediaWidth;
         mediaHeight = uploaded.mediaHeight;
       }
@@ -95,8 +91,6 @@ export function useShareComposerSubmit({
         contentType: selected,
         content: content.trim(),
         mediaURL,
-        hlsURL,
-        posterURL,
         mediaWidth,
         mediaHeight,
       });

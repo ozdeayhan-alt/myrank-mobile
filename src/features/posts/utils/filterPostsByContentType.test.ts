@@ -43,6 +43,9 @@ describe("filterPostsByContentType", () => {
     expect(filterPostsByContentType(posts, "image").map((p) => p.id)).toEqual([
       "i1",
     ]);
-    expect(filterPostsByContentType(posts, null)).toHaveLength(3);
+    expect(filterPostsByContentType(posts, null).map((p) => p.id)).toEqual([
+      "t1",
+      "i1",
+    ]);
   });
 });

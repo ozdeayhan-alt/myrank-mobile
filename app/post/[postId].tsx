@@ -4,10 +4,9 @@ import { useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/features/auth";
 import { PostCard } from "@/features/posts";
 import { PostInteractionProvider } from "@/features/posts/context/PostInteractionContext";
-import { navigateToReels } from "@/features/posts/navigateToReels";
 import { fetchPostById } from "@/features/posts/api/fetchPostById";
 import type { Post } from "@/features/posts/types";
-import { filterVideoPosts, isVideoPost } from "@/features/posts/utils/videoPosts";
+import { isVideoPost } from "@/features/posts/utils/filterPostsByContentType";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 
 export default function PostDetailScreen() {
@@ -24,13 +23,16 @@ export default function PostDetailScreen() {
     fetchPostById(postId)
       .then((data) => {
         setPost(data);
-        if (!data) setError("Gönderi bulunamadı.");
+        if (!data) {
+          setError("Gönderi bulunamadı.");
+        } else if (isVideoPost(data)) {
+          setError("Video içerikleri geçici olarak kullanılamıyor.");
+          setPost(null);
+        }
       })
       .catch((err) => setError(getUserFacingErrorMessage(err)))
       .finally(() => setLoading(false));
   }, [postId]);
-
-  const videoPosts = post ? filterVideoPosts([post]) : [];
 
   return (
     <ScrollView className="flex-1 bg-gray-50" contentContainerClassName="px-4 py-4">
@@ -42,15 +44,7 @@ export default function PostDetailScreen() {
         </View>
       ) : post ? (
         <PostInteractionProvider currentUserId={user?.uid ?? null}>
-          <PostCard
-            post={post}
-            currentUserId={user?.uid ?? null}
-            onOpenVideo={
-              isVideoPost(post)
-                ? () => navigateToReels(post.id, videoPosts)
-                : undefined
-            }
-          />
+          <PostCard post={post} currentUserId={user?.uid ?? null} />
         </PostInteractionProvider>
       ) : null}
     </ScrollView>

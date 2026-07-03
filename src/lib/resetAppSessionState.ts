@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { closeFlow } from "@/features/feed-v2/renderers/flow/FlowNavigator";
 import { resetFeedScrollVisibilityStore } from "@/features/posts/store/feedScrollVisibilityStore";
 import { clearPendingGaugeVoteModeTimers } from "@/features/profile/lib/gaugeVoteModeStorage";
 import { useProfileStore } from "@/features/profile/store/useProfileStore";
@@ -16,8 +15,6 @@ const REACT_QUERY_OFFLINE_CACHE_KEY = "REACT_QUERY_OFFLINE_CACHE";
  */
 export async function resetAppSessionState(): Promise<void> {
   clearPendingGaugeVoteModeTimers();
-
-  closeFlow();
 
   useProfileStore.getState().reset();
   useEngagementStore.getState().reset();

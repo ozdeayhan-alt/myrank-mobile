@@ -12,22 +12,18 @@ type FeedPostRowProps = PostFeedMediaLayoutOptions & {
     patch: Partial<EngagementStatus>
   ) => void;
   onScoreUpdate?: (postId: string, postScore: number) => void;
-  onOpenVideo?: (postId: string) => void;
   onPostDeleted?: (postId: string) => void;
   onPostContentUpdated?: (postId: string, content: string) => void;
   currentUserId?: string | null;
-  inlineAutoplay?: boolean;
 };
 
 export const FeedPostRow = memo(function FeedPostRow({
   post,
   patchEngagement,
   onScoreUpdate,
-  onOpenVideo,
   onPostDeleted,
   onPostContentUpdated,
   currentUserId = null,
-  inlineAutoplay = false,
   listHorizontalInset,
   mediaEdgeBleed,
 }: FeedPostRowProps) {
@@ -46,11 +42,9 @@ export const FeedPostRow = memo(function FeedPostRow({
       engagement={engagement}
       patchEngagement={handlePatch}
       onScoreUpdate={onScoreUpdate}
-      onOpenVideo={onOpenVideo}
       onPostDeleted={onPostDeleted}
       onPostContentUpdated={onPostContentUpdated}
       currentUserId={currentUserId}
-      inlineAutoplay={inlineAutoplay}
       listHorizontalInset={listHorizontalInset}
       mediaEdgeBleed={mediaEdgeBleed}
     />

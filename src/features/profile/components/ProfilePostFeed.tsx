@@ -3,7 +3,6 @@ import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
-import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
 import { PROFILE_HORIZONTAL_PADDING } from "../profileLayout";
 import { useAuthorPosts } from "../hooks/useAuthorPosts";
 
@@ -35,8 +34,6 @@ function ProfilePostFeedInner({ authorId }: ProfilePostFeedProps) {
     [posts]
   );
 
-  const videoPosts = useMemo(() => collectVideoPostsForPlaylist(posts), [posts]);
-
   const handleRefresh = useCallback(() => {
     void refresh();
   }, [refresh]);
@@ -44,7 +41,6 @@ function ProfilePostFeedInner({ authorId }: ProfilePostFeedProps) {
   return (
     <FeedFlashList
       items={items}
-      videoPosts={videoPosts}
       loading={loading}
       error={error}
       emptyMessage="Henüz gönderi yok."
@@ -62,8 +58,6 @@ function ProfilePostFeedInner({ authorId }: ProfilePostFeedProps) {
       }}
       listHorizontalInset={PROFILE_HORIZONTAL_PADDING}
       mediaEdgeBleed={false}
-      reelsSource="profile"
-      reelsAuthorId={authorId}
     />
   );
 }

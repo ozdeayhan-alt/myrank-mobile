@@ -1,4 +1,3 @@
-import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
 import { useFeedBuffer } from "@/features/feed/useFeedBuffer";
 import { useMemo } from "react";
 import type { FeedEngineInput, FeedEngineResult } from "./FeedEngine.types";
@@ -18,22 +17,13 @@ export function useFeedEngineState(input: FeedEngineInput): FeedEngineResult {
     updatePostScore,
   } = input;
 
-  const listContentFilter =
-    contentFilter === "video" ? null : contentFilter;
-
   const items = useMemo(
-    () => mapPostsToFeedItems(posts, listContentFilter),
-    [posts, listContentFilter]
-  );
-
-  const videoPosts = useMemo(
-    () => collectVideoPostsForPlaylist(posts),
-    [posts]
+    () => mapPostsToFeedItems(posts, contentFilter),
+    [posts, contentFilter]
   );
 
   return {
     posts,
-    videoPosts,
     items,
     loading,
     error,

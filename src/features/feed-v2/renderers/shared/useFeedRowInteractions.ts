@@ -50,7 +50,6 @@ export type FeedRowInteractionState = {
   handleReportReason: (reason: ReportReason) => void;
   handleEditSave: (content: string) => Promise<void>;
   handleRepostSelect: () => void;
-  handleStorySelect: () => void;
   handleExternalShareSelect: () => void;
   handleReposted: () => void;
   setOwnerMenuOpen: (open: boolean) => void;
@@ -184,7 +183,6 @@ export function useFeedRowInteractions({
     handleReportReason: owner.handleReportReason,
     handleEditSave: owner.handleEditSave,
     handleRepostSelect: share.handleRepostSelect,
-    handleStorySelect: share.handleStorySelect,
     handleExternalShareSelect: share.handleExternalShareSelect,
     handleReposted: share.handleReposted,
     setOwnerMenuOpen: owner.setOwnerMenuOpen,

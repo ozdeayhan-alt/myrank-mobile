@@ -13,8 +13,6 @@ import { useAuth } from "@/features/auth";
 import {
   pickImageFromCamera,
   pickImageFromLibrary,
-  pickVideoFromCamera,
-  pickVideoFromLibrary,
 } from "@/lib/media/pickMedia";
 import { getShareComposerPlaceholder, getContentTypeLabel } from "../constants/contentTypeLabels";
 import { SHARE_COMPOSER_OPTIONS } from "../constants/shareComposerOptions";
@@ -23,7 +21,7 @@ import {
   POST_CAPTION_MAX_LENGTH,
   TWEET_MAX_LENGTH,
 } from "../constants";
-import type { PostContentType } from "../types";
+import type { ShareContentType } from "../types";
 import { ShareCircleButton } from "./ShareCircleButton";
 import { MentionSuggestions } from "./MentionSuggestions";
 import { ShareComposerMediaSection } from "./ShareComposerMediaSection";
@@ -34,7 +32,7 @@ function getActiveMentionQuery(text: string): string | null {
 }
 
 type ShareComposerProps = {
-  initialType?: PostContentType;
+  initialType?: ShareContentType;
   /** Hub'dan tür seçildiyse üstteki pill satırını gizle */
   showTypePicker?: boolean;
   onClose: () => void;
@@ -48,7 +46,7 @@ export function ShareComposer({
   onCreated,
 }: ShareComposerProps) {
   const { user } = useAuth();
-  const [selected, setSelected] = useState<PostContentType>(initialType);
+  const [selected, setSelected] = useState<ShareContentType>(initialType);
   const [content, setContent] = useState("");
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [mediaMimeType, setMediaMimeType] = useState<string | null>(null);
@@ -76,7 +74,7 @@ export function ShareComposer({
     return mediaUri !== null;
   }, [content, mediaUri, selected]);
 
-  const handleSelectType = (type: PostContentType) => {
+  const handleSelectType = (type: ShareContentType) => {
     setSelected(type);
     if (type === "tweet") {
       setMediaUri(null);
@@ -95,10 +93,7 @@ export function ShareComposer({
     }
 
     void (async () => {
-      const asset =
-        selected === "image"
-          ? await pickImageFromCamera({ allowsEditing: false })
-          : await pickVideoFromCamera();
+      const asset = await pickImageFromCamera({ allowsEditing: false });
       if (asset) {
         handleMediaAsset(asset.uri, asset.mimeType ?? null);
       }
@@ -111,10 +106,7 @@ export function ShareComposer({
     }
 
     void (async () => {
-      const asset =
-        selected === "image"
-          ? await pickImageFromLibrary({ allowsEditing: false })
-          : await pickVideoFromLibrary();
+      const asset = await pickImageFromLibrary({ allowsEditing: false });
       if (asset) {
         handleMediaAsset(asset.uri, asset.mimeType ?? null);
       }
@@ -140,7 +132,7 @@ export function ShareComposer({
     SHARE_COMPOSER_OPTIONS.find((o) => o.type === selected)?.hint ?? "";
   const headerTitle = showTypePicker
     ? "Yeni gönderi"
-    : `Yeni ${getContentTypeLabel(selected === "repost" ? "tweet" : selected)}`;
+    : `Yeni ${getContentTypeLabel(selected)}`;
 
   return (
     <KeyboardAvoidingView
@@ -244,11 +236,7 @@ export function ShareComposer({
         <TextInput
           className="mb-2 min-h-[120px] rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
           placeholder={getShareComposerPlaceholder(
-            selected === "video"
-              ? "video"
-              : selected === "image"
-                ? "image"
-                : "tweet"
+            selected === "image" ? "image" : "tweet"
           )}
           placeholderTextColor="#9CA3AF"
           multiline

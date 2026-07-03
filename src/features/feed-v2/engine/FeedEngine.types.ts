@@ -2,7 +2,7 @@ import type { Post } from "@/features/posts/types";
 import type { PostCounts } from "@/features/ranking/types";
 import type { HomeContentFilter } from "@/features/posts/utils/filterPostsByContentType";
 
-export type FeedListItemKind = "whisp" | "glow" | "flow-teaser" | "repost";
+export type FeedListItemKind = "whisp" | "glow" | "repost";
 
 export type FeedV2ListItem = {
   kind: FeedListItemKind;
@@ -12,7 +12,6 @@ export type FeedV2ListItem = {
 
 export type FeedEngineData = {
   posts: Post[];
-  videoPosts: Post[];
   items: FeedV2ListItem[];
   loading: boolean;
   error: string | null;

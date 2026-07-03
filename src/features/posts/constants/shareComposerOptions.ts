@@ -1,14 +1,14 @@
-import type { PostContentType } from "../types";
+import type { ShareContentType } from "../types";
 import {
   CONTENT_TYPE_LABELS,
   SHARE_COMPOSER_HINTS,
 } from "./contentTypeLabels";
 
 export type ShareComposerOption = {
-  type: PostContentType;
+  type: ShareContentType;
   label: string;
   hint: string;
-  icon: "chatbubble-outline" | "image-outline" | "videocam-outline";
+  icon: "chatbubble-outline" | "image-outline";
 };
 
 export const SHARE_COMPOSER_OPTIONS: ShareComposerOption[] = [
@@ -23,11 +23,5 @@ export const SHARE_COMPOSER_OPTIONS: ShareComposerOption[] = [
     label: CONTENT_TYPE_LABELS.image,
     hint: SHARE_COMPOSER_HINTS.image,
     icon: "image-outline",
-  },
-  {
-    type: "video",
-    label: CONTENT_TYPE_LABELS.video,
-    hint: SHARE_COMPOSER_HINTS.video,
-    icon: "videocam-outline",
   },
 ];

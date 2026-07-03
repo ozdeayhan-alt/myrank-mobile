@@ -1,9 +1,7 @@
 import type { Post } from "@/features/posts/types";
 import {
-  DEFAULT_VIDEO_ASPECT_RATIO,
   normalizeAspectRatio,
 } from "@/features/posts/utils/mediaAspectRatio";
-import { isVideoPost } from "@/features/posts/utils/videoPosts";
 
 /** Instagram feed varsayılanı — metadata yokken tek seferlik fallback (setState yok). */
 const FALLBACK_IMAGE_ASPECT_RATIO = 4 / 5;
@@ -52,14 +50,6 @@ export function resolveMediaSlotAspectRatio(post: Post): number {
       return cached;
     }
     return FALLBACK_IMAGE_ASPECT_RATIO;
-  }
-
-  if (isVideoPost(post)) {
-    const posterCached = cachedUrlAspectRatio(post.posterURL);
-    if (posterCached != null) {
-      return posterCached;
-    }
-    return DEFAULT_VIDEO_ASPECT_RATIO;
   }
 
   return 1;

@@ -14,7 +14,6 @@ import {
   isRepostPost,
   resolveEmbeddedOriginalPost,
 } from "../utils/repostUtils";
-import { isVideoPost } from "../utils/videoPosts";
 import { EmbeddedOriginalPost } from "./EmbeddedOriginalPost";
 import { FeedStreamMedia } from "./FeedStreamMedia";
 import { PostCardActionBar } from "./PostCardActionBar";
@@ -40,7 +39,6 @@ type FeedStreamCellProps = PostFeedMediaLayoutOptions & {
   onSave: () => void;
   onOwnerMenu: () => void;
   onMoreMenu: () => void;
-  onOpenVideo?: (postId: string) => void;
   imagePriority?: "low" | "normal" | "high";
 };
 
@@ -63,7 +61,6 @@ function FeedStreamCellInner({
   onSave,
   onOwnerMenu,
   onMoreMenu,
-  onOpenVideo,
   imagePriority = "normal",
   listHorizontalInset,
   mediaEdgeBleed,
@@ -74,12 +71,6 @@ function FeedStreamCellInner({
     isRepostPost(post) && embeddedOriginal
       ? `${post.authorDisplayName ?? "Biri"}, ${embeddedOriginal.authorDisplayName ?? "Biri"} adlı kullanıcının gönderisini paylaştı`
       : null;
-
-  const openVideo = () => {
-    if (isVideoPost(post)) {
-      onOpenVideo?.(post.id);
-    }
-  };
 
   return (
     <View
@@ -115,7 +106,6 @@ function FeedStreamCellInner({
           {embeddedOriginal ? (
             <EmbeddedOriginalPost
               post={embeddedOriginal}
-              onOpenVideo={onOpenVideo}
               currentUserId={currentUserId}
               listHorizontalInset={listHorizontalInset}
               mediaEdgeBleed={mediaEdgeBleed}
@@ -128,12 +118,7 @@ function FeedStreamCellInner({
         <DoubleTapToLike
           onLike={onLike}
           onLikeAnimated={onLikeAnimated}
-          onSinglePress={isVideoPost(post) ? openVideo : undefined}
-          accessibilityLabel={
-            isVideoPost(post)
-              ? "Tek dokunuşla videoyu aç, çift dokunarak beğen"
-              : "Çift dokunarak beğen"
-          }
+          accessibilityLabel="Çift dokunarak beğen"
         >
           {bodyText && post.contentType === "tweet" ? (
             <View className="px-4 pb-3">
@@ -146,7 +131,6 @@ function FeedStreamCellInner({
 
           <FeedStreamMedia
             post={post}
-            onOpenVideo={openVideo}
             imagePriority={imagePriority}
             listHorizontalInset={listHorizontalInset}
             mediaEdgeBleed={mediaEdgeBleed}

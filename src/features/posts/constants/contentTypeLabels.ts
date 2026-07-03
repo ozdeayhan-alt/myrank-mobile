@@ -1,30 +1,26 @@
-import type { PostContentType } from "../types";
+import type { ShareContentType } from "../types";
 
-export type BrandedPostContentType = Exclude<PostContentType, "repost">;
+export type BrandedPostContentType = ShareContentType;
 
 export const CONTENT_TYPE_LABELS: Record<BrandedPostContentType, string> = {
   tweet: "Whisp",
   image: "Glow",
-  video: "Flow",
 };
 
 export const SHARE_COMPOSER_HINTS: Record<BrandedPostContentType, string> = {
   tweet: "En fazla 280 karakter",
   image: "Galeriden görsel seç",
-  video: "Galeriden video seç (max 33 sn)",
 };
 
 export const SHARE_HUB_SUBTITLES: Record<BrandedPostContentType, string> = {
   tweet: "280 karaktere kadar metin paylaş",
   image: "Galeriden görsel yükle",
-  video: "En fazla 33 saniyelik video",
 };
 
 export const SHARE_COMPOSER_PLACEHOLDERS: Record<BrandedPostContentType, string> =
   {
     tweet: "Ne fısıldamak istersin?",
     image: "Işıltına bir Whisp bırak",
-    video: "Flow'un ne hakkında? Bir Whisp bırak.",
   };
 
 export function getShareComposerPlaceholder(
@@ -34,14 +30,18 @@ export function getShareComposerPlaceholder(
 }
 
 export function getContentTypeLabel(
-  contentType: PostContentType | undefined | null,
+  contentType: string | undefined | null,
   fallback = "Gönderi"
 ): string {
-  if (!contentType || contentType === "repost") {
+  if (!contentType || contentType === "repost" || contentType === "video") {
     return fallback;
   }
 
-  return CONTENT_TYPE_LABELS[contentType];
+  if (contentType in CONTENT_TYPE_LABELS) {
+    return CONTENT_TYPE_LABELS[contentType as BrandedPostContentType];
+  }
+
+  return fallback;
 }
 
 export function getEmptyFeedMessage(filter: BrandedPostContentType): string {

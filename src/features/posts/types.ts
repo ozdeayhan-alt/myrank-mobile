@@ -2,6 +2,8 @@ import type { UserMetadata } from "@/features/profile/types";
 
 export type PostContentType = "tweet" | "image" | "video" | "repost";
 
+export type ShareContentType = "tweet" | "image";
+
 export type OriginalPostSnapshot = {
   authorId: string;
   authorDisplayName?: string;

@@ -6,7 +6,6 @@ import type { HomeContentFilter } from "@/features/posts/utils/filterPostsByCont
 const OPTIONS: { id: HomeContentFilter; label: string }[] = [
   { id: "tweet", label: CONTENT_TYPE_LABELS.tweet },
   { id: "image", label: CONTENT_TYPE_LABELS.image },
-  { id: "video", label: CONTENT_TYPE_LABELS.video },
 ];
 
 type HomeFeedContentFilterProps = {
