@@ -1,12 +1,17 @@
+import type { VoteBurstDirection } from "@/components/LikeHeartBurst";
+import { useCallback, useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { DoubleTapToLike } from "@/components/DoubleTapToLike";
-import { LikeHeartBurst } from "@/components/LikeHeartBurst";
 import { SPINNER_COLOR } from "@/lib/uiClasses";
 import { EditPostTextModal } from "@/features/posts/components/EditPostTextModal";
 import { PostCardActionBar } from "@/features/posts/components/PostCardActionBar";
 import { PostCardOwnerSheets } from "@/features/posts/components/PostCardOwnerSheets";
 import { PostHeader } from "@/features/posts/components/PostHeader";
 import { PostShareModals } from "@/features/posts/components/PostShareModals";
+import {
+  PostVoteBurstLayer,
+  type PostVoteBurstHandle,
+} from "@/features/posts/components/PostVoteBurstLayer";
 import { RichPostText } from "@/features/posts/components/RichPostText";
 import { postBodyText } from "@/features/posts/utils/postBodyText";
 import { FeedCellShell } from "./FeedCellShell";
@@ -18,7 +23,6 @@ type FeedRowChromeProps = {
   children?: React.ReactNode;
   bodyAbove?: React.ReactNode;
   bodyBelow?: React.ReactNode;
-  onSinglePress?: () => void;
   accessibilityLabel?: string;
 };
 
@@ -28,17 +32,34 @@ export function FeedRowChrome({
   children,
   bodyAbove,
   bodyBelow,
-  onSinglePress,
   accessibilityLabel = "Çift dokunarak beğen",
 }: FeedRowChromeProps) {
   const bodyText = postBodyText(row.displayPost);
+  const burstRef = useRef<PostVoteBurstHandle>(null);
+
+  const triggerVoteBurst = useCallback((direction: VoteBurstDirection) => {
+    burstRef.current?.trigger(direction);
+  }, []);
+
+  const handleLikePress = useCallback(() => {
+    row.handleLike();
+    triggerVoteBurst("up");
+  }, [row.handleLike, triggerVoteBurst]);
+
+  const handleDislikePress = useCallback(() => {
+    row.handleDislike();
+    triggerVoteBurst("down");
+  }, [row.handleDislike, triggerVoteBurst]);
+
+  const handleLikeAnimated = useCallback(() => {
+    triggerVoteBurst("up");
+  }, [triggerVoteBurst]);
 
   return (
     <>
       <FeedCellShell>
         <PostHeader
           post={row.displayPost}
-          score={row.score}
           isOwner={row.isOwner}
           currentUserId={currentUserId}
           onOwnerMenuPress={row.isOwner ? row.openOwnerMenu : undefined}
@@ -46,9 +67,8 @@ export function FeedRowChrome({
         />
 
         <DoubleTapToLike
-          onLike={row.handleLikePress}
-          onLikeAnimated={row.handleLikeAnimated}
-          onSinglePress={onSinglePress}
+          onLike={row.handleLike}
+          onLikeAnimated={handleLikeAnimated}
           accessibilityLabel={accessibilityLabel}
         >
           {bodyAbove}
@@ -66,8 +86,8 @@ export function FeedRowChrome({
           shareActive={row.shareActive}
           saveActive={row.saveActive}
           loading={row.loading}
-          onLikePress={row.handleLikePress}
-          onDislikePress={row.handleDislikePress}
+          onLikePress={handleLikePress}
+          onDislikePress={handleDislikePress}
           onCommentPress={row.openComment}
           onSharePress={row.handleSharePress}
           onSavePress={row.handleSave}
@@ -79,10 +99,7 @@ export function FeedRowChrome({
           </View>
         ) : null}
 
-        <LikeHeartBurst
-          burstKey={row.voteBurstKey}
-          direction={row.voteBurstDirection}
-        />
+        <PostVoteBurstLayer ref={burstRef} />
       </FeedCellShell>
 
       {row.editOpen ? (

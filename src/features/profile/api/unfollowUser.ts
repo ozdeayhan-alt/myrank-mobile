@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 type UnfollowResponse = {
   ok: boolean;
@@ -18,8 +19,5 @@ export async function unfollowUser(targetUserId: string): Promise<void> {
   );
 
   const data = (await response.json().catch(() => ({}))) as UnfollowResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Takipten çıkılamadı");
-  }
+  throwIfNotOk(response, data, data.error ?? "Takipten çıkılamadı");
 }

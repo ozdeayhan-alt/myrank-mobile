@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 type UpdatePostContentResponse = {
   ok: boolean;
@@ -25,10 +26,7 @@ export async function updatePostContent(
   );
 
   const data = (await response.json().catch(() => ({}))) as UpdatePostContentResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Gönderi güncellenemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Gönderi güncellenemedi");
 
   return data.content;
 }

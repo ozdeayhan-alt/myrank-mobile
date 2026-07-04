@@ -3,6 +3,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type RefObject,
 } from "react";
 import {
@@ -29,11 +30,14 @@ import {
   prefetchFeedPostsImagesBatch,
 } from "@/features/posts/utils/prefetchPostMedia";
 import { isFeedRenderIsolationEnabled } from "@/lib/featureFlags/feedFlags";
+import { computeMaxVisiblePostIndex } from "@/features/feed/computeMaxVisiblePostIndex";
+import { useFeedEarlyPrefetch } from "@/features/feed/useFeedEarlyPrefetch";
 import { FeedPostSkeleton } from "@/features/posts/components/FeedPostSkeleton";
 import type { FeedV2ListItem } from "../engine/FeedEngine.types";
 import { WhispRow } from "../renderers/whisp/WhispRow";
 import { GlowRow } from "../renderers/glow/GlowRow";
 import { RepostRow } from "../renderers/RepostRow";
+import { DuelFeedCard } from "@/features/duel/components/DuelFeedCard";
 
 const FEED_STREAM_DRAW_DISTANCE_MULTIPLIER = 1.9;
 const PREFETCH_AHEAD_COUNT = 6;
@@ -58,6 +62,9 @@ export type FeedScrollerProps = {
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   onLoadMore?: () => void;
+  /** Loaded post IDs for pagination prefetch (unfiltered); defaults to visible items. */
+  paginationPostIds?: readonly string[];
+  isFetching?: boolean;
   engagementResetKey?: string;
   isRefetching?: boolean;
   listRef?: RefObject<FlashListRef<FeedV2ListItem> | null>;
@@ -85,6 +92,8 @@ export function FeedScroller({
   hasNextPage = false,
   isFetchingNextPage = false,
   onLoadMore,
+  paginationPostIds,
+  isFetching = false,
   engagementResetKey,
   isRefetching = false,
   listRef,
@@ -103,6 +112,9 @@ export function FeedScroller({
   const streamContainerWidth = Math.max(0, screenWidth - horizontalInset * 2);
 
   const visiblePostIdsRef = useRef<Set<string>>(new Set());
+  const [visibleDuelKeys, setVisibleDuelKeys] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
   const visibleIdsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prefetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prefetchEnabledRef = useRef(prefetchEnabled);
@@ -111,9 +123,30 @@ export function FeedScroller({
   itemsRef.current = items;
 
   const postIds = useMemo(
-    () => items.map((item) => item.post.id),
+    () =>
+      items
+        .filter((item): item is FeedV2ListItem & { post: Post } => item.kind !== "duel")
+        .map((item) => item.post.id),
     [items]
   );
+  const postIdsRef = useRef(postIds);
+  postIdsRef.current = postIds;
+
+  const paginationIds = paginationPostIds ?? postIds;
+  const paginationIdsRef = useRef(paginationIds);
+  paginationIdsRef.current = paginationIds;
+
+  const { onMaxVisiblePostIndex } = useFeedEarlyPrefetch({
+    postCount: paginationIds.length,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetching,
+    fetchNextPage: onLoadMore ?? (() => {}),
+    resetKey: engagementResetKey,
+    enabled: Boolean(onLoadMore) && prefetchEnabled,
+  });
+  const onMaxVisiblePostIndexRef = useRef(onMaxVisiblePostIndex);
+  onMaxVisiblePostIndexRef.current = onMaxVisiblePostIndex;
 
   const engagementFetchEnabled = !loading || postIds.length > 0;
   const { patchEngagement } = useIncrementalEngagement(
@@ -123,7 +156,10 @@ export function FeedScroller({
   );
 
   useEffect(() => {
-    const batch = items.slice(0, INITIAL_PREFETCH_DEFERRED_COUNT).map((i) => i.post);
+    const batch = items
+      .slice(0, INITIAL_PREFETCH_DEFERRED_COUNT)
+      .filter((item): item is FeedV2ListItem & { post: Post } => item.kind !== "duel")
+      .map((item) => item.post);
     if (batch.length === 0 || !prefetchEnabledRef.current) return;
 
     const task = InteractionManager.runAfterInteractions(() => {
@@ -140,7 +176,11 @@ export function FeedScroller({
     const postItems = itemsRef.current;
     const visibleIndexes: number[] = [];
     for (let index = 0; index < postItems.length; index += 1) {
-      if (visibleIds.has(postItems[index].post.id)) {
+      const row = postItems[index];
+      if (row.kind === "duel") {
+        continue;
+      }
+      if (visibleIds.has(row.post.id)) {
         visibleIndexes.push(index);
       }
     }
@@ -150,16 +190,24 @@ export function FeedScroller({
     const maxVisible = Math.max(...visibleIndexes);
     const toPrefetch: Post[] = [];
 
-    for (const index of visibleIndexes) {
-      toPrefetch.push(postItems[index].post);
+    for (let index = 0; index < postItems.length; index += 1) {
+      const row = postItems[index];
+      if (row.kind === "duel") {
+        continue;
+      }
+      toPrefetch.push(row.post);
     }
     for (let offset = 1; offset <= PREFETCH_AHEAD_COUNT; offset += 1) {
       const upcoming = postItems[maxVisible + offset];
-      if (upcoming) toPrefetch.push(upcoming.post);
+      if (upcoming && upcoming.kind !== "duel") {
+        toPrefetch.push(upcoming.post);
+      }
     }
     for (let offset = 1; offset <= PREFETCH_BEHIND_COUNT; offset += 1) {
       const previous = postItems[minVisible - offset];
-      if (previous) toPrefetch.push(previous.post);
+      if (previous && previous.kind !== "duel") {
+        toPrefetch.push(previous.post);
+      }
     }
 
     prefetchFeedPostsImagesBatch(toPrefetch);
@@ -176,15 +224,36 @@ export function FeedScroller({
     };
   }, []);
 
+  const visibleDuelKeysRef = useRef(visibleDuelKeys);
+  visibleDuelKeysRef.current = visibleDuelKeys;
+
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken<FeedV2ListItem>[] }) => {
       const nextVisible = new Set<string>();
+      const nextVisibleDuels = new Set<string>();
       for (const token of viewableItems) {
-        if (token.item) {
-          nextVisible.add(token.item.post.id);
+        if (!token.item) continue;
+        if (token.item.kind === "duel") {
+          nextVisibleDuels.add(token.item.key);
+          continue;
         }
+        nextVisible.add(token.item.post.id);
       }
       visiblePostIdsRef.current = nextVisible;
+
+      const prevDuels = visibleDuelKeysRef.current;
+      let duelChanged = prevDuels.size !== nextVisibleDuels.size;
+      if (!duelChanged) {
+        for (const key of nextVisibleDuels) {
+          if (!prevDuels.has(key)) {
+            duelChanged = true;
+            break;
+          }
+        }
+      }
+      if (duelChanged) {
+        setVisibleDuelKeys(nextVisibleDuels);
+      }
 
       if (visibleIdsDebounceRef.current) clearTimeout(visibleIdsDebounceRef.current);
       visibleIdsDebounceRef.current = setTimeout(() => {
@@ -193,6 +262,12 @@ export function FeedScroller({
       }, visibleIdsDebounceMs);
 
       if (nextVisible.size > 0) {
+        const maxPostIndex = computeMaxVisiblePostIndex(
+          nextVisible,
+          paginationIdsRef.current
+        );
+        onMaxVisiblePostIndexRef.current(maxPostIndex);
+
         if (prefetchDebounceRef.current) clearTimeout(prefetchDebounceRef.current);
         prefetchDebounceRef.current = setTimeout(() => {
           prefetchDebounceRef.current = null;
@@ -204,6 +279,17 @@ export function FeedScroller({
 
   const renderItem = useCallback(
     ({ item }: { item: FeedV2ListItem }) => {
+      if (item.kind === "duel") {
+        return (
+          <View style={{ minHeight: 168 }}>
+            <DuelFeedCard
+              cardKey={item.key}
+              visible={visibleDuelKeys.has(item.key)}
+            />
+          </View>
+        );
+      }
+
       const rowProps = {
         post: item.post,
         patchEngagement,
@@ -243,6 +329,7 @@ export function FeedScroller({
       onScoreUpdate,
       patchEngagement,
       streamContainerWidth,
+      visibleDuelKeys,
     ]
   );
 

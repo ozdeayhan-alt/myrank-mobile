@@ -9,14 +9,12 @@ import Animated, {
 
 type PostScorePillProps = {
   score: number;
-  variant?: "feed" | "reels";
 };
 
-export function PostScorePill({ score, variant = "feed" }: PostScorePillProps) {
+export function PostScorePill({ score }: PostScorePillProps) {
   const prevScore = useRef(score);
   const scale = useSharedValue(1);
   const pulseOpacity = useSharedValue(1);
-  const isReels = variant === "reels";
 
   useEffect(() => {
     if (score > prevScore.current) {
@@ -25,12 +23,12 @@ export function PostScorePill({ score, variant = "feed" }: PostScorePillProps) {
         withTiming(1, { duration: 130 })
       );
       pulseOpacity.value = withSequence(
-        withTiming(isReels ? 0.75 : 0.88, { duration: 80 }),
+        withTiming(0.88, { duration: 80 }),
         withTiming(1, { duration: 170 })
       );
     }
     prevScore.current = score;
-  }, [isReels, pulseOpacity, scale, score]);
+  }, [pulseOpacity, scale, score]);
 
   const pillStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -38,8 +36,8 @@ export function PostScorePill({ score, variant = "feed" }: PostScorePillProps) {
   }));
 
   const containerStyle: ViewStyle[] = [
-    isReels ? styles.reelsPill : styles.pill,
-    !isReels && Platform.OS === "ios" ? styles.pillShadow : null,
+    styles.pill,
+    Platform.OS === "ios" ? styles.pillShadow : null,
     pillStyle,
   ].filter(Boolean) as ViewStyle[];
 
@@ -48,22 +46,10 @@ export function PostScorePill({ score, variant = "feed" }: PostScorePillProps) {
       style={containerStyle}
       accessibilityLabel={`Gönderi puanı ${score}`}
     >
-      <Text
-        className={
-          isReels
-            ? "text-[9px] font-medium leading-3 text-white/55"
-            : "text-[10px] font-medium leading-3 text-gray-400"
-        }
-      >
+      <Text className="text-[10px] font-medium leading-3 text-gray-400">
         Puan
       </Text>
-      <Text
-        className={
-          isReels
-            ? "text-sm font-semibold leading-4 text-white/90"
-            : "text-base font-semibold leading-5 text-gray-900"
-        }
-      >
+      <Text className="text-base font-semibold leading-5 text-gray-900">
         {score}
       </Text>
     </Animated.View>
@@ -82,19 +68,6 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     paddingHorizontal: 10,
     paddingVertical: 4,
-  },
-  reelsPill: {
-    minHeight: 32,
-    minWidth: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.38)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    opacity: 0.48,
   },
   pillShadow: {
     shadowColor: "#111827",

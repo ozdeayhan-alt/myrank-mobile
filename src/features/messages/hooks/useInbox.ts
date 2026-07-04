@@ -87,16 +87,27 @@ export function useInbox() {
       return;
     }
 
-    const timer = setInterval(() => {
-      void loadInbox("silent");
-    }, INBOX_POLL_MS);
+    let timer: ReturnType<typeof setInterval> | null = null;
 
-    return () => clearInterval(timer);
-  }, [userId, loadInbox]);
+    const startPoll = () => {
+      if (timer) {
+        return;
+      }
+      timer = setInterval(() => {
+        void loadInbox("silent");
+      }, INBOX_POLL_MS);
+    };
 
-  useEffect(() => {
-    if (!userId) {
-      return;
+    const stopPoll = () => {
+      if (!timer) {
+        return;
+      }
+      clearInterval(timer);
+      timer = null;
+    };
+
+    if (AppState.currentState === "active") {
+      startPoll();
     }
 
     const subscription = AppState.addEventListener(
@@ -104,11 +115,17 @@ export function useInbox() {
       (state: AppStateStatus) => {
         if (state === "active") {
           void loadInbox("silent");
+          startPoll();
+        } else {
+          stopPoll();
         }
       }
     );
 
-    return () => subscription.remove();
+    return () => {
+      stopPoll();
+      subscription.remove();
+    };
   }, [userId, loadInbox]);
 
   useFocusEffect(

@@ -1,9 +1,6 @@
+import { memo, useRef, type RefObject } from "react";
 import { Text, View } from "react-native";
 import { DoubleTapToLike } from "@/components/DoubleTapToLike";
-import {
-  LikeHeartBurst,
-  type VoteBurstDirection,
-} from "@/components/LikeHeartBurst";
 import type { Post } from "../types";
 import { postBodyText } from "../utils/postBodyText";
 import {
@@ -13,23 +10,25 @@ import {
 import { resolvePostAuthorDisplayName } from "../utils/resolvePostAuthor";
 import { EmbeddedOriginalPost } from "./EmbeddedOriginalPost";
 import { PostFeedMedia } from "./PostFeedMedia";
+import {
+  PostVoteBurstLayer,
+  type PostVoteBurstHandle,
+} from "./PostVoteBurstLayer";
 import { RichPostText } from "./RichPostText";
 import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 
 type PostCardBodyProps = PostFeedMediaLayoutOptions & {
   post: Post;
-  voteBurstKey: number;
-  voteBurstDirection: VoteBurstDirection;
+  burstRef?: RefObject<PostVoteBurstHandle | null>;
   onLike: () => void;
   onLikeAnimated: () => void;
   currentUserId?: string | null;
   mediaImagePriority?: "low" | "normal" | "high";
 };
 
-export function PostCardBody({
+function PostCardBodyInner({
   post,
-  voteBurstKey,
-  voteBurstDirection,
+  burstRef: externalBurstRef,
   onLike,
   onLikeAnimated,
   currentUserId = null,
@@ -37,6 +36,8 @@ export function PostCardBody({
   listHorizontalInset,
   mediaEdgeBleed,
 }: PostCardBodyProps) {
+  const localBurstRef = useRef<PostVoteBurstHandle>(null);
+  const burstRef = externalBurstRef ?? localBurstRef;
   const embeddedOriginal = resolveEmbeddedOriginalPost(post);
   const repostAttribution =
     isRepostPost(post) && embeddedOriginal
@@ -96,12 +97,9 @@ export function PostCardBody({
         </DoubleTapToLike>
       )}
 
-      {!isRepostPost(post) ? (
-        <LikeHeartBurst
-          burstKey={voteBurstKey}
-          direction={voteBurstDirection}
-        />
-      ) : null}
+      {!isRepostPost(post) ? <PostVoteBurstLayer ref={burstRef} /> : null}
     </View>
   );
 }
+
+export const PostCardBody = memo(PostCardBodyInner);

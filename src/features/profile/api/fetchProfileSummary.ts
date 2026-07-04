@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { RankingLadderResult } from "@/features/profile/api/fetchRankingLadder";
 import type { PublicProfile } from "@/features/profile/api/getPublicProfile";
 import type { CategoryRanking } from "@/features/profile/api/fetchProfileRankings";
@@ -35,10 +36,7 @@ export async function fetchProfileSummary(
   );
 
   const data = (await response.json()) as ProfileSummaryResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Profile summary request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Profile summary request failed");
 
   if (data.postsPage) {
     applyFeedPageEngagements(data.postsPage);

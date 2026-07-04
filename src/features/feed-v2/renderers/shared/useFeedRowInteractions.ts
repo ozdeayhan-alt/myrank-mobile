@@ -1,5 +1,4 @@
-import type { VoteBurstDirection } from "@/components/LikeHeartBurst";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import type { ReportReason } from "@/features/blocks/api/reportContent";
 import { usePostEngagement } from "@/features/ranking/store/useEngagementStore";
 import type { EngagementStatus } from "@/features/ranking/types";
@@ -14,14 +13,11 @@ export type FeedRowInteractionState = {
   post: Post;
   displayPost: Post;
   engagement: EngagementStatus;
-  score: number;
   counts: ReturnType<typeof usePostInteractions>["counts"];
   loading: boolean;
   shareActive: boolean;
   saveActive: boolean;
   isOwner: boolean;
-  voteBurstKey: number;
-  voteBurstDirection: VoteBurstDirection;
   ownerActionLoading: boolean;
   ownerMenuOpen: boolean;
   moreMenuOpen: boolean;
@@ -31,9 +27,8 @@ export type FeedRowInteractionState = {
   shareSheetOpen: boolean;
   repostOpen: boolean;
   canRepost: boolean;
-  handleLikePress: () => void;
-  handleDislikePress: () => void;
-  handleLikeAnimated: () => void;
+  handleLike: () => void;
+  handleDislike: () => void;
   handleSave: () => void;
   handleSharePress: () => void;
   openComment: () => void;
@@ -82,10 +77,6 @@ export function useFeedRowInteractions({
   const openOwnerMenuStore = useFeedInteractionStore((s) => s.openOwnerMenu);
   const openMoreMenuStore = useFeedInteractionStore((s) => s.openMoreMenu);
 
-  const [voteBurstKey, setVoteBurstKey] = useState(0);
-  const [voteBurstDirection, setVoteBurstDirection] =
-    useState<VoteBurstDirection>("up");
-
   const isOwner = Boolean(currentUserId && post.authorId === currentUserId);
 
   const owner = usePostCardOwnerActions({
@@ -103,7 +94,6 @@ export function useFeedRowInteractions({
   );
 
   const {
-    score,
     counts,
     loading,
     handleLike,
@@ -128,33 +118,15 @@ export function useFeedRowInteractions({
     onScoreUpdate,
   });
 
-  const triggerVoteBurst = useCallback((direction: VoteBurstDirection) => {
-    setVoteBurstDirection(direction);
-    setVoteBurstKey((key) => key + 1);
-  }, []);
-
-  const handleLikePress = useCallback(() => {
-    handleLike();
-    triggerVoteBurst("up");
-  }, [handleLike, triggerVoteBurst]);
-
-  const handleDislikePress = useCallback(() => {
-    handleDislike();
-    triggerVoteBurst("down");
-  }, [handleDislike, triggerVoteBurst]);
-
   return {
     post,
     displayPost: owner.displayPost,
     engagement,
-    score,
     counts,
     loading,
     shareActive,
     saveActive,
     isOwner,
-    voteBurstKey,
-    voteBurstDirection,
     ownerActionLoading: owner.ownerActionLoading,
     ownerMenuOpen: owner.ownerMenuOpen,
     moreMenuOpen: owner.moreMenuOpen,
@@ -164,9 +136,8 @@ export function useFeedRowInteractions({
     shareSheetOpen: share.shareSheetOpen,
     repostOpen: share.repostOpen,
     canRepost: share.canRepost,
-    handleLikePress,
-    handleDislikePress,
-    handleLikeAnimated: () => triggerVoteBurst("up"),
+    handleLike,
+    handleDislike,
     handleSave,
     handleSharePress: share.handleSharePress,
     openComment: () => openCommentSheet(post.id, applyCommentResult),

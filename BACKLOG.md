@@ -1,7 +1,7 @@
 # Engineering Backlog
 
 > **Tek kaynak:** Tüm PR, bug, teknik borç ve production işleri bu dosyada takip edilir.  
-> Son güncelleme: 2026-07-03 (fullscreen video player removed)
+> Son güncelleme: 2026-07-04 (Flow/video artık kod temizliği)
 
 ---
 
@@ -38,21 +38,7 @@ Sıradaki işler — üstten alta öncelik sırası.
   **Risk:** Low  
   **Files:**
   - `src/features/feed-v2/renderers/glow/GlowRow.tsx`
-  - `src/features/feed-v2/renderers/video/VideoTeaserRow.tsx`
   **Notes:** `FeedScroller` görünürlüğü `feedScrollVisibilityStore`'a yazıyor; V2 satırlar `FeedVisiblePostsContext` okuyor (provider yok → `mediaHighPriority` her zaman false). Import'u external store hook'una çevir; UI değişmez, yalnızca `expo-image` priority hint düzelir.
-
----
-
-### PH-004 · Legacy Reel Safe Player Operations
-
-- [ ] **PH-004** Legacy Reel Safe Player Operations  
-  **Priority:** High  
-  **Status:** Planned  
-  **Risk:** Low  
-  **Files:**
-  - `src/features/posts/hooks/useReelRowPlayback.ts`
-  - `src/features/posts/utils/videoReelsPlayerUtils.ts` *(opsiyonel — `safePausePlayer` export)*
-  **Notes:** Legacy `useReelRowPlayback` (`parkAdjacentPlayer`, timer callback) released player korumasız; `ReelsTabFeed` path'inde native crash riski. `safePausePlayer` pattern paylaşılmalı.
 
 ---
 
@@ -69,31 +55,6 @@ Sıradaki işler — üstten alta öncelik sırası.
 
 ---
 
-### PH-007 · Reel Preload Async Guard
-
-- [ ] **PH-007** Reel Preload Async Guard  
-  **Priority:** Medium  
-  **Status:** Planned  
-  **Risk:** Low  
-  **Files:**
-  - `src/features/posts/hooks/useReelRowPlayback.ts`
-  **Notes:** Preload effect'te `replaceWithSourceFallback` async iptali yok; hızlı scroll'da stale preload tamamlanabilir. Active-slot effect'teki `cancelled` / generation pattern preload'a da uygulanmalı.
-
----
-
-### PH-008 · Inline & Chat Video Safe Lifecycle
-
-- [ ] **PH-008** Inline & Chat Video Safe Lifecycle  
-  **Priority:** Medium  
-  **Status:** Planned  
-  **Risk:** Low  
-  **Files:**
-  - `src/features/posts/components/PostFeedInlineVideo.tsx`
-  - `src/features/messages/components/ChatBubble.tsx`
-  **Notes:** Feed inline video ve chat bubble'da `play`/`pause` try/catch yok; FlashList recycle'da released player exception ve kısa arka plan audio riski. Reels defensive pattern uygulanmalı.
-
----
-
 ### PH-009 · Glow Image URI Cache Cap
 
 - [ ] **PH-009** Glow Image URI Cache Cap  
@@ -102,7 +63,7 @@ Sıradaki işler — üstten alta öncelik sırası.
   **Risk:** Low  
   **Files:**
   - `src/features/feed-v2/renderers/glow/GlowImageFrame.tsx`
-  **Notes:** Modül-level `loadedGlowUris` Set sınırsız büyür. LRU veya max entry (ör. 500, `storySeenStorage` pattern) ile sınırla. Worst-case geçici shimmer tekrarı.
+  **Notes:** Modül-level `loadedGlowUris` Set sınırsız büyür. LRU veya max entry (ör. 500) ile sınırla. Worst-case geçici shimmer tekrarı.
 
 ---
 
@@ -135,28 +96,7 @@ Tamamlanan milestone'lar ve merge edilmiş PR'lar.
   - `src/features/profile/lib/gaugeVoteModeStorage.ts`
   **Notes:**
   - **Tarih:** 2026-07-02
-  - **Özet:** Logout ve hesap silme path'lerinde merkezi `resetAppSessionState()` eklendi; tüm session store'ları, video reels state, React Query in-memory + persisted cache ve gauge debounce timer'ları temizleniyor.
-  - **Değişen dosyalar:** `resetAppSessionState.ts`, `AuthContext.tsx`, `gaugeVoteModeStorage.ts`
-  - **PR:** — *(local)*
-
----
-
-### PH-003 · Video Reels Session Cleanup on Navigation
-
-- [x] **PH-003** Video Reels Session Cleanup on Navigation  
-  **Priority:** High  
-  **Status:** Completed  
-  **Risk:** Low  
-  **Files:**
-  - `src/features/posts/store/useHomeFeedContentStore.ts`
-  - `src/features/profile/navigateToAuthorProfile.ts`
-  - `app/(tabs)/index.tsx`
-  - `app/(tabs)/explore.tsx`
-  - `src/features/profile/components/ProfileContent.tsx`
-  - `src/lib/resetAppSessionState.ts`
-  **Notes:**
-  - **Tarih:** 2026-07-02 → 2026-07-03 (`closeVideoReels()` helper)
-  - **Özet:** Profil navigasyonu, tab press ve filter değişimi çıkış yolları `closeVideoReels()` ile birleştirildi.
+  - **Özet:** Logout ve hesap silme path'lerinde merkezi `resetAppSessionState()` eklendi; session store'ları, React Query in-memory + persisted cache ve gauge debounce timer'ları temizleniyor.
 
 ---
 
@@ -170,36 +110,17 @@ Tamamlanan milestone'lar ve merge edilmiş PR'lar.
   - `src/features/feed-v2/**`
   - `app/(tabs)/index.tsx`
   - `src/lib/featureFlags/feedFlags.ts`
-  **Notes:** Type-specific row renderers (Whisp, Glow, Video Teaser, Repost), `FeedScroller`, `useHomeFeedEngine`. Feature flag: `EXPO_PUBLIC_FEED_V2`.
+  **Notes:** Type-specific row renderers (Whisp, Glow, Repost), `FeedScroller`, `useHomeFeedEngine`. Feature flag: `EXPO_PUBLIC_FEED_V2`.
 
 ---
 
-### COMP-008 · Fullscreen Video Player Removal (baseline reset)
+### COMP-008 · Flow / Video Feature Removal
 
-- [x] **COMP-008** Fullscreen Video Player Removal (baseline reset)  
+- [x] **COMP-008** Flow / Video Feature Removal  
   **Priority:** —  
   **Status:** Completed  
   **Risk:** —  
-  **Files:** *(removed — see git tag `flow/pre-removal-baseline` for last snapshot)*  
-  **Notes:** Dedicated fullscreen player stack tamamen kaldırıldı. Video filtresi legacy `ReelsTabFeed` kullanıyor. Yeni video deneyimi sıfırdan tasarlanacak.
-
----
-
-### COMP-003 · ~~Fullscreen player crash fixes~~ *(removed 2026-07-03)*
-
-- [x] **COMP-003** — **removed** with COMP-008.
-
----
-
-### COMP-004 · Poster First Frame Render *(legacy reels)*
-
-- [x] **COMP-004** Poster First Frame Render  
-  **Priority:** —  
-  **Status:** Completed  
-  **Risk:** —  
-  **Files:**
-  - `src/features/posts/components/ReelRow.tsx`
-  **Notes:** Poster first-frame behavior retained in ReelsTabFeed path.
+  **Notes:** Flow (video) özelliği tamamen kaldırıldı. Transcode pipeline, reels player, video upload UI ve ilgili artık kodlar temizlendi. Eski `contentType: video` postları feed'den filtrelenmeye devam eder.
 
 ---
 
@@ -216,25 +137,6 @@ Tamamlanan milestone'lar ve merge edilmiş PR'lar.
 
 ---
 
-### COMP-006 · Released Player Fix *(ReelsTabFeed)*
-
-- [x] **COMP-006** Released Player Fix  
-  **Priority:** —  
-  **Status:** Completed  
-  **Risk:** —  
-  **Files:**
-  - `src/features/posts/hooks/useReelRowPlayback.ts`
-  - `src/features/posts/utils/videoReelsPlayerUtils.ts`
-  **Notes:** Slot reuse sonrası released `VideoPlayer` erişiminde try/catch guard'lar; async `replaceWithSourceFallback` generation iptali.
-
----
-
-### COMP-007 · ~~Black screen fix~~ *(removed 2026-07-03)*
-
-- [x] **COMP-007** — **removed** with COMP-008.
-
----
-
 # Blocked
 
 Başka bir bug veya bağımlılık yüzünden bekleyen işler.
@@ -246,18 +148,6 @@ Başka bir bug veya bağımlılık yüzünden bekleyen işler.
 # Someday
 
 İleride değerlendirilecek fikirler — şimdilik planlanmamış.
-
-### DEBT-001 · Reels Consolidation (future video experience)
-
-- [ ] **DEBT-001** Reels Consolidation (future video experience)  
-  **Priority:** Low  
-  **Status:** Someday  
-  **Risk:** Medium  
-  **Files:**
-  - `src/features/posts/components/ReelsTabFeed.tsx`
-  **Notes:** Yeni fullscreen video deneyimi sıfırdan tasarlanacak; mevcut `ReelsTabFeed` geçici baseline.
-
----
 
 ### DEBT-003 · Dead Visibility Autoplay Store API
 
@@ -289,9 +179,6 @@ Başka bir bug veya bağımlılık yüzünden bekleyen işler.
 | ID | Başlık | Öncelik | Risk |
 |----|--------|---------|------|
 | PH-002 | Feed V2 Visibility Wiring | High | Low |
-| PH-004 | Legacy Reel Safe Player Operations | High | Low |
 | PH-005 | Background Polling Pause | Medium | Low |
-| PH-007 | Reel Preload Guard | Medium | Low |
-| PH-008 | Inline & Chat Video Lifecycle | Medium | Low |
 | PH-009 | Glow URI Cache Cap | Low | Low |
 | PH-010 | Logout Timer Cleanup | Low | Low |

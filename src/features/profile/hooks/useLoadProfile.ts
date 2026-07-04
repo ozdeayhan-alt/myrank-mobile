@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { recordError } from "@/lib/crashReporting";
 import { shouldRefreshAvatarFromProfile } from "@/lib/media/normalizeAvatarUrl";
 import { ensureRankingEntriesIfNeeded } from "../api/ensureRankingEntriesIfNeeded";
 import {
@@ -372,6 +373,8 @@ export function useLoadProfile(
           displayName,
           photoURL
         );
+      } catch (err) {
+        recordError(err, "useLoadProfile");
       } finally {
         if (!cancelled) {
           useProfileStore.getState().finishProfileBootstrap();

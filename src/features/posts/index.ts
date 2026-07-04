@@ -6,7 +6,6 @@ export { PostFeedMedia } from "./components/PostFeedMedia";
 export { PostHeader } from "./components/PostHeader";
 export { FeedScroller } from "@/features/feed-v2";
 export { PostCommentsSheet } from "./components/PostCommentsSheet";
-export { PostInteractionRail } from "./components/PostInteractionRail";
 export { fetchPostsByAuthor } from "./api/fetchPostsByAuthor";
 export { fetchPostById } from "./api/fetchPostById";
 export { PostCard } from "./components/PostCard";

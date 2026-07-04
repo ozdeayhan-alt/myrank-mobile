@@ -1,5 +1,6 @@
 import { Alert } from "react-native";
 import { getApiBaseUrl } from "@/lib/api";
+import { throwIfNotOk } from "@/lib/apiError";
 import { fetchApi } from "@/lib/fetchApi";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 import type { InteractionRequest, InteractionResponse } from "../types";
@@ -21,13 +22,7 @@ export async function sendPostInteraction(
 
   const data = await response.json();
 
-  if (!response.ok) {
-    const apiError =
-      typeof data.error === "string" && data.error.trim()
-        ? data.error.trim()
-        : "Etkileşim gönderilemedi";
-    throw new Error(`${apiError} (${response.status})`);
-  }
+  throwIfNotOk(response, data, "Etkileşim gönderilemedi");
 
   return data as InteractionResponse;
 }

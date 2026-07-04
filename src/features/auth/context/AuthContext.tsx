@@ -20,6 +20,7 @@ import { deleteAccount as deleteAccountApi } from "@/features/account";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { recordError } from "@/lib/crashReporting";
 import { resetAppSessionState } from "@/lib/resetAppSessionState";
+import { registerSessionExpiredHandler } from "@/lib/sessionExpiry";
 
 type AuthContextValue = {
   user: User | null;
@@ -48,7 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setInitializing(false);
       });
     } catch (error) {
-      console.error("Firebase Auth başlatılamadı:", error);
+      if (__DEV__) {
+        console.error("Firebase Auth başlatılamadı:", error);
+      }
       recordError(error, "AuthContext:init");
       setInitializing(false);
     }
@@ -71,6 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
     await resetAppSessionState();
   }, []);
+
+  useEffect(() => {
+    registerSessionExpiredHandler(() => {
+      void signOut();
+    });
+  }, [signOut]);
 
   const signInWithGoogle = useCallback(async () => {
     await signInWithGoogleCredential();

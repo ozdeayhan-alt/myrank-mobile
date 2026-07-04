@@ -204,6 +204,14 @@ export default function RootLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="duel/index"
+                  options={{
+                    headerShown: false,
+                    presentation: "fullScreenModal",
+                    animation: "fade",
+                  }}
+                />
+                <Stack.Screen
                   name="notifications"
                   options={{
                     headerShown: true,

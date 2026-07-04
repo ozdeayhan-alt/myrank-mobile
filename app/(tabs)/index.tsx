@@ -12,6 +12,7 @@ import {
 } from "@/components/HomeFeedModeToggle";
 import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
 import { useAuth } from "@/features/auth";
+import { toFeedApiContentType } from "@/features/feed/feedContentType";
 import { useFollowingFeedInfinite } from "@/features/explore/hooks/useFollowingFeedInfinite";
 import { useHomeFeedInfinite } from "@/features/explore/hooks/useHomeFeedInfinite";
 import {
@@ -19,7 +20,6 @@ import {
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
 import { useHomeFeedContentStore } from "@/features/posts/store/useHomeFeedContentStore";
-import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
 import { isFixedSlotFeedEnabled, isFeedV2Enabled } from "@/lib/featureFlags/feedFlags";
 import { useFeedBuffer } from "@/features/feed/useFeedBuffer";
@@ -42,9 +42,14 @@ export default function HomeScreen() {
   const setContentFilter = useHomeFeedContentStore((s) => s.setContentFilter);
 
   const [feedMode, setFeedMode] = useState<HomeFeedMode>("global");
+  const apiContentType = toFeedApiContentType(contentFilter);
 
-  const globalFeed = useHomeFeedInfinite(feedMode === "global" && !feedV2);
+  const globalFeed = useHomeFeedInfinite(
+    apiContentType,
+    feedMode === "global" && !feedV2
+  );
   const followingFeed = useFollowingFeedInfinite(
+    apiContentType,
     feedMode === "following" && !feedV2
   );
   const v2Engine = useHomeFeedEngine(feedMode, contentFilter, feedV2);
@@ -53,13 +58,13 @@ export default function HomeScreen() {
   const fixedSlotFeed = isFixedSlotFeedEnabled(user?.uid ?? null);
 
   const bufferedGlobalPosts = useFeedBuffer(globalFeed.recentPosts, {
-    feedKey: `home-global-${feedMode}`,
+    feedKey: `home-global-${feedMode}-${apiContentType}`,
     hasNextPage: globalFeed.hasNextPage,
     isFetchingNextPage: globalFeed.isFetchingNextPage,
   });
 
   const bufferedFollowingPosts = useFeedBuffer(followingFeed.posts, {
-    feedKey: `home-following-${feedMode}`,
+    feedKey: `home-following-${feedMode}-${apiContentType}`,
     hasNextPage: followingFeed.hasNextPage,
     isFetchingNextPage: followingFeed.isFetchingNextPage,
   });
@@ -76,32 +81,14 @@ export default function HomeScreen() {
     if (feedV2) {
       return [];
     }
-    if (feedMode === "following") {
-      return filterPostsByContentType(
-        bufferedFollowingPosts,
-        contentFilter
-      ).map((post) => ({
-        kind: "post" as const,
-        key: post.id,
-        post,
-      }));
-    }
-
-    return filterPostsByContentType(
-      bufferedGlobalPosts,
-      contentFilter
-    ).map((post) => ({
+    const posts =
+      feedMode === "following" ? bufferedFollowingPosts : bufferedGlobalPosts;
+    return posts.map((post) => ({
       kind: "post" as const,
       key: post.id,
       post,
     }));
-  }, [
-    feedV2,
-    feedMode,
-    bufferedFollowingPosts,
-    bufferedGlobalPosts,
-    contentFilter,
-  ]);
+  }, [feedV2, feedMode, bufferedFollowingPosts, bufferedGlobalPosts]);
 
   const emptyMessage = useMemo(() => {
     if (contentFilter === "tweet" || contentFilter === "image") {
@@ -149,6 +136,7 @@ export default function HomeScreen() {
             ListHeaderComponent={listHeader}
             hasNextPage={v2Engine.hasNextPage}
             isFetchingNextPage={v2Engine.isFetchingNextPage}
+            isFetching={v2Engine.isFetching}
             onLoadMore={v2Engine.fetchNextPage}
             isRefetching={v2Engine.isRefetching}
             listRef={v2ListRef}
@@ -177,6 +165,7 @@ export default function HomeScreen() {
           ListHeaderComponent={listHeader}
           hasNextPage={activeFeed.hasNextPage}
           isFetchingNextPage={activeFeed.isFetchingNextPage}
+          isFetching={activeFeed.isFetching}
           onLoadMore={activeFeed.fetchNextPage}
           isRefetching={activeFeed.isRefetching}
           listRef={legacyListRef}

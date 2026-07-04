@@ -6,11 +6,12 @@ import { mapPostsToFeedItems } from "./filtering";
 export function useFeedEngineState(input: FeedEngineInput): FeedEngineResult {
   const {
     posts,
-    contentFilter,
+    items: inputItems,
     loading,
     error,
     hasNextPage,
     isFetchingNextPage,
+    isFetching,
     isRefetching,
     refresh,
     fetchNextPage,
@@ -18,8 +19,8 @@ export function useFeedEngineState(input: FeedEngineInput): FeedEngineResult {
   } = input;
 
   const items = useMemo(
-    () => mapPostsToFeedItems(posts, contentFilter),
-    [posts, contentFilter]
+    () => inputItems ?? mapPostsToFeedItems(posts),
+    [inputItems, posts]
   );
 
   return {
@@ -29,6 +30,7 @@ export function useFeedEngineState(input: FeedEngineInput): FeedEngineResult {
     error,
     hasNextPage,
     isFetchingNextPage,
+    isFetching,
     isRefetching,
     refresh,
     fetchNextPage,

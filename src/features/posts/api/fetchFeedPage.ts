@@ -1,5 +1,11 @@
+import {
+  FEED_INITIAL_PAGE_SIZE,
+  resolveFeedPageLimit,
+} from "@/features/feed/feedPagination";
+import type { FeedApiContentType } from "@/features/feed/feedContentType";
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import {
   buildSegmentKey,
   isMetadataComplete,
@@ -47,7 +53,8 @@ function mapApiPost(post: FeedApiPost): Post {
 
 async function fetchFeedEndpoint(
   path: string,
-  params: Record<string, string | undefined>
+  params: Record<string, string | undefined>,
+  signal?: AbortSignal
 ): Promise<FeedPageResult> {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -62,14 +69,12 @@ async function fetchFeedEndpoint(
     {
       method: "GET",
       timeoutMs: 20000,
+      signal,
     }
   );
 
   const data = (await response.json()) as FeedApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Feed request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Feed request failed");
 
   const page: FeedPageResult = {
     posts: (data.posts ?? []).map(mapApiPost),
@@ -82,21 +87,46 @@ async function fetchFeedEndpoint(
   return page;
 }
 
+type FeedFetchOptions = {
+  limit?: number;
+  signal?: AbortSignal;
+  contentType?: FeedApiContentType;
+};
+
+function withContentTypeParam(
+  params: Record<string, string | undefined>,
+  contentType: FeedApiContentType = "all"
+): Record<string, string | undefined> {
+  return {
+    ...params,
+    contentType,
+  };
+}
+
 export function fetchRecentFeedPage(
   cursor: string | null = null,
-  limit = 15
+  options: FeedFetchOptions = {}
 ): Promise<FeedPageResult> {
-  return fetchFeedEndpoint("recent", {
-    cursor: cursor ?? undefined,
-    limit: String(limit),
-  });
+  const limit = options.limit ?? resolveFeedPageLimit(cursor);
+  return fetchFeedEndpoint(
+    "recent",
+    withContentTypeParam(
+      {
+        cursor: cursor ?? undefined,
+        limit: String(limit),
+      },
+      options.contentType
+    ),
+    options.signal
+  );
 }
 
 export function fetchExploreFeedPage(
   filters: UserMetadata | null,
   cursor: string | null = null,
-  limit = 15
+  options: FeedFetchOptions = {}
 ): Promise<FeedPageResult> {
+  const limit = options.limit ?? resolveFeedPageLimit(cursor);
   const useSegmentKey = filters != null && isMetadataComplete(filters);
   const params: Record<string, string | undefined> = {
     cursor: cursor ?? undefined,
@@ -117,48 +147,78 @@ export function fetchExploreFeedPage(
     params.maritalStatus = filters.maritalStatus || undefined;
   }
 
-  return fetchFeedEndpoint("explore", params);
+  return fetchFeedEndpoint(
+    "explore",
+    withContentTypeParam(params, options.contentType),
+    options.signal
+  );
 }
 
 export function fetchFollowingFeedPage(
   cursor: string | null = null,
-  limit = 15
+  options: FeedFetchOptions = {}
 ): Promise<FeedPageResult> {
-  return fetchFeedEndpoint("following", {
-    cursor: cursor ?? undefined,
-    limit: String(limit),
-  });
+  const limit = options.limit ?? resolveFeedPageLimit(cursor);
+  return fetchFeedEndpoint(
+    "following",
+    withContentTypeParam(
+      {
+        cursor: cursor ?? undefined,
+        limit: String(limit),
+      },
+      options.contentType
+    ),
+    options.signal
+  );
 }
 
 export function fetchAuthorFeedPage(
   authorId: string,
   cursor: string | null = null,
-  limit = 15
+  options: FeedFetchOptions = {}
 ): Promise<FeedPageResult> {
-  return fetchFeedEndpoint(`author/${encodeURIComponent(authorId.trim())}`, {
-    cursor: cursor ?? undefined,
-    limit: String(limit),
-  });
+  const limit = options.limit ?? resolveFeedPageLimit(cursor);
+  return fetchFeedEndpoint(
+    `author/${encodeURIComponent(authorId.trim())}`,
+    withContentTypeParam(
+      {
+        cursor: cursor ?? undefined,
+        limit: String(limit),
+      },
+      options.contentType
+    ),
+    options.signal
+  );
 }
 
 export function fetchHashtagFeedPage(
   tag: string,
   cursor: string | null = null,
-  limit = 15
+  options: FeedFetchOptions = {}
 ): Promise<FeedPageResult> {
+  const limit = options.limit ?? resolveFeedPageLimit(cursor);
   const normalized = tag.trim().replace(/^#/, "").toLowerCase();
-  return fetchFeedEndpoint(`hashtag/${encodeURIComponent(normalized)}`, {
-    cursor: cursor ?? undefined,
-    limit: String(limit),
-  });
+  return fetchFeedEndpoint(
+    `hashtag/${encodeURIComponent(normalized)}`,
+    {
+      cursor: cursor ?? undefined,
+      limit: String(limit),
+    },
+    options.signal
+  );
 }
 
 export function fetchSavedFeedPage(
   cursor: string | null = null,
-  limit = 30
+  options: FeedFetchOptions = {}
 ): Promise<FeedPageResult> {
-  return fetchFeedEndpoint("saved", {
-    cursor: cursor ?? undefined,
-    limit: String(limit),
-  });
+  const limit = options.limit ?? FEED_INITIAL_PAGE_SIZE;
+  return fetchFeedEndpoint(
+    "saved",
+    {
+      cursor: cursor ?? undefined,
+      limit: String(limit),
+    },
+    options.signal
+  );
 }

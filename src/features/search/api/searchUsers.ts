@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { SearchUsersResponse } from "../types";
 
 export const MIN_USER_SEARCH_LENGTH = 2;
@@ -33,10 +34,7 @@ export async function searchUsers(query: string): Promise<SearchUsersResponse> {
       );
     }
   }
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Arama yapılamadı");
-  }
+  throwIfNotOk(response, data, data.error ?? "Arama yapılamadı");
 
   return data;
 }

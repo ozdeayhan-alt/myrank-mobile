@@ -1,10 +1,14 @@
-/** Firestore feed pagination page size */
-export const FEED_PAGE_SIZE = 15;
+export {
+  FEED_INITIAL_PAGE_SIZE,
+  FEED_NEXT_PAGE_SIZE,
+  FEED_PAGE_SIZE,
+  FEED_PREFETCH_TRIGGER_INDEX,
+} from "../feed/feedPagination";
 
 /** Whisp gövdesi karakter limiti */
 export const TWEET_MAX_LENGTH = 280;
 
-/** Glow / Video açıklama karakter limiti */
+/** Glow açıklama karakter limiti */
 export const POST_CAPTION_MAX_LENGTH = 2000;
 
 /** Repost alıntı metni karakter limiti */

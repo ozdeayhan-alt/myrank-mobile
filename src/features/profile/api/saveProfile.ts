@@ -2,6 +2,7 @@ import { updateProfile } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { UserMetadata } from "../types";
 import { ensureRankingEntriesIfNeeded } from "./ensureRankingEntriesIfNeeded";
 import { isMetadataComplete } from "../types";
@@ -46,10 +47,7 @@ export async function saveProfile(
   });
 
   const data = (await response.json()) as SaveProfileApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Profil kaydedilemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Profil kaydedilemedi");
 
   const auth = getFirebaseAuth();
   if (auth.currentUser?.uid === userId) {

@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { AppNotification } from "../types";
 import { mapApiNotification } from "./mapApiNotification";
 
@@ -31,10 +32,7 @@ export async function fetchNotifications(
   );
 
   const data = (await response.json()) as NotificationsApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Notifications request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Notifications request failed");
 
   return (data.notifications ?? [])
     .map((item) =>

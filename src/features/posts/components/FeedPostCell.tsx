@@ -1,5 +1,5 @@
 import type { VoteBurstDirection } from "@/components/LikeHeartBurst";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useRef } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 import type { EngagementStatus } from "@/features/ranking/types";
 import { SPINNER_COLOR, ui } from "@/lib/uiClasses";
@@ -14,6 +14,7 @@ import { PostCardBody } from "./PostCardBody";
 import { PostCardOwnerSheets } from "./PostCardOwnerSheets";
 import { PostHeader } from "./PostHeader";
 import { PostShareModals } from "./PostShareModals";
+import { type PostVoteBurstHandle } from "./PostVoteBurstLayer";
 
 type FeedPostCellProps = PostFeedMediaLayoutOptions & {
   post: Post;
@@ -36,9 +37,7 @@ export const FeedPostCell = memo(function FeedPostCell({
   listHorizontalInset,
   mediaEdgeBleed,
 }: FeedPostCellProps) {
-  const [voteBurstKey, setVoteBurstKey] = useState(0);
-  const [voteBurstDirection, setVoteBurstDirection] =
-    useState<VoteBurstDirection>("up");
+  const burstRef = useRef<PostVoteBurstHandle>(null);
   const openCommentSheet = useOpenCommentSheet();
   const isOwner = Boolean(currentUserId && post.authorId === currentUserId);
 
@@ -71,7 +70,6 @@ export const FeedPostCell = memo(function FeedPostCell({
   });
 
   const {
-    score,
     counts,
     loading,
     handleLike,
@@ -98,8 +96,7 @@ export const FeedPostCell = memo(function FeedPostCell({
   });
 
   const triggerVoteBurst = useCallback((direction: VoteBurstDirection) => {
-    setVoteBurstDirection(direction);
-    setVoteBurstKey((key) => key + 1);
+    burstRef.current?.trigger(direction);
   }, []);
 
   const handleLikePress = useCallback(() => {
@@ -120,7 +117,6 @@ export const FeedPostCell = memo(function FeedPostCell({
       >
         <PostHeader
           post={displayPost}
-          score={score}
           isOwner={isOwner}
           currentUserId={currentUserId}
           onOwnerMenuPress={isOwner ? handleOwnerMenuPress : undefined}
@@ -129,8 +125,7 @@ export const FeedPostCell = memo(function FeedPostCell({
 
         <PostCardBody
           post={displayPost}
-          voteBurstKey={voteBurstKey}
-          voteBurstDirection={voteBurstDirection}
+          burstRef={burstRef}
           onLike={handleLike}
           onLikeAnimated={() => triggerVoteBurst("up")}
           currentUserId={currentUserId}

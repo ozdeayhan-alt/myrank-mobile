@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 export type RepostPostResult = {
   ok: boolean;
@@ -22,10 +23,7 @@ export async function repostPost(
   });
 
   const data = (await response.json()) as RepostPostResult & { error?: string };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Repost başarısız");
-  }
+  throwIfNotOk(response, data, data.error ?? "Repost başarısız");
 
   return data;
 }

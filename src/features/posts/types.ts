@@ -39,7 +39,7 @@ export type Post = {
   repostCaption?: string;
   originalSnapshot?: OriginalPostSnapshot;
   mediaURL?: string;
-  /** HLS manifest — reels için öncelikli kaynak */
+  /** @deprecated Legacy Flow video alanı — yalnızca eski veri okuma */
   hlsURL?: string;
   posterURL?: string;
   thumbURL?: string;
@@ -54,7 +54,7 @@ export type CreatePostInput = {
   contentType: PostContentType;
   content: string;
   mediaURL?: string;
-  /** HLS manifest — reels için öncelikli kaynak */
+  /** @deprecated Legacy Flow video alanı — yalnızca eski veri okuma */
   hlsURL?: string;
   posterURL?: string;
   thumbURL?: string;

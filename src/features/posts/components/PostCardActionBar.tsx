@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import type { PostCounts } from "@/features/ranking/types";
 import { ui } from "@/lib/uiClasses";
@@ -51,7 +52,7 @@ function ActionButton({
   );
 }
 
-export function PostCardActionBar({
+export const PostCardActionBar = memo(function PostCardActionBar({
   counts,
   shareActive,
   saveActive,
@@ -67,7 +68,6 @@ export function PostCardActionBar({
 
   const votePair = (
     <PostVoteCirclePair
-      variant="feed"
       disabled={loading}
       voteDiameter={layout.voteDiameter}
       onUp={onLikePress}
@@ -148,4 +148,4 @@ export function PostCardActionBar({
       </View>
     </View>
   );
-}
+});

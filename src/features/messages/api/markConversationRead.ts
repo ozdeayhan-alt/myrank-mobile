@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 export async function markConversationRead(conversationId: string): Promise<void> {
   const response = await fetchApi(`${getApiBaseUrl()}/api/messages/read`, {
@@ -12,8 +13,5 @@ export async function markConversationRead(conversationId: string): Promise<void
   });
 
   const data = (await response.json()) as { error?: string };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Okundu işaretlenemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Okundu işaretlenemedi");
 }

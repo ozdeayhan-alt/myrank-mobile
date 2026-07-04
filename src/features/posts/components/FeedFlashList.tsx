@@ -20,6 +20,8 @@ import {
 } from "../utils/prefetchPostMedia";
 import { isFeedRenderIsolationEnabled } from "@/lib/featureFlags/feedFlags";
 import { getFeedSlotItemType } from "@/features/feed/resolveFeedSlotLayout";
+import { computeMaxVisiblePostIndex } from "@/features/feed/computeMaxVisiblePostIndex";
+import { useFeedEarlyPrefetch } from "@/features/feed/useFeedEarlyPrefetch";
 import { FeedVisiblePostsProvider } from "../context/FeedVisiblePostsContext";
 import { FeedPostErrorBoundary } from "./FeedPostErrorBoundary";
 import { FeedPostSkeleton } from "./FeedPostSkeleton";
@@ -66,6 +68,9 @@ type FeedFlashListProps = PostFeedMediaLayoutOptions & {
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   onLoadMore?: () => void;
+  /** Loaded post IDs for pagination prefetch (unfiltered); defaults to visible items. */
+  paginationPostIds?: readonly string[];
+  isFetching?: boolean;
   engagementResetKey?: string;
   isRefetching?: boolean;
   listRef?: RefObject<FlashListRef<FeedListItem> | null>;
@@ -152,6 +157,8 @@ export function FeedFlashList({
   hasNextPage = false,
   isFetchingNextPage = false,
   onLoadMore,
+  paginationPostIds,
+  isFetching = false,
   engagementResetKey,
   isRefetching = false,
   listRef,
@@ -199,6 +206,24 @@ export function FeedFlashList({
         .map((item) => item.post.id),
     [items]
   );
+  const postIdsRef = useRef(postIds);
+  postIdsRef.current = postIds;
+
+  const paginationIds = paginationPostIds ?? postIds;
+  const paginationIdsRef = useRef(paginationIds);
+  paginationIdsRef.current = paginationIds;
+
+  const { onMaxVisiblePostIndex } = useFeedEarlyPrefetch({
+    postCount: paginationIds.length,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetching,
+    fetchNextPage: onLoadMore ?? (() => {}),
+    resetKey: engagementResetKey,
+    enabled: Boolean(onLoadMore) && prefetchEnabled,
+  });
+  const onMaxVisiblePostIndexRef = useRef(onMaxVisiblePostIndex);
+  onMaxVisiblePostIndexRef.current = onMaxVisiblePostIndex;
 
   const engagementFetchEnabled = !loading || postIds.length > 0;
 
@@ -346,6 +371,12 @@ export function FeedFlashList({
       }, visibleIdsDebounceMs);
 
       if (nextVisible.size > 0) {
+        const maxPostIndex = computeMaxVisiblePostIndex(
+          nextVisible,
+          paginationIdsRef.current
+        );
+        onMaxVisiblePostIndexRef.current(maxPostIndex);
+
         if (prefetchDebounceRef.current) {
           clearTimeout(prefetchDebounceRef.current);
         }

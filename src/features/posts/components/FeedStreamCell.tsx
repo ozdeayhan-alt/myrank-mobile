@@ -1,9 +1,5 @@
-import type { VoteBurstDirection } from "@/components/LikeHeartBurst";
 import { DoubleTapToLike } from "@/components/DoubleTapToLike";
-import {
-  LikeHeartBurst,
-} from "@/components/LikeHeartBurst";
-import { memo } from "react";
+import { memo, type RefObject } from "react";
 import { Platform, Text, View } from "react-native";
 import type { PostCounts } from "@/features/ranking/types";
 import { ui } from "@/lib/uiClasses";
@@ -19,20 +15,24 @@ import { FeedStreamMedia } from "./FeedStreamMedia";
 import { PostCardActionBar } from "./PostCardActionBar";
 import { PostHeader } from "./PostHeader";
 import { RichPostText } from "./RichPostText";
+import {
+  PostVoteBurstLayer,
+  type PostVoteBurstHandle,
+} from "./PostVoteBurstLayer";
 
 type FeedStreamCellProps = PostFeedMediaLayoutOptions & {
   post: Post;
-  score: number;
+  burstRef?: RefObject<PostVoteBurstHandle | null>;
   counts: PostCounts;
   shareActive: boolean;
   saveActive: boolean;
   loading: boolean;
   isOwner: boolean;
   currentUserId?: string | null;
-  voteBurstKey: number;
-  voteBurstDirection: VoteBurstDirection;
   onLike: () => void;
   onLikeAnimated: () => void;
+  onLikePress: () => void;
+  onDislikePress: () => void;
   onDislike: () => void;
   onComment: () => void;
   onShare: () => void;
@@ -44,17 +44,17 @@ type FeedStreamCellProps = PostFeedMediaLayoutOptions & {
 
 function FeedStreamCellInner({
   post,
-  score,
+  burstRef,
   counts,
   shareActive,
   saveActive,
   loading,
   isOwner,
   currentUserId = null,
-  voteBurstKey,
-  voteBurstDirection,
   onLike,
   onLikeAnimated,
+  onLikePress,
+  onDislikePress,
   onDislike,
   onComment,
   onShare,
@@ -79,7 +79,6 @@ function FeedStreamCellInner({
     >
       <PostHeader
         post={post}
-        score={score}
         isOwner={isOwner}
         currentUserId={currentUserId}
         onOwnerMenuPress={isOwner ? onOwnerMenu : undefined}
@@ -145,10 +144,7 @@ function FeedStreamCellInner({
             </View>
           ) : null}
 
-          <LikeHeartBurst
-            burstKey={voteBurstKey}
-            direction={voteBurstDirection}
-          />
+          <PostVoteBurstLayer ref={burstRef} />
         </DoubleTapToLike>
       )}
 
@@ -157,8 +153,8 @@ function FeedStreamCellInner({
         shareActive={shareActive}
         saveActive={saveActive}
         loading={loading}
-        onLikePress={onLike}
-        onDislikePress={onDislike}
+        onLikePress={onLikePress}
+        onDislikePress={onDislikePress}
         onCommentPress={onComment}
         onSharePress={onShare}
         onSavePress={onSave}

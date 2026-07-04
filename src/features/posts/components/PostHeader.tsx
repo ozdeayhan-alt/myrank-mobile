@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatRelativeTime } from "@/features/notifications/utils/formatRelativeTime";
 import { navigateToAuthorProfile } from "@/features/profile/navigateToAuthorProfile";
@@ -11,7 +12,7 @@ import {
 } from "../utils/resolvePostAuthor";
 import { getContentTypeLabel } from "../constants/contentTypeLabels";
 import { PostFollowPlusButton } from "./PostFollowPlusButton";
-import { PostScorePill } from "./PostScorePill";
+import { PostScoreDisplay } from "./PostScoreDisplay";
 
 const FEED_AVATAR_SIZE = 40;
 const MENU_BUTTON_CLASS =
@@ -49,16 +50,14 @@ function shouldShowPostFollowPlus(
 
 type PostHeaderProps = {
   post: Post;
-  score: number;
   isOwner?: boolean;
   currentUserId?: string | null;
   onOwnerMenuPress?: () => void;
   onMoreMenuPress?: () => void;
 };
 
-export function PostHeader({
+export const PostHeader = memo(function PostHeader({
   post,
-  score,
   isOwner = false,
   currentUserId = null,
   onOwnerMenuPress,
@@ -123,8 +122,11 @@ export function PostHeader({
             <Text className="text-lg font-bold text-gray-600">⋯</Text>
           </Pressable>
         ) : null}
-        <PostScorePill score={score} />
+        <PostScoreDisplay
+          postId={post.id}
+          initialScore={post.postScore ?? 0}
+        />
       </View>
     </View>
   );
-}
+});

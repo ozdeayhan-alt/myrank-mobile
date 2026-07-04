@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { EngagementStatus, PostCounts } from "@/features/ranking/types";
 
 export type PostVoteBatchResponse = {
@@ -33,10 +34,7 @@ export async function fetchPostVoteBatch(
   const data = (await response.json()) as PostVoteBatchResponse & {
     error?: string;
   };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Gönderi oyu gönderilemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Gönderi oyu gönderilemedi");
 
   return data;
 }

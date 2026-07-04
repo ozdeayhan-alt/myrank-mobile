@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { RankingLadderResult } from "@/features/profile/api/fetchRankingLadder";
 import type { CategoryRanking } from "@/features/profile/api/fetchProfileRankings";
 
@@ -27,10 +28,7 @@ export async function fetchProfileGaugeBootstrap(
   );
 
   const data = (await response.json()) as ProfileGaugeBootstrapResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Profile gauge bootstrap request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Profile gauge bootstrap request failed");
 
   return {
     rankings: data.rankings ?? [],

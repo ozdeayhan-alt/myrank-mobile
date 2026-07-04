@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { UserMetadata } from "@/features/profile/types";
 import { hasActiveSegmentFilters } from "@/features/posts/api/matchesSegmentFilters";
 import type { RankingEntry } from "../types";
@@ -55,10 +56,7 @@ export async function fetchRankingEntries(
   );
 
   const data = (await response.json()) as RankingApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Ranking request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Ranking request failed");
 
   return data.entries ?? [];
 }

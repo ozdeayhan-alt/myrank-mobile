@@ -3,30 +3,46 @@ import {
   useInfiniteQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import type { FeedApiContentType } from "@/features/feed/feedContentType";
+import {
+  FEED_INFINITE_QUERY_DEFAULTS,
+  feedInfiniteGetNextPageParam,
+} from "@/features/feed/feedInfiniteQueryDefaults";
+import { useGuardedFeedFetchNextPage } from "@/features/feed/useGuardedFeedFetchNextPage";
 import { fetchPostsByAuthorPage } from "@/features/posts/api/fetchPostsByAuthor";
 import { useFeedRefreshStore } from "@/features/posts/store/useFeedRefreshStore";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 
-export const authorPostsQueryKey = (authorId: string, feedVersion: number) =>
-  ["profilePosts", authorId, feedVersion] as const;
+export const authorPostsQueryKey = (
+  authorId: string,
+  contentType: FeedApiContentType,
+  feedVersion: number
+) => ["profilePosts", authorId, contentType, feedVersion] as const;
 
 type AuthorPostsPage = Awaited<ReturnType<typeof fetchPostsByAuthorPage>>;
 
-export function useAuthorPosts(authorId: string, enabled = true) {
+export function useAuthorPosts(
+  authorId: string,
+  contentType: FeedApiContentType = "all",
+  enabled = true
+) {
   const queryClient = useQueryClient();
   const feedVersion = useFeedRefreshStore((s) => s.version);
 
-  const queryKey = authorPostsQueryKey(authorId, feedVersion);
+  const queryKey = authorPostsQueryKey(authorId, contentType, feedVersion);
 
   const query = useInfiniteQuery({
     queryKey,
-    queryFn: ({ pageParam }) =>
-      fetchPostsByAuthorPage(authorId, pageParam as string | null),
-    initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.cursor : undefined,
+    queryFn: ({ pageParam, signal }) =>
+      fetchPostsByAuthorPage(
+        authorId,
+        pageParam as string | null,
+        contentType,
+        signal
+      ),
+    ...FEED_INFINITE_QUERY_DEFAULTS,
+    getNextPageParam: feedInfiniteGetNextPageParam,
     enabled: enabled && Boolean(authorId),
-    staleTime: 60_000,
   });
 
   const posts = query.data?.pages.flatMap((page) => page.posts) ?? [];
@@ -59,11 +75,7 @@ export function useAuthorPosts(authorId: string, enabled = true) {
     });
   };
 
-  const fetchNextPage = () => {
-    if (query.hasNextPage && !query.isFetchingNextPage && !query.isFetching) {
-      void query.fetchNextPage();
-    }
-  };
+  const fetchNextPage = useGuardedFeedFetchNextPage(query);
 
   return {
     posts,
@@ -75,6 +87,7 @@ export function useAuthorPosts(authorId: string, enabled = true) {
     updatePostContent,
     hasNextPage: query.hasNextPage ?? false,
     isFetchingNextPage: query.isFetchingNextPage,
+    isFetching: query.isFetching,
     fetchNextPage,
   };
 }

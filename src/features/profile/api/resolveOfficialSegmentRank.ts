@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 export type OfficialSegmentRankResult = {
   rank: number | null;
@@ -25,10 +26,7 @@ export async function resolveOfficialSegmentRank(
   );
 
   const data = (await response.json()) as RankingEntryApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Ranking entry request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Ranking entry request failed");
 
   const rank =
     data.entry && typeof data.entry.rank === "number" ? data.entry.rank : null;

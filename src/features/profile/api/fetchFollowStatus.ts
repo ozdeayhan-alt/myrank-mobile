@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 export type FollowStatusResponse = {
   ok: boolean;
@@ -20,10 +21,7 @@ export async function fetchFollowStatus(
   );
 
   const data = (await response.json().catch(() => ({}))) as FollowStatusResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Takip durumu alınamadı");
-  }
+  throwIfNotOk(response, data, data.error ?? "Takip durumu alınamadı");
 
   return data.following;
 }

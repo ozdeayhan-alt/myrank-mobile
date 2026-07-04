@@ -7,7 +7,7 @@ import {
 } from "../profileLayout";
 import type { UserMetadata } from "../types";
 import { EMPTY_METADATA } from "../types";
-import { useProfileVoteDisplay } from "./ProfileVoteProvider";
+import { useProfileVoteActions, useProfileVoteDisplay } from "./ProfileVoteProvider";
 import { ProfileTotalScoreGauge } from "./ProfileTotalScoreGauge";
 
 type ProfileSegmentScoreBadgeProps = {
@@ -27,12 +27,13 @@ function ProfileSegmentScoreBadgeInner({
     [screenWidth, fontScale]
   );
 
-  const { displayTP, voteFlash, gaugeVoteMode, voteBurstKey, fullLadderRequested } =
+  const { voteFlash, gaugeVoteMode, fullLadderRequested } =
     useProfileVoteDisplay();
+  const { initialTotalScore } = useProfileVoteActions();
   const { snapshotScore, aheadRungs, behindRungs, labelLoading, pointsLoading, ready, labelCategory, gaugeOfficialRank, atPinnacle, atGlobalLast } =
     useRankingLadder(userId, metadata, {
       rankingsReady,
-      displayScore: displayTP,
+      displayScore: initialTotalScore,
       gaugeVoteMode,
       fullLadderEnabled: fullLadderRequested,
     });
@@ -44,7 +45,9 @@ function ProfileSegmentScoreBadgeInner({
       collapsable={false}
     >
       <ProfileTotalScoreGauge
-        displayScore={displayTP}
+        userId={userId}
+        initialTotalScore={initialTotalScore}
+        gaugeScore={snapshotScore}
         snapshotScore={snapshotScore}
         aheadRungs={aheadRungs}
         behindRungs={behindRungs}

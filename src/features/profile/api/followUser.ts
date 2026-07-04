@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 type FollowResponse = {
   ok: boolean;
@@ -18,8 +19,5 @@ export async function followUser(targetUserId: string): Promise<void> {
   );
 
   const data = (await response.json().catch(() => ({}))) as FollowResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Takip edilemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Takip edilemedi");
 }

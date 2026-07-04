@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import { rankingEnsureError } from "./rankingEnsureError";
 
 type EnsureRankingEntriesResponse = {
@@ -26,10 +27,7 @@ export async function ensureRankingEntries(options?: {
   const data = (await response.json()) as EnsureRankingEntriesResponse & {
     error?: string;
   };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Sıralama kaydı oluşturulamadı");
-  }
+  throwIfNotOk(response, data, data.error ?? "Sıralama kaydı oluşturulamadı");
 
   if (!data.ensured) {
     throw rankingEnsureError(data.reason, options);

@@ -41,17 +41,19 @@ function GlowImageFrameInner({
   const [fullLoaded, setFullLoaded] = useState(() =>
     Boolean(fullUri && loadedGlowUris.has(fullUri))
   );
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     setPreviewLoaded(Boolean(previewUri && loadedGlowUris.has(previewUri)));
     setFullLoaded(Boolean(fullUri && loadedGlowUris.has(fullUri)));
+    setLoadFailed(false);
   }, [post.id, previewUri, fullUri]);
 
   if (!fullUri && !previewUri) {
     return null;
   }
 
-  const showShimmer = !previewLoaded && !fullLoaded;
+  const showShimmer = !previewLoaded && !fullLoaded && !loadFailed;
   const showFullLayer =
     Boolean(fullUri) && fullUri !== previewUri && fullLoaded;
 
@@ -98,6 +100,7 @@ function GlowImageFrameInner({
               loadedGlowUris.add(previewUri);
               setPreviewLoaded(true);
             }}
+            onError={() => setLoadFailed(true)}
           />
         ) : null}
         {fullUri && fullUri !== previewUri ? (
@@ -120,7 +123,11 @@ function GlowImageFrameInner({
               loadedGlowUris.add(fullUri);
               setFullLoaded(true);
             }}
+            onError={() => setLoadFailed(true)}
           />
+        ) : null}
+        {loadFailed && !previewLoaded && !fullLoaded ? (
+          <View className="absolute inset-0 bg-neutral-200" />
         ) : null}
       </View>
     </View>

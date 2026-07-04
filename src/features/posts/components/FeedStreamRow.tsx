@@ -1,5 +1,5 @@
 import type { VoteBurstDirection } from "@/components/LikeHeartBurst";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useRef } from "react";
 import { usePostEngagement } from "@/features/ranking/store/useEngagementStore";
 import type { EngagementStatus } from "@/features/ranking/types";
 import { useIsFeedPostMediaHighPriority } from "../context/FeedVisiblePostsContext";
@@ -9,6 +9,7 @@ import { useFeedInteractionStore } from "../store/useFeedInteractionStore";
 import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 import type { Post } from "../types";
 import { FeedStreamCell } from "./FeedStreamCell";
+import { type PostVoteBurstHandle } from "./PostVoteBurstLayer";
 
 type FeedStreamRowProps = PostFeedMediaLayoutOptions & {
   post: Post;
@@ -34,10 +35,7 @@ export const FeedStreamRow = memo(function FeedStreamRow({
   const openShare = useFeedInteractionStore((s) => s.openShare);
   const openOwnerMenu = useFeedInteractionStore((s) => s.openOwnerMenu);
   const openMoreMenu = useFeedInteractionStore((s) => s.openMoreMenu);
-
-  const [voteBurstKey, setVoteBurstKey] = useState(0);
-  const [voteBurstDirection, setVoteBurstDirection] =
-    useState<VoteBurstDirection>("up");
+  const burstRef = useRef<PostVoteBurstHandle>(null);
 
   const handlePatch = useCallback(
     (patch: Partial<EngagementStatus>) => {
@@ -47,7 +45,6 @@ export const FeedStreamRow = memo(function FeedStreamRow({
   );
 
   const {
-    score,
     counts,
     loading,
     handleLike,
@@ -67,8 +64,7 @@ export const FeedStreamRow = memo(function FeedStreamRow({
   const isOwner = Boolean(currentUserId && post.authorId === currentUserId);
 
   const triggerVoteBurst = useCallback((direction: VoteBurstDirection) => {
-    setVoteBurstDirection(direction);
-    setVoteBurstKey((key) => key + 1);
+    burstRef.current?.trigger(direction);
   }, []);
 
   const handleLikePress = useCallback(() => {
@@ -84,18 +80,18 @@ export const FeedStreamRow = memo(function FeedStreamRow({
   return (
     <FeedStreamCell
       post={post}
-      score={score}
+      burstRef={burstRef}
       counts={counts}
       shareActive={shareActive}
       saveActive={saveActive}
       loading={loading}
       isOwner={isOwner}
       currentUserId={currentUserId}
-      voteBurstKey={voteBurstKey}
-      voteBurstDirection={voteBurstDirection}
-      onLike={handleLikePress}
+      onLike={handleLike}
       onLikeAnimated={() => triggerVoteBurst("up")}
-      onDislike={handleDislikePress}
+      onLikePress={handleLikePress}
+      onDislikePress={handleDislikePress}
+      onDislike={handleDislike}
       onComment={() => openCommentSheet(post.id, applyCommentResult)}
       onShare={() => openShare(post)}
       onSave={handleSave}

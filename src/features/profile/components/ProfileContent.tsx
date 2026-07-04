@@ -5,13 +5,13 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import { HomeFeedContentFilter } from "@/components/HomeFeedContentFilter";
 import { useAuth } from "@/features/auth";
+import { toFeedApiContentType } from "@/features/feed/feedContentType";
 import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
 import { useFeedRefreshStore } from "@/features/posts/store/useFeedRefreshStore";
-import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
 import type { UserMetadata } from "../types";
 import type { BioCategoryVisibility } from "../utils/bioCategoryVisibility";
 import { isMetadataComplete } from "../types";
@@ -97,6 +97,7 @@ function ProfileFeedBody({
 
   const authorPostsEnabled =
     Boolean(userId) && (ownProfileHydrated || profileBootstrapReady);
+  const apiContentType = toFeedApiContentType(contentFilter);
 
   const {
     posts,
@@ -108,17 +109,18 @@ function ProfileFeedBody({
     isRefetching,
     hasNextPage,
     isFetchingNextPage,
+    isFetching,
     fetchNextPage,
-  } = useAuthorPosts(userId, authorPostsEnabled);
+  } = useAuthorPosts(userId, apiContentType, authorPostsEnabled);
 
   const items = useMemo(
     (): FeedListItem[] =>
-      filterPostsByContentType(posts, contentFilter).map((post) => ({
+      posts.map((post) => ({
         kind: "post",
         key: post.id,
         post,
       })),
-    [posts, contentFilter]
+    [posts]
   );
 
   const emptyMessage = useMemo(() => {
@@ -223,6 +225,7 @@ function ProfileFeedBody({
       currentUserId={currentUserId}
       hasNextPage={hasNextPage}
       isFetchingNextPage={isFetchingNextPage}
+      isFetching={isFetching}
       onLoadMore={fetchNextPage}
       listHorizontalInset={PROFILE_HORIZONTAL_PADDING}
       mediaEdgeBleed={false}

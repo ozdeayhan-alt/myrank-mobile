@@ -1,5 +1,6 @@
 import {
   useFocusEffect,
+  useIsFocused,
   useScrollToTop,
 } from "@react-navigation/native";
 import type { FlashListRef } from "@shopify/flash-list";
@@ -7,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { useAuth } from "@/features/auth";
 import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
+import { toFeedApiContentType } from "@/features/feed/feedContentType";
 import { ExploreFeedChrome } from "@/features/explore/components/ExploreFeedChrome";
 import { useExploreFeedInfinite } from "@/features/explore/hooks/useExploreFeedInfinite";
 import {
@@ -23,7 +25,6 @@ import {
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
 import { hasActiveSegmentFilters } from "@/features/posts/api/matchesSegmentFilters";
 import type { HomeFeedContentFilter } from "@/features/posts/store/useHomeFeedContentStore";
-import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
 import {
   ExploreSearchBar,
   useUserSearch,
@@ -32,6 +33,7 @@ import {
 
 export default function ExploreScreen() {
   const { user } = useAuth();
+  const isFocused = useIsFocused();
   const listRef = useRef<FlashListRef<FeedListItem>>(null);
   useScrollToTop(listRef);
 
@@ -70,6 +72,7 @@ export default function ExploreScreen() {
 
   const showSearchUI = searchPanelOpen || isSearchActive;
   const feedEnabled = !showSearchUI;
+  const apiContentType = toFeedApiContentType(contentFilter);
 
   const {
     posts,
@@ -79,10 +82,11 @@ export default function ExploreScreen() {
     updatePostScore,
     hasNextPage,
     isFetchingNextPage,
+    isFetching,
     fetchNextPage,
     isRefetching,
     engagementResetKey,
-  } = useExploreFeedInfinite(filters, feedEnabled);
+  } = useExploreFeedInfinite(filters, apiContentType, feedEnabled);
 
   const isGlobal = !filters || !hasActiveSegmentFilters(filters);
 
@@ -156,12 +160,12 @@ export default function ExploreScreen() {
 
   const feedItems = useMemo(
     (): FeedListItem[] =>
-      filterPostsByContentType(posts, contentFilter).map((post) => ({
+      posts.map((post) => ({
         kind: "post" as const,
         key: post.id,
         post,
       })),
-    [posts, contentFilter]
+    [posts]
   );
 
   const handleRefresh = useCallback(() => {
@@ -221,12 +225,15 @@ export default function ExploreScreen() {
               contentContainerStyle={feedListContentStyle}
               hasNextPage={hasNextPage}
               isFetchingNextPage={isFetchingNextPage}
+              isFetching={isFetching}
               onLoadMore={fetchNextPage}
               isRefetching={isRefetching}
               engagementResetKey={engagementResetKey}
+              listKey={engagementResetKey}
               listRef={listRef}
               currentUserId={user?.uid ?? null}
               exploreFilters={filters}
+              prefetchEnabled={isFocused}
             />
           </View>
         )}

@@ -1,6 +1,4 @@
-import type { Post } from "@/features/posts/types";
 import { normalizeFirebaseStorageUrl } from "@/lib/media/normalizeAvatarUrl";
-import { isMp4ProxyEnabled } from "@/lib/mp4ProxyEnabled";
 
 const FIREBASE_STORAGE_HOSTS = new Set([
   "firebasestorage.googleapis.com",
@@ -8,7 +6,7 @@ const FIREBASE_STORAGE_HOSTS = new Set([
 ]);
 
 export type ResolveMediaDisplayUrlOptions = {
-  /** Poster/görsel için true (varsayılan). Video stream (MP4/HLS) için false. */
+  /** Poster/görsel için true (varsayılan). */
   useProxy?: boolean;
   /** Firebase download token'ı koru (poster yükleme güvenilirliği). */
   keepToken?: boolean;
@@ -74,83 +72,12 @@ export function resolveMediaDisplayUrl(
 }
 
 /**
- * Video poster — token korunur, proxy kapalı (Firebase path encoding).
+ * Poster — token korunur, proxy kapalı (Firebase path encoding).
  */
 export function resolvePosterDisplayUrl(
   url: string | undefined
 ): string | undefined {
   return resolveMediaUrl(url, { useProxy: false, keepToken: true });
-}
-
-function isMp4StreamUrl(url: string): boolean {
-  return /\.mp4(?:[?#]|$)/i.test(url) || /_fast\.mp4/i.test(url);
-}
-
-function isHlsStreamUrl(url: string): boolean {
-  return /\.m3u8(?:[?#]|$)/i.test(url) || /master\.m3u8/i.test(url);
-}
-
-/**
- * MP4 / HLS oynatma ve prefetch.
- * MP4 pilot: proxy açıksa yalnızca MP4 edge cache üzerinden; HLS doğrudan Firebase.
- */
-export function resolveVideoStreamUrl(
-  url: string | undefined
-): string | undefined {
-  const trimmed = url?.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  if (isMp4ProxyEnabled() && isMp4StreamUrl(trimmed) && !isHlsStreamUrl(trimmed)) {
-    return resolveMediaUrl(trimmed, { useProxy: true, keepToken: false });
-  }
-
-  return resolveMediaUrl(trimmed, { useProxy: false });
-}
-
-/** Feed görselleri — mümkünse poster/thumbnail, yoksa tam boyut. */
-export function resolveFeedImageDisplayUrl(
-  mediaURL: string | undefined
-): string | undefined {
-  const derivedPoster = derivePosterUrlFromMediaUrl(mediaURL);
-  if (derivedPoster) {
-    return (
-      resolveMediaDisplayUrl(derivedPoster) ?? resolveMediaDisplayUrl(mediaURL)
-    );
-  }
-
-  return resolveMediaDisplayUrl(mediaURL);
-}
-
-/** mediaURL'den poster object path türet: …/123_fast.mp4 → …/123_poster.jpg */
-export function derivePosterObjectPathFromMediaUrl(
-  mediaUrl: string
-): string | null {
-  try {
-    const parsed = new URL(mediaUrl);
-    if (!parsed.hostname.includes("firebasestorage.googleapis.com")) {
-      return null;
-    }
-
-    const match = parsed.pathname.match(/\/o\/(.+)$/);
-    if (!match?.[1]) {
-      return null;
-    }
-
-    const objectPath = decodeURIComponent(match[1]);
-    const posterPath = objectPath
-      .replace(/_fast\.mp4$/i, "_poster.jpg")
-      .replace(/\.mp4$/i, "_poster.jpg");
-
-    if (posterPath === objectPath || !posterPath.endsWith("_poster.jpg")) {
-      return null;
-    }
-
-    return posterPath;
-  } catch {
-    return null;
-  }
 }
 
 function extractObjectPathFromFirebaseUrl(url: string): string | null {
@@ -182,24 +109,6 @@ export function buildPublicFirebaseMediaUrl(
 ): string {
   const encoded = encodeURIComponent(objectPath);
   return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encoded}?alt=media`;
-}
-
-/** posterURL alanı boşsa mediaURL'den public poster adresi türet. */
-export function derivePosterUrlFromMediaUrl(
-  mediaURL: string | undefined
-): string | undefined {
-  const trimmed = mediaURL?.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const posterPath = derivePosterObjectPathFromMediaUrl(trimmed);
-  const bucket = extractBucketFromFirebaseUrl(trimmed);
-  if (!posterPath || !bucket) {
-    return undefined;
-  }
-
-  return buildPublicFirebaseMediaUrl(bucket, posterPath);
 }
 
 /** Profil avatar — token, tokensız, proxy ve public URL fallback zinciri. */
@@ -242,72 +151,6 @@ export function listAvatarDisplayCandidateUrls(
       resolveMediaUrl(publicUrl, { useProxy: true, keepToken: false })
     );
   }
-
-  return candidates;
-}
-
-/** Feed/reels poster: önce posterURL, yoksa mediaURL'den türet. */
-export function resolveVideoPosterUrl(
-  post: Pick<Post, "posterURL" | "mediaURL">
-): string | undefined {
-  const candidates = listVideoPosterCandidateUrls(post);
-  return candidates[0];
-}
-
-/** Poster yükleme hatasında denenecek URL listesi (sıralı). */
-export function listVideoPosterCandidateUrls(
-  post: Pick<Post, "posterURL" | "mediaURL">
-): string[] {
-  const seen = new Set<string>();
-  const candidates: string[] = [];
-
-  const pushPosterVariants = (raw?: string | null) => {
-    const normalized = normalizeFirebaseStorageUrl(raw?.trim() ?? "");
-    if (!normalized) {
-      return;
-    }
-
-    pushUnique(seen, candidates, resolvePosterDisplayUrl(normalized));
-    pushUnique(seen, candidates, resolveMediaDisplayUrl(normalized));
-    pushUnique(
-      seen,
-      candidates,
-      resolveMediaUrl(normalized, { useProxy: false, keepToken: false })
-    );
-    pushUnique(
-      seen,
-      candidates,
-      resolveMediaUrl(normalized, { useProxy: true, keepToken: true })
-    );
-
-    const bucket = extractBucketFromFirebaseUrl(normalized);
-    const objectPath = extractObjectPathFromFirebaseUrl(normalized);
-    if (bucket && objectPath) {
-      const publicUrl = buildPublicFirebaseMediaUrl(bucket, objectPath);
-      pushUnique(seen, candidates, publicUrl);
-      pushUnique(
-        seen,
-        candidates,
-        resolveMediaUrl(publicUrl, { useProxy: true, keepToken: false })
-      );
-    }
-  };
-
-  pushPosterVariants(post.posterURL);
-  pushUnique(seen, candidates, derivePosterUrlFromMediaUrl(post.mediaURL));
-
-  const normalizedMedia = normalizeFirebaseStorageUrl(post.mediaURL);
-  if (normalizedMedia && normalizedMedia !== post.mediaURL?.trim()) {
-    pushUnique(seen, candidates, derivePosterUrlFromMediaUrl(normalizedMedia));
-  }
-
-  const derived = derivePosterUrlFromMediaUrl(post.mediaURL);
-  pushUnique(seen, candidates, resolveMediaDisplayUrl(derived));
-  pushUnique(
-    seen,
-    candidates,
-    resolveMediaUrl(derived, { useProxy: true, keepToken: false })
-  );
 
   return candidates;
 }

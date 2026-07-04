@@ -24,6 +24,7 @@ function FeedStreamMediaInner({
   const { width: screenWidth } = useWindowDimensions();
   const [previewLoaded, setPreviewLoaded] = useState(false);
   const [fullLoaded, setFullLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const bleed = mediaEdgeBleed && listHorizontalInset > 0;
   const containerWidth = bleed
     ? screenWidth
@@ -42,9 +43,10 @@ function FeedStreamMediaInner({
   useEffect(() => {
     setPreviewLoaded(false);
     setFullLoaded(false);
+    setLoadFailed(false);
   }, [post.id, previewUri, fullUri]);
 
-  const showShimmer = !previewLoaded && !fullLoaded;
+  const showShimmer = !previewLoaded && !fullLoaded && !loadFailed;
   const showFullLayer =
     Boolean(fullUri) && fullUri !== previewUri && fullLoaded;
 
@@ -86,6 +88,7 @@ function FeedStreamMediaInner({
             recyclingKey={`${post.id}-preview`}
             priority={imagePriority}
             onLoad={() => setPreviewLoaded(true)}
+            onError={() => setLoadFailed(true)}
           />
         ) : null}
         {fullUri && fullUri !== previewUri ? (
@@ -105,7 +108,11 @@ function FeedStreamMediaInner({
             priority={imagePriority}
             transition={150}
             onLoad={() => setFullLoaded(true)}
+            onError={() => setLoadFailed(true)}
           />
+        ) : null}
+        {loadFailed && !previewLoaded && !fullLoaded ? (
+          <View className="absolute inset-0 bg-neutral-200" />
         ) : null}
       </View>
     </View>

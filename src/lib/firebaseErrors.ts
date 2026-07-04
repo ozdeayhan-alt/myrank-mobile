@@ -34,7 +34,7 @@ export function logFirebaseError(
   }
 
   console.error(`[${context}]`, payload);
-  if (payload.serverResponse) {
+  if (__DEV__ && payload.serverResponse) {
     console.error(`[${context}] serverResponse:`, payload.serverResponse);
   }
 
@@ -105,7 +105,7 @@ export function getFirebaseErrorMessage(error: unknown): string {
       case "not-found":
         return "Kaynak bulunamadı.";
       case "ERR_GENERATE_THUMBNAIL":
-        return "Kapak görseli oluşturulamadı. Video yine de yüklenecek; tekrar deneyin.";
+        return "Kapak görseli oluşturulamadı. Tekrar deneyin.";
       default:
         if (code.startsWith("ERR_")) {
           return `İşlem başarısız (${code}). Lütfen tekrar deneyin.`;

@@ -1,9 +1,5 @@
 import type { Post } from "@/features/posts/types";
-import {
-  filterPostsByContentType,
-  resolvePostContentType,
-  type HomeContentFilter,
-} from "@/features/posts/utils/filterPostsByContentType";
+import { resolvePostContentType } from "@/features/posts/utils/filterPostsByContentType";
 import { isRepostPost } from "@/features/posts/utils/repostUtils";
 import type { FeedListItemKind, FeedV2ListItem } from "./FeedEngine.types";
 
@@ -20,13 +16,8 @@ export function resolveFeedListItemKind(post: Post): FeedListItemKind {
   return "whisp";
 }
 
-export function mapPostsToFeedItems(
-  posts: Post[],
-  contentFilter: HomeContentFilter | null
-): FeedV2ListItem[] {
-  const filtered = filterPostsByContentType(posts, contentFilter);
-
-  return filtered.map((post) => ({
+export function mapPostsToFeedItems(posts: Post[]): FeedV2ListItem[] {
+  return posts.map((post) => ({
     kind: resolveFeedListItemKind(post),
     key: post.id,
     post,

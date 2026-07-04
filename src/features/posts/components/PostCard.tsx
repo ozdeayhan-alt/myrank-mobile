@@ -1,5 +1,5 @@
 import type { VoteBurstDirection } from "@/components/LikeHeartBurst";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useRef } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 import type { EngagementStatus } from "@/features/ranking/types";
 import { SPINNER_COLOR, ui } from "@/lib/uiClasses";
@@ -13,6 +13,9 @@ import { PostCardOwnerSheets } from "./PostCardOwnerSheets";
 import { useOpenCommentSheet } from "../hooks/useOpenCommentSheet";
 import { PostHeader } from "./PostHeader";
 import { PostShareModals } from "./PostShareModals";
+import {
+  type PostVoteBurstHandle,
+} from "./PostVoteBurstLayer";
 
 type PostCardProps = {
   post: Post;
@@ -36,9 +39,7 @@ export const PostCard = memo(function PostCard({
   mediaImagePriority = "normal",
 }: PostCardProps) {
   const isOwner = Boolean(currentUserId && post.authorId === currentUserId);
-  const [voteBurstKey, setVoteBurstKey] = useState(0);
-  const [voteBurstDirection, setVoteBurstDirection] =
-    useState<VoteBurstDirection>("up");
+  const burstRef = useRef<PostVoteBurstHandle>(null);
   const openCommentSheet = useOpenCommentSheet();
 
   const {
@@ -70,7 +71,6 @@ export const PostCard = memo(function PostCard({
   });
 
   const {
-    score,
     counts,
     loading,
     handleLike,
@@ -97,8 +97,7 @@ export const PostCard = memo(function PostCard({
   });
 
   const triggerVoteBurst = useCallback((direction: VoteBurstDirection) => {
-    setVoteBurstDirection(direction);
-    setVoteBurstKey((k) => k + 1);
+    burstRef.current?.trigger(direction);
   }, []);
 
   const handleLikePress = useCallback(() => {
@@ -119,7 +118,6 @@ export const PostCard = memo(function PostCard({
       >
         <PostHeader
           post={displayPost}
-          score={score}
           isOwner={isOwner}
           currentUserId={currentUserId}
           onOwnerMenuPress={handleOwnerMenuPress}
@@ -128,8 +126,7 @@ export const PostCard = memo(function PostCard({
 
         <PostCardBody
           post={displayPost}
-          voteBurstKey={voteBurstKey}
-          voteBurstDirection={voteBurstDirection}
+          burstRef={burstRef}
           onLike={handleLike}
           onLikeAnimated={() => triggerVoteBurst("up")}
           currentUserId={currentUserId}
@@ -199,5 +196,19 @@ export const PostCard = memo(function PostCard({
         onReposted={handleReposted}
       />
     </>
+  );
+}, (prev, next) => {
+  return (
+    prev.post.id === next.post.id &&
+    prev.post.content === next.post.content &&
+    prev.post.contentType === next.post.contentType &&
+    prev.post.authorId === next.post.authorId &&
+    prev.currentUserId === next.currentUserId &&
+    prev.engagement === next.engagement &&
+    prev.mediaImagePriority === next.mediaImagePriority &&
+    prev.onScoreUpdate === next.onScoreUpdate &&
+    prev.onEngagementPatch === next.onEngagementPatch &&
+    prev.onPostDeleted === next.onPostDeleted &&
+    prev.onPostContentUpdated === next.onPostContentUpdated
   );
 });

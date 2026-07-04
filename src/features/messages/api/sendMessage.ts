@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { SendMessageInput } from "../types";
 
 export async function sendMessage(
@@ -19,8 +20,5 @@ export async function sendMessage(
   });
 
   const data = (await response.json()) as { error?: string };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Mesaj gönderilemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Mesaj gönderilemedi");
 }

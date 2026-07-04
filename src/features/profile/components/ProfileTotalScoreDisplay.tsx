@@ -10,9 +10,8 @@ import { EMPTY_METADATA } from "../types";
 import { ProfileTotalScoreGauge } from "./ProfileTotalScoreGauge";
 
 type ProfileTotalScoreDisplayProps = {
-  /** Ortadaki anlık TP */
-  displayScore: number;
-  userId?: string;
+  userId: string;
+  initialTotalScore: number;
   metadata?: UserMetadata;
   rankingsReady?: boolean;
   compact?: boolean;
@@ -22,8 +21,8 @@ type ProfileTotalScoreDisplayProps = {
 };
 
 function ProfileTotalScoreDisplayInner({
-  displayScore,
   userId,
+  initialTotalScore,
   metadata = EMPTY_METADATA,
   rankingsReady = false,
   compact = false,
@@ -40,7 +39,7 @@ function ProfileTotalScoreDisplayInner({
   const { snapshotScore, aheadRungs, behindRungs, labelLoading, pointsLoading, ready, labelCategory, gaugeOfficialRank, atPinnacle, atGlobalLast } =
     useRankingLadder(userId, metadata, {
       rankingsReady,
-      displayScore,
+      displayScore: initialTotalScore,
       gaugeVoteMode,
       fullLadderEnabled,
     });
@@ -52,7 +51,9 @@ function ProfileTotalScoreDisplayInner({
       collapsable={false}
     >
       <ProfileTotalScoreGauge
-        displayScore={displayScore}
+        userId={userId}
+        initialTotalScore={initialTotalScore}
+        gaugeScore={snapshotScore}
         snapshotScore={snapshotScore}
         aheadRungs={aheadRungs}
         behindRungs={behindRungs}
