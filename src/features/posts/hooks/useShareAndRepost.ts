@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useFeedRefreshStore } from "../store/useFeedRefreshStore";
 import type { Post } from "../types";
 import { canRepostPost } from "../utils/repostUtils";
@@ -23,6 +23,11 @@ export function useShareAndRepost({
   const bumpFeed = useFeedRefreshStore((s) => s.bump);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [repostOpen, setRepostOpen] = useState(false);
+
+  useEffect(() => {
+    setShareSheetOpen(false);
+    setRepostOpen(false);
+  }, [post.id]);
 
   const interactions = usePostInteractions({
     post,

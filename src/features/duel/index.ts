@@ -1,5 +1,7 @@
 export { DuelFeedCard } from "./components/DuelFeedCard";
 export { DuelScreen } from "./components/DuelScreen";
+export { DuelFullScreenRound } from "./components/DuelParticipantPanel";
+export { DuelResultScreen } from "./components/DuelResultScreen";
 export { injectDuelCards } from "./lib/injectDuelCards";
 export {
   DUEL_DURATION_MS,

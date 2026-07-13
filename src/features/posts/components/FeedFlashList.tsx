@@ -12,7 +12,10 @@ import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import type { UserMetadata } from "@/features/profile/types";
 import { useIncrementalEngagement } from "@/features/ranking/hooks/useIncrementalEngagement";
 import { PostInteractionProvider } from "../context/PostInteractionContext";
-import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
+import {
+  DEFAULT_LIST_HORIZONTAL_INSET,
+  type PostFeedMediaLayoutOptions,
+} from "../constants/feedMediaLayout";
 import type { Post } from "../types";
 import {
   prefetchFeedPostsImagesBatch,
@@ -28,6 +31,8 @@ import { FeedPostSkeleton } from "./FeedPostSkeleton";
 import { FeedPostRow } from "./FeedPostRow";
 import { FeedStreamRow } from "./FeedStreamRow";
 import { FeedInteractionHost } from "./FeedInteractionHost";
+import { FlowInlineGrid } from "@/features/flow/components/FlowInlineGrid";
+import { collectPostIdsFromMixedFeedItems } from "@/features/flow/utils/groupPostsForMixedFeed";
 
 const FEED_DRAW_DISTANCE = 1400;
 const FEED_STREAM_DRAW_DISTANCE_MULTIPLIER = 1.9;
@@ -55,6 +60,11 @@ export type FeedListItem =
       kind: "post";
       key: string;
       post: Post;
+    }
+  | {
+      kind: "flow_grid";
+      key: string;
+      posts: Post[];
     };
 
 type FeedFlashListProps = PostFeedMediaLayoutOptions & {
@@ -197,13 +207,7 @@ export function FeedFlashList({
   itemsRef.current = items;
 
   const postIds = useMemo(
-    () =>
-      items
-        .filter(
-          (item): item is Extract<FeedListItem, { kind: "post" }> =>
-            item.kind === "post"
-        )
-        .map((item) => item.post.id),
+    () => collectPostIdsFromMixedFeedItems(items),
     [items]
   );
   const postIdsRef = useRef(postIds);
@@ -228,20 +232,24 @@ export function FeedFlashList({
   const engagementFetchEnabled = !loading || postIds.length > 0;
 
   useEffect(() => {
-    const postItems = items.filter(
-      (item): item is Extract<FeedListItem, { kind: "post" }> =>
-        item.kind === "post"
-    );
+    const batch: Post[] = [];
+    for (const item of items) {
+      if (item.kind === "post") {
+        batch.push(item.post);
+      } else if (item.kind === "flow_grid") {
+        batch.push(...item.posts);
+      }
+      if (batch.length >= (streamCell ? INITIAL_PREFETCH_DEFERRED_COUNT : 8)) {
+        break;
+      }
+    }
 
     const prefetchCount = streamCell
       ? INITIAL_PREFETCH_DEFERRED_COUNT
       : Math.min(INITIAL_PREFETCH_COUNT, 8);
+    const prefetchBatch = batch.slice(0, prefetchCount);
 
-    const batch = postItems
-      .slice(0, prefetchCount)
-      .map((item) => item.post);
-
-    if (batch.length === 0 || !prefetchEnabledRef.current) {
+    if (prefetchBatch.length === 0 || !prefetchEnabledRef.current) {
       return;
     }
 
@@ -251,11 +259,11 @@ export function FeedFlashList({
       }
 
       if (streamCell) {
-        prefetchFeedPostsImagesBatch(batch);
+        prefetchFeedPostsImagesBatch(prefetchBatch);
         return;
       }
 
-      for (const post of batch) {
+      for (const post of prefetchBatch) {
         prefetchPostMedia(post);
       }
     });
@@ -276,14 +284,17 @@ export function FeedFlashList({
       return;
     }
 
-    const postItems = itemsRef.current.filter(
-      (item): item is Extract<FeedListItem, { kind: "post" }> =>
-        item.kind === "post"
-    );
+    const listItems = itemsRef.current;
 
     const visibleIndexes: number[] = [];
-    for (let index = 0; index < postItems.length; index += 1) {
-      if (visibleIds.has(postItems[index].post.id)) {
+    for (let index = 0; index < listItems.length; index += 1) {
+      const item = listItems[index];
+      if (item.kind === "post" && visibleIds.has(item.post.id)) {
+        visibleIndexes.push(index);
+      } else if (
+        item.kind === "flow_grid" &&
+        item.posts.some((post) => visibleIds.has(post.id))
+      ) {
         visibleIndexes.push(index);
       }
     }
@@ -299,21 +310,31 @@ export function FeedFlashList({
 
     const toPrefetch: Post[] = [];
 
+    const collectPosts = (item: FeedListItem): Post[] => {
+      if (item.kind === "post") {
+        return [item.post];
+      }
+      if (item.kind === "flow_grid") {
+        return item.posts;
+      }
+      return [];
+    };
+
     for (const index of visibleIndexes) {
-      toPrefetch.push(postItems[index].post);
+      toPrefetch.push(...collectPosts(listItems[index]));
     }
 
     for (let offset = 1; offset <= aheadCount; offset += 1) {
-      const upcoming = postItems[maxVisible + offset];
+      const upcoming = listItems[maxVisible + offset];
       if (upcoming) {
-        toPrefetch.push(upcoming.post);
+        toPrefetch.push(...collectPosts(upcoming));
       }
     }
 
     for (let offset = 1; offset <= behindCount; offset += 1) {
-      const previous = postItems[minVisible - offset];
+      const previous = listItems[minVisible - offset];
       if (previous) {
-        toPrefetch.push(previous.post);
+        toPrefetch.push(...collectPosts(previous));
       }
     }
 
@@ -348,6 +369,10 @@ export function FeedFlashList({
         const item = token.item;
         if (item?.kind === "post") {
           nextVisible.add(item.post.id);
+        } else if (item?.kind === "flow_grid") {
+          for (const post of item.posts) {
+            nextVisible.add(post.id);
+          }
         }
       }
 
@@ -434,6 +459,15 @@ export function FeedFlashList({
         );
       }
 
+      if (item.kind === "flow_grid") {
+        return (
+          <FlowInlineGrid
+            posts={item.posts}
+            horizontalPadding={listHorizontalInset ?? DEFAULT_LIST_HORIZONTAL_INSET}
+          />
+        );
+      }
+
       return (
         <FeedPostListItem
           post={item.post}
@@ -463,10 +497,10 @@ export function FeedFlashList({
   const listContentStyle = useMemo(
     () =>
       contentContainerStyle ?? {
-        paddingHorizontal: 16,
+        paddingHorizontal: listHorizontalInset,
         paddingVertical: 16,
       },
-    [contentContainerStyle]
+    [contentContainerStyle, listHorizontalInset]
   );
 
   const listEmpty = useMemo(() => {

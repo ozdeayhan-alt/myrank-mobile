@@ -74,7 +74,11 @@ export function isFeedPerfLogEnabled(): boolean {
   return parseEnvFlag(process.env.EXPO_PUBLIC_FEED_PERF_LOG);
 }
 
-/** Feed V2 architecture — type-specific renderers and FeedScroller. */
+/** Feed V2 architecture — type-specific renderers and FeedScroller. Default ON when unset. */
 export function isFeedV2Enabled(userId?: string | null): boolean {
-  return isFlagEnabledForUser(process.env.EXPO_PUBLIC_FEED_V2, userId);
+  const raw = process.env.EXPO_PUBLIC_FEED_V2;
+  if (raw == null || raw === "") {
+    return true;
+  }
+  return isFlagEnabledForUser(raw, userId);
 }

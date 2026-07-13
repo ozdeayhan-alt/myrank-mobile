@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Free disk before local Android builds (ENOSPC guard).
+# Keeps GRADLE_USER_HOME intact (default /root/.gradle).
 set -euo pipefail
 
 MIN_FREE_GB="${MIN_FREE_GB:-8}"
@@ -14,10 +15,16 @@ avail_gb() {
 
 echo "[disk] before: $(df_line)"
 
+# Only purge sandbox temp if Gradle cache lives elsewhere.
+GRADLE_HOME="${GRADLE_USER_HOME:-/root/.gradle}"
 if [[ -d /tmp/cursor-sandbox-cache ]]; then
-  cache_size="$(du -sh /tmp/cursor-sandbox-cache 2>/dev/null | cut -f1 || echo "?")"
-  echo "[disk] removing /tmp/cursor-sandbox-cache (${cache_size})..."
-  rm -rf /tmp/cursor-sandbox-cache
+  if [[ "$GRADLE_HOME" == /tmp/cursor-sandbox-cache* ]]; then
+    echo "[disk] keeping /tmp/cursor-sandbox-cache (Gradle home)"
+  else
+    cache_size="$(du -sh /tmp/cursor-sandbox-cache 2>/dev/null | cut -f1 || echo "?")"
+    echo "[disk] removing /tmp/cursor-sandbox-cache (${cache_size})..."
+    rm -rf /tmp/cursor-sandbox-cache
+  fi
 fi
 
 shopt -s nullglob

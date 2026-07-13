@@ -37,11 +37,8 @@ export function useHomeFeedEngine(
 
   const items = useMemo(() => {
     const mapped = mapPostsToFeedItems(bufferedPosts);
-    if (contentFilter != null) {
-      return mapped;
-    }
     return injectDuelCards(mapped);
-  }, [bufferedPosts, contentFilter]);
+  }, [bufferedPosts]);
 
   return useFeedEngineState({
     posts: bufferedPosts,

@@ -69,7 +69,7 @@ function FeedStreamMediaInner({
 
   return (
     <View style={outerStyle}>
-      <View style={frameStyle} className="overflow-hidden bg-neutral-300">
+      <View style={frameStyle} className="overflow-hidden bg-neutral-950">
         {showShimmer ? (
           <View className="absolute inset-0">
             <ShimmerSkeleton
@@ -83,7 +83,7 @@ function FeedStreamMediaInner({
           <Image
             source={{ uri: previewUri }}
             style={{ width: "100%", height: "100%" }}
-            contentFit="cover"
+            contentFit="contain"
             cachePolicy="memory-disk"
             recyclingKey={`${post.id}-preview`}
             priority={imagePriority}
@@ -102,7 +102,7 @@ function FeedStreamMediaInner({
               top: 0,
               left: 0,
             }}
-            contentFit="cover"
+            contentFit="contain"
             cachePolicy="memory-disk"
             recyclingKey={post.id}
             priority={imagePriority}

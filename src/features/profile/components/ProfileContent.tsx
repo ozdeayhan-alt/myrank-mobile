@@ -1,8 +1,8 @@
-import { useScrollToTop } from "@react-navigation/native";
+import { useScrollToTop, useIsFocused } from "@react-navigation/native";
 import type { FlashListRef } from "@shopify/flash-list";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
+import { View, useWindowDimensions } from "react-native";
 import { HomeFeedContentFilter } from "@/components/HomeFeedContentFilter";
 import { useAuth } from "@/features/auth";
 import { toFeedApiContentType } from "@/features/feed/feedContentType";
@@ -25,11 +25,15 @@ import {
   profileGaugeBootstrapQueryKey,
   useProfileGaugeBootstrap,
 } from "../hooks/useProfileGaugeBootstrap";
+import { FlowFeedScreen } from "@/features/flow/components/FlowFeedScreen";
+import { usePrefetchFlowFeed } from "@/features/flow/hooks/usePrefetchFlowFeed";
+import { mapPostsToLegacyFeedItems } from "@/features/flow/utils/groupPostsForMixedFeed";
+import { authorPostsQueryKey } from "../hooks/useAuthorPosts";
 import { useProfileStore } from "../store/useProfileStore";
 import { ProfileContentHeader } from "./ProfileContentHeader";
 import { ProfileVoteArrowFountainOverlay } from "./ProfileVoteArrowFountainOverlay";
 import { ProfileVoteProvider } from "./ProfileVoteProvider";
-import { PROFILE_HORIZONTAL_PADDING } from "../profileLayout";
+import { getProfileHorizontalPadding } from "../profileLayout";
 
 type ProfileContentProps = {
   userId: string;
@@ -65,8 +69,14 @@ function ProfileFeedBody({
   contentFilter,
   onContentFilterChange,
 }: ProfileFeedBodyProps) {
+  const { width: screenWidth } = useWindowDimensions();
+  const horizontalPadding = useMemo(
+    () => getProfileHorizontalPadding(screenWidth),
+    [screenWidth]
+  );
   const listRef = useRef<FlashListRef<FeedListItem>>(null);
   useScrollToTop(listRef);
+  const isFocused = useIsFocused();
 
   const ownProfileHydrated = useProfileStore(
     (s) =>
@@ -94,10 +104,27 @@ function ProfileFeedBody({
   const queryClient = useQueryClient();
   const feedVersion = useFeedRefreshStore((s) => s.version);
   const setStoreTotalScore = useProfileStore((s) => s.setTotalScore);
+  const apiContentType = toFeedApiContentType(contentFilter);
+
+  const hasGaugeCache = Boolean(
+    queryClient.getQueryData(profileGaugeBootstrapQueryKey(userId, feedVersion))
+  );
+  const hasSummaryCache = Boolean(
+    queryClient.getQueryData(profileSummaryQueryKey(userId, feedVersion))
+  );
+  const hasAuthorPostsCache = Boolean(
+    queryClient.getQueryData(
+      authorPostsQueryKey(userId, apiContentType, feedVersion)
+    )
+  );
 
   const authorPostsEnabled =
-    Boolean(userId) && (ownProfileHydrated || profileBootstrapReady);
-  const apiContentType = toFeedApiContentType(contentFilter);
+    Boolean(userId) &&
+    (ownProfileHydrated ||
+      profileBootstrapReady ||
+      hasGaugeCache ||
+      hasSummaryCache ||
+      hasAuthorPostsCache);
 
   const {
     posts,
@@ -114,16 +141,22 @@ function ProfileFeedBody({
   } = useAuthorPosts(userId, apiContentType, authorPostsEnabled);
 
   const items = useMemo(
-    (): FeedListItem[] =>
-      posts.map((post) => ({
-        kind: "post",
-        key: post.id,
-        post,
-      })),
+    (): FeedListItem[] => mapPostsToLegacyFeedItems(posts),
     [posts]
   );
 
+  const isFlowMode = contentFilter === "flow";
+
+  usePrefetchFlowFeed({
+    variant: "author",
+    authorId: userId,
+    enabled: isFocused && !isFlowMode && authorPostsEnabled,
+  });
+
   const emptyMessage = useMemo(() => {
+    if (contentFilter === "flow") {
+      return "Henüz Flow yok.";
+    }
     if (contentFilter === "tweet" || contentFilter === "image") {
       return getEmptyFeedMessage(contentFilter);
     }
@@ -201,11 +234,24 @@ function ProfileFeedBody({
 
   const contentContainerStyle = useMemo(
     () => ({
-      paddingHorizontal: PROFILE_HORIZONTAL_PADDING,
+      paddingHorizontal: horizontalPadding,
       paddingBottom: 32,
     }),
-    []
+    [horizontalPadding]
   );
+
+  if (isFlowMode) {
+    return (
+      <FlowFeedScreen
+        variant="author"
+        authorId={userId}
+        enabled={authorPostsEnabled}
+        ListHeaderComponent={listHeader}
+        emptyMessage={emptyMessage}
+        horizontalPadding={horizontalPadding}
+      />
+    );
+  }
 
   return (
     <FeedFlashList
@@ -227,7 +273,7 @@ function ProfileFeedBody({
       isFetchingNextPage={isFetchingNextPage}
       isFetching={isFetching}
       onLoadMore={fetchNextPage}
-      listHorizontalInset={PROFILE_HORIZONTAL_PADDING}
+      listHorizontalInset={horizontalPadding}
       mediaEdgeBleed={false}
     />
   );

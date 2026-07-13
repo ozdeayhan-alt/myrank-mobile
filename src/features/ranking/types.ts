@@ -14,6 +14,9 @@ export type PostComment = {
   actorId: string;
   commentText: string;
   createdAt: string;
+  parentCommentId?: string;
+  replyToActorId?: string;
+  replyToDisplayName?: string;
   actorDisplayName?: string;
   actorPhotoURL?: string;
 };
@@ -22,6 +25,7 @@ export type InteractionRequest = {
   postId: string;
   type: InteractionType;
   commentText?: string;
+  parentCommentId?: string;
 };
 
 export type EngagementStatus = {

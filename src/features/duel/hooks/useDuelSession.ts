@@ -1,12 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchDuelVoteBatch } from "../api/fetchDuelVoteBatch";
+import { applyDuelFlushResults } from "../lib/applyDuelFlushResults";
 import {
-  DUEL_COUNTDOWN_TICK_MS,
   DUEL_DURATION_MS,
+  DUEL_ROUND_TRANSITION_MS,
 } from "../constants";
-import { simulateOpponentScores } from "../lib/simulateOpponentScore";
-import type { DuelMatch, DuelSessionPhase, DuelWinnerSide } from "../types";
+import type {
+  DuelMatch,
+  DuelRoundSide,
+  DuelSessionPhase,
+  DuelWinnerSide,
+} from "../types";
 import { useDuelVoteAccumulator } from "./useDuelVoteAccumulator";
+
+const TIMER_TICK_MS = 250;
 
 function resolveWinner(deltaA: number, deltaB: number): DuelWinnerSide {
   if (deltaA > deltaB) return "a";
@@ -14,14 +21,25 @@ function resolveWinner(deltaA: number, deltaB: number): DuelWinnerSide {
   return "tie";
 }
 
+function activeSideForPhase(phase: DuelSessionPhase): DuelRoundSide | null {
+  if (phase === "round_a") return "a";
+  if (phase === "round_b") return "b";
+  return null;
+}
+
 export function useDuelSession(match: DuelMatch | null) {
   const [phase, setPhase] = useState<DuelSessionPhase>("idle");
   const [secondsLeft, setSecondsLeft] = useState(DUEL_DURATION_MS / 1000);
-  const [elapsedMs, setElapsedMs] = useState(0);
   const [winner, setWinner] = useState<DuelWinnerSide | null>(null);
+  const [winnerUpCount, setWinnerUpCount] = useState(0);
   const [flushError, setFlushError] = useState<string | null>(null);
-  const startTimeRef = useRef<number | null>(null);
+  const roundStartRef = useRef<number | null>(null);
   const finishedRef = useRef(false);
+  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+
+  const activeSide = activeSideForPhase(phase);
 
   const voteAccumulator = useDuelVoteAccumulator({
     sideA: {
@@ -32,35 +50,25 @@ export function useDuelSession(match: DuelMatch | null) {
       postId: match?.postB.id ?? "",
       initialScore: match?.postB.postScore ?? 0,
     },
-    enabled: phase === "active" && Boolean(match),
+    activeSide,
   });
 
-  const start = useCallback(() => {
-    if (!match) return;
-    finishedRef.current = false;
-    setFlushError(null);
-    setWinner(null);
-    setElapsedMs(0);
-    setSecondsLeft(DUEL_DURATION_MS / 1000);
-    startTimeRef.current = Date.now();
-    setPhase("active");
-    voteAccumulator.publish();
-  }, [match, voteAccumulator]);
+  const voteAccumulatorRef = useRef(voteAccumulator);
+  voteAccumulatorRef.current = voteAccumulator;
 
-  const finish = useCallback(async (options?: { silent?: boolean }) => {
-    if (!match || finishedRef.current) {
+  const clearTransitionTimer = useCallback(() => {
+    if (transitionTimerRef.current) {
+      clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
+    }
+  }, []);
+
+  const flushVotes = useCallback(async () => {
+    if (!match) {
       return;
     }
-    finishedRef.current = true;
 
-    const { deltaA, deltaB } = voteAccumulator.getPendingDeltas();
-    if (!options?.silent) {
-      setWinner(resolveWinner(deltaA, deltaB));
-      setPhase("finished");
-    } else {
-      setPhase("idle");
-    }
-
+    const { deltaA, deltaB } = voteAccumulatorRef.current.getPendingDeltas();
     const votes = [];
     if (deltaA !== 0) {
       votes.push({ postId: match.postA.id, delta: deltaA });
@@ -74,57 +82,137 @@ export function useDuelSession(match: DuelMatch | null) {
     }
 
     try {
-      await fetchDuelVoteBatch(votes);
-      voteAccumulator.resetPending();
+      const response = await fetchDuelVoteBatch(votes);
+      voteAccumulatorRef.current.commitFlushResults(response.results);
+      applyDuelFlushResults(response.results);
+      setFlushError(null);
     } catch (err) {
       setFlushError(err instanceof Error ? err.message : "Oy gönderilemedi");
     }
-  }, [match, voteAccumulator]);
+  }, [match]);
+
+  const finishRef = useRef<(options?: { silent?: boolean }) => Promise<void>>(
+    async () => {}
+  );
+
+  finishRef.current = async (options?: { silent?: boolean }) => {
+    if (!match || finishedRef.current) {
+      return;
+    }
+    finishedRef.current = true;
+    clearTransitionTimer();
+
+    const { deltaA, deltaB } = voteAccumulatorRef.current.getPendingDeltas();
+    const { upA, upB } = voteAccumulatorRef.current.getUpCounts();
+    if (!options?.silent) {
+      const resolvedWinner = resolveWinner(deltaA, deltaB);
+      setWinner(resolvedWinner);
+      setWinnerUpCount(
+        resolvedWinner === "a" ? upA : resolvedWinner === "b" ? upB : 0
+      );
+      setPhase("finished");
+    } else {
+      setPhase("idle");
+    }
+
+    await flushVotes();
+  };
+
+  const beginRoundRef = useRef<(round: DuelRoundSide) => void>(() => {});
+  beginRoundRef.current = (round: DuelRoundSide) => {
+    roundStartRef.current = Date.now();
+    setSecondsLeft(DUEL_DURATION_MS / 1000);
+    setPhase(round === "a" ? "round_a" : "round_b");
+  };
+
+  const start = useCallback(() => {
+    if (!match) return;
+    finishedRef.current = false;
+    setFlushError(null);
+    setWinner(null);
+    setWinnerUpCount(0);
+    voteAccumulatorRef.current.resetVoteStats();
+    voteAccumulatorRef.current.publish();
+    beginRoundRef.current("a");
+  }, [match]);
+
+  const skipToNextRound = useCallback(() => {
+    clearTransitionTimer();
+    const current = phaseRef.current;
+    if (current === "round_a") {
+      beginRoundRef.current("b");
+      return;
+    }
+    if (current === "round_b") {
+      void finishRef.current();
+    }
+  }, [clearTransitionTimer]);
+
+  const reset = useCallback(() => {
+    clearTransitionTimer();
+    finishedRef.current = false;
+    setFlushError(null);
+    setWinner(null);
+    setWinnerUpCount(0);
+    setPhase("idle");
+    setSecondsLeft(DUEL_DURATION_MS / 1000);
+    roundStartRef.current = null;
+    voteAccumulatorRef.current.resetVoteStats();
+  }, [clearTransitionTimer]);
 
   useEffect(() => {
-    if (phase !== "active" || !match) {
+    if (phase !== "round_a" && phase !== "round_b") {
       return;
     }
 
-    const tick = setInterval(() => {
-      const startedAt = startTimeRef.current ?? Date.now();
+    const tick = () => {
+      const startedAt = roundStartRef.current ?? Date.now();
       const elapsed = Date.now() - startedAt;
-      setElapsedMs(elapsed);
       const remainingMs = Math.max(0, DUEL_DURATION_MS - elapsed);
       setSecondsLeft(Math.ceil(remainingMs / 1000));
 
       if (remainingMs <= 0) {
-        clearInterval(tick);
-        void finish();
+        const currentPhase = phaseRef.current;
+        if (currentPhase === "round_a") {
+          setPhase("transition");
+          transitionTimerRef.current = setTimeout(() => {
+            transitionTimerRef.current = null;
+            beginRoundRef.current("b");
+          }, DUEL_ROUND_TRANSITION_MS);
+          return;
+        }
+
+        if (currentPhase === "round_b") {
+          void finishRef.current();
+        }
       }
-    }, DUEL_COUNTDOWN_TICK_MS);
+    };
 
-    return () => clearInterval(tick);
-  }, [phase, match, finish]);
+    tick();
+    const intervalId = setInterval(tick, TIMER_TICK_MS);
+    return () => clearInterval(intervalId);
+  }, [phase]);
 
-  const opponentScores = useMemo(() => {
-    if (!match || phase !== "active") {
-      return { scoreA: 0, scoreB: 0 };
-    }
-    return simulateOpponentScores(
-      elapsedMs,
-      voteAccumulator.netA,
-      voteAccumulator.netB,
-      match.matchId
-    );
-  }, [match, phase, elapsedMs, voteAccumulator.netA, voteAccumulator.netB]);
+  useEffect(() => () => clearTransitionTimer(), [clearTransitionTimer]);
+
+  const finish = useCallback(
+    (options?: { silent?: boolean }) => finishRef.current(options),
+    []
+  );
 
   return {
     phase,
     secondsLeft,
-    elapsedMs,
     winner,
+    winnerUpCount,
     flushError,
-    opponentScores,
+    activeSide,
     userNetA: voteAccumulator.netA,
     userNetB: voteAccumulator.netB,
     start,
     finish,
+    reset,
+    skipToNextRound,
     registerUpA: voteAccumulator.registerUpA,
     registerDownA: voteAccumulator.registerDownA,
     registerUpB: voteAccumulator.registerUpB,

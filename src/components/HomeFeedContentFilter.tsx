@@ -6,6 +6,7 @@ import type { HomeContentFilter } from "@/features/posts/utils/filterPostsByCont
 const OPTIONS: { id: HomeContentFilter; label: string }[] = [
   { id: "tweet", label: CONTENT_TYPE_LABELS.tweet },
   { id: "image", label: CONTENT_TYPE_LABELS.image },
+  { id: "flow", label: CONTENT_TYPE_LABELS.flow },
 ];
 
 type HomeFeedContentFilterProps = {
@@ -25,9 +26,13 @@ export function HomeFeedContentFilter({
         return (
           <Pressable
             key={option.id}
-            onPress={() =>
-              onContentFilterChange(selected ? null : option.id)
-            }
+            onPress={() => {
+              if (option.id === "flow") {
+                onContentFilterChange(selected ? null : "flow");
+                return;
+              }
+              onContentFilterChange(selected ? null : option.id);
+            }}
             className={`flex-1 items-center rounded-full py-2.5 ${
               selected ? "bg-white shadow-sm" : ""
             }`}

@@ -1,4 +1,7 @@
-import { getPostActionBarLayout } from "./postActionBarLayout";
+import {
+  estimatePostActionBarSingleRowMinWidth,
+  getPostActionBarLayout,
+} from "./postActionBarLayout";
 
 describe("getPostActionBarLayout", () => {
   it("uses single row on wide screens", () => {
@@ -6,12 +9,26 @@ describe("getPostActionBarLayout", () => {
 
     expect(layout.stacked).toBe(false);
     expect(layout.voteDiameter).toBe(44);
+    expect(layout.actionLabelMaxWidth).toBe(80);
+    expect(layout.voteCenterOffsetX).toBe(-47);
   });
 
-  it("stacks vote row on Samsung A12 width (~360dp)", () => {
+  it("keeps vote centered with share left of Alçalt at Samsung A12 (~360dp)", () => {
     const layout = getPostActionBarLayout(360);
 
-    expect(layout.stacked).toBe(true);
+    expect(layout.stacked).toBe(false);
     expect(layout.voteDiameter).toBe(36);
+    expect(layout.actionLabelMaxWidth).toBe(64);
+    expect(layout.shareCenterOffsetX).toBeLessThan(layout.voteCenterOffsetX);
+    expect(estimatePostActionBarSingleRowMinWidth(layout.voteDiameter)).toBeLessThanOrEqual(
+      360
+    );
+  });
+
+  it("stacks only on extremely narrow widths", () => {
+    const layout = getPostActionBarLayout(260);
+
+    expect(layout.stacked).toBe(true);
+    expect(layout.voteDiameter).toBe(32);
   });
 });

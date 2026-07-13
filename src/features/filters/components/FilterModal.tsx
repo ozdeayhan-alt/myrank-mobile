@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { UserMetadata } from "@/features/profile/types";
 import {
   getFieldConfig,
@@ -20,6 +21,8 @@ type FilterModalProps = {
   onApply: (value: string | number | null) => void;
   onClose: () => void;
   allowCustomValue?: boolean;
+  /** Keşfet/sıralama: tüm segment filtrelerini sıfırla */
+  onResetToGlobal?: () => void;
 };
 
 export function FilterModal({
@@ -31,7 +34,10 @@ export function FilterModal({
   onApply,
   onClose,
   allowCustomValue = true,
+  onResetToGlobal,
 }: FilterModalProps) {
+  const insets = useSafeAreaInsets();
+  const sheetBottomPad = Math.max(insets.bottom, 12) + 16;
   const [searchQuery, setSearchQuery] = useState("");
   const [customValue, setCustomValue] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -114,89 +120,107 @@ export function FilterModal({
     >
       <Pressable className="flex-1 justify-end bg-black/40" onPress={onClose}>
         <Pressable
-          className="max-h-[75%] rounded-t-3xl bg-white px-5 pb-8 pt-5"
+          className="max-h-[75%] rounded-t-3xl bg-white"
+          style={{ paddingBottom: sheetBottomPad }}
           onPress={(e) => e.stopPropagation()}
         >
-          <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-gray-900">{title}</Text>
-            <Pressable onPress={onClose} hitSlop={12}>
-              <Text className="text-base font-semibold text-gray-700">
-                Kapat
+          <View className="px-5 pt-5">
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="text-lg font-bold text-gray-900">{title}</Text>
+              <Pressable onPress={onClose} hitSlop={12}>
+                <Text className="text-base font-semibold text-gray-700">
+                  Kapat
+                </Text>
+              </Pressable>
+            </View>
+
+            {cityRequiresCountry ? (
+              <Text className="mb-4 text-sm text-gray-500">
+                Şehir seçmek için önce ülke seçin.
               </Text>
-            </Pressable>
+            ) : null}
+
+            {filterType === "searchable" && !isAge && !cityRequiresCountry ? (
+              <TextInput
+                className="mb-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
+                placeholder={`${title} ara…`}
+                placeholderTextColor="#9CA3AF"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
+            ) : null}
+
+            {isAge && allowCustomValue ? (
+              <TextInput
+                className="mb-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
+                placeholder="Yaş girin (1–120)"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="number-pad"
+                value={customValue}
+                onChangeText={(text) => {
+                  setCustomValue(text);
+                  setValidationError(null);
+                }}
+                onSubmitEditing={handleApplyCustom}
+                returnKeyType="done"
+              />
+            ) : filterType === "searchable" && allowCustomValue && !cityRequiresCountry ? (
+              <TextInput
+                className="mb-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
+                placeholder={`Özel ${title.toLowerCase()} yazın`}
+                placeholderTextColor="#9CA3AF"
+                value={customValue}
+                onChangeText={setCustomValue}
+                onSubmitEditing={handleApplyCustom}
+                returnKeyType="done"
+                autoCapitalize="words"
+              />
+            ) : null}
+
+            {validationError ? (
+              <Text className="mb-2 text-sm text-red-600">{validationError}</Text>
+            ) : null}
           </View>
 
-          {cityRequiresCountry ? (
-            <Text className="mb-4 text-sm text-gray-500">
-              Şehir seçmek için önce ülke seçin.
-            </Text>
-          ) : null}
-
-          {filterType === "searchable" && !isAge && !cityRequiresCountry ? (
-            <TextInput
-              className="mb-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
-              placeholder={`${title} ara…`}
-              placeholderTextColor="#9CA3AF"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoCapitalize="words"
-              autoCorrect={false}
-            />
-          ) : null}
-
-          {isAge && allowCustomValue ? (
-            <TextInput
-              className="mb-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
-              placeholder="Yaş girin (1–120)"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="number-pad"
-              value={customValue}
-              onChangeText={(text) => {
-                setCustomValue(text);
-                setValidationError(null);
-              }}
-            />
-          ) : filterType === "searchable" && allowCustomValue && !cityRequiresCountry ? (
-            <TextInput
-              className="mb-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
-              placeholder={`Özel ${title.toLowerCase()} yazın`}
-              placeholderTextColor="#9CA3AF"
-              value={customValue}
-              onChangeText={setCustomValue}
-              autoCapitalize="words"
-            />
-          ) : null}
-
-          {validationError ? (
-            <Text className="mb-2 text-sm text-red-600">{validationError}</Text>
+          {!cityRequiresCountry ? (
+            <View className="px-5">
+              <FilterModalOptionsList
+                field={field}
+                filters={filters}
+                options={options}
+                isAge={isAge}
+                onSelectOption={handleSelectOption}
+              />
+            </View>
           ) : null}
 
           {!cityRequiresCountry ? (
-            <FilterModalOptionsList
-              field={field}
-              filters={filters}
-              options={options}
-              isAge={isAge}
-              onSelectOption={handleSelectOption}
-            />
-          ) : null}
-
-          {!cityRequiresCountry ? (
-            <View className="mt-4 flex-row gap-3">
+            <View className="mt-4 flex-row gap-3 px-5">
               <Pressable
                 className="flex-1 items-center rounded-xl border border-gray-200 py-3"
                 onPress={handleClear}
               >
                 <Text className="font-semibold text-gray-600">Temizle</Text>
               </Pressable>
-              {(isAge || (filterType === "searchable" && allowCustomValue)) && (
+              {onResetToGlobal ? (
+                <Pressable
+                  className="flex-1 items-center rounded-xl border border-gray-200 bg-white py-3"
+                  onPress={onResetToGlobal}
+                >
+                  <Text className="font-semibold text-gray-900">
+                    Global&apos;e Dön
+                  </Text>
+                </Pressable>
+              ) : (isAge || (filterType === "searchable" && allowCustomValue)) ? (
                 <Pressable
                   className="flex-1 items-center rounded-xl border border-gray-200 bg-white py-3"
                   onPress={handleApplyCustom}
                 >
                   <Text className="font-semibold text-gray-900">Uygula</Text>
                 </Pressable>
-              )}
+              ) : null}
             </View>
           ) : null}
         </Pressable>

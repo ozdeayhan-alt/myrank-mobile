@@ -16,6 +16,7 @@ import {
 import { fetchPostsByHashtagPage } from "@/features/posts/api/fetchPostsByHashtagPage";
 import type { HashtagPostsPage } from "@/features/posts/api/fetchPostsByHashtagPage";
 import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
+import { mapPostsToLegacyFeedItems } from "@/features/flow/utils/groupPostsForMixedFeed";
 import { normalizeHashtag } from "@/features/posts/utils/parsePostContent";
 import { patchPostInPages } from "@/features/posts/utils/patchPostInCache";
 import type { PostCounts } from "@/features/ranking/types";
@@ -49,11 +50,7 @@ export default function HashtagScreen() {
 
   const feedItems = useMemo(
     (): FeedListItem[] =>
-      filterPostsByContentType(posts, null).map((post) => ({
-        kind: "post" as const,
-        key: post.id,
-        post,
-      })),
+      mapPostsToLegacyFeedItems(filterPostsByContentType(posts, null)),
     [posts]
   );
 

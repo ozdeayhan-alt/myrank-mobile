@@ -1,5 +1,7 @@
 import type { Post } from "@/features/posts/types";
 
+import type { PostCounts } from "@/features/ranking/types";
+
 export type DuelMatch = {
   matchId: string;
   postA: Post;
@@ -19,8 +21,16 @@ export type DuelVoteBatchResult = {
   delta: number;
   appliedDelta?: number;
   requestedDelta?: number;
+  counts?: PostCounts;
 };
 
 export type DuelWinnerSide = "a" | "b" | "tie";
 
-export type DuelSessionPhase = "idle" | "active" | "finished";
+export type DuelRoundSide = "a" | "b";
+
+export type DuelSessionPhase =
+  | "idle"
+  | "round_a"
+  | "transition"
+  | "round_b"
+  | "finished";

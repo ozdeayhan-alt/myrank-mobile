@@ -18,11 +18,13 @@ import {
   formatFilterDisplayTitle,
   useMetadataFilters,
 } from "@/features/filters";
+import { getFilterSegmentLabel } from "@/features/filters/utils/segmentLabel";
 import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
+import { DEFAULT_LIST_HORIZONTAL_INSET } from "@/features/posts/constants/feedMediaLayout";
 import { hasActiveSegmentFilters } from "@/features/posts/api/matchesSegmentFilters";
 import type { HomeFeedContentFilter } from "@/features/posts/store/useHomeFeedContentStore";
 import {
@@ -30,12 +32,23 @@ import {
   useUserSearch,
   UserSearchResults,
 } from "@/features/search";
+import { isFeedV2Enabled } from "@/lib/featureFlags/feedFlags";
+import { FlowFeedScreen } from "@/features/flow/components/FlowFeedScreen";
+import { usePrefetchFlowFeed } from "@/features/flow/hooks/usePrefetchFlowFeed";
+import { mapPostsToLegacyFeedItems } from "@/features/flow/utils/groupPostsForMixedFeed";
+import {
+  FeedScroller,
+  useExploreFeedEngine,
+  type FeedV2ListItem,
+} from "@/features/feed-v2";
 
 export default function ExploreScreen() {
   const { user } = useAuth();
   const isFocused = useIsFocused();
-  const listRef = useRef<FlashListRef<FeedListItem>>(null);
-  useScrollToTop(listRef);
+  const feedV2 = isFeedV2Enabled(user?.uid ?? null);
+  const legacyListRef = useRef<FlashListRef<FeedListItem>>(null);
+  const v2ListRef = useRef<FlashListRef<FeedV2ListItem>>(null);
+  useScrollToTop(feedV2 ? v2ListRef : legacyListRef);
 
   const [searchPanelOpen, setSearchPanelOpen] = useState(false);
   const [contentFilter, setContentFilter] = useState<HomeFeedContentFilter>(null);
@@ -71,8 +84,15 @@ export default function ExploreScreen() {
   } = useMetadataFilters({ initialFilters: DEFAULT_COUNTRY_FILTERS });
 
   const showSearchUI = searchPanelOpen || isSearchActive;
-  const feedEnabled = !showSearchUI;
+  const isFlowMode = contentFilter === "flow" && !showSearchUI;
+  const feedEnabled = !showSearchUI && !isFlowMode;
   const apiContentType = toFeedApiContentType(contentFilter);
+
+  usePrefetchFlowFeed({
+    variant: "explore",
+    filters,
+    enabled: isFocused && !isFlowMode && !showSearchUI,
+  });
 
   const {
     posts,
@@ -85,8 +105,18 @@ export default function ExploreScreen() {
     isFetching,
     fetchNextPage,
     isRefetching,
-    engagementResetKey,
-  } = useExploreFeedInfinite(filters, apiContentType, feedEnabled);
+  } = useExploreFeedInfinite(filters, apiContentType, feedEnabled && !feedV2);
+
+  const v2Engine = useExploreFeedEngine(
+    filters,
+    apiContentType,
+    feedEnabled && feedV2
+  );
+
+  const engagementResetKey = useMemo(
+    () => `${getFilterSegmentLabel(filters)}-${apiContentType}`,
+    [filters, apiContentType]
+  );
 
   const isGlobal = !filters || !hasActiveSegmentFilters(filters);
 
@@ -112,19 +142,23 @@ export default function ExploreScreen() {
       !showSearchUI &&
       prevSearchQuery.current.trim().length > 0
     ) {
-      void refresh();
+      void (feedV2 ? v2Engine.refresh() : refresh());
     }
     prevShowSearchUI.current = showSearchUI;
     prevSearchQuery.current = searchQuery;
-  }, [showSearchUI, searchQuery, refresh]);
+  }, [showSearchUI, searchQuery, refresh, feedV2, v2Engine]);
 
   const emptyMessage = useMemo(() => {
+    if (contentFilter === "flow") {
+      return "Bu akışta henüz Flow yok.";
+    }
     if (contentFilter === "tweet" || contentFilter === "image") {
       return getEmptyFeedMessage(contentFilter);
     }
-    return isGlobal
-      ? "Henüz gönderi yok."
-      : "Bu filtrelere uyan gönderi bulunamadı.";
+    if (isGlobal) {
+      return "Henüz gönderi yok. Düello kartı en az bir gönderi olduğunda feed içinde görünür.";
+    }
+    return "Bu filtrelere uyan gönderi bulunamadı. Düello kartı gönderi listesi boşken gösterilmez.";
   }, [isGlobal, contentFilter]);
 
   const listHeader = useMemo(
@@ -151,7 +185,7 @@ export default function ExploreScreen() {
 
   const feedListContentStyle = useMemo(
     () => ({
-      paddingHorizontal: 16,
+      paddingHorizontal: DEFAULT_LIST_HORIZONTAL_INSET,
       paddingTop: 0,
       paddingBottom: 16,
     }),
@@ -159,18 +193,17 @@ export default function ExploreScreen() {
   );
 
   const feedItems = useMemo(
-    (): FeedListItem[] =>
-      posts.map((post) => ({
-        kind: "post" as const,
-        key: post.id,
-        post,
-      })),
+    (): FeedListItem[] => mapPostsToLegacyFeedItems(posts),
     [posts]
   );
 
   const handleRefresh = useCallback(() => {
-    void refresh();
-  }, [refresh]);
+    if (feedV2) {
+      void v2Engine.refresh();
+    } else {
+      void refresh();
+    }
+  }, [feedV2, refresh, v2Engine]);
 
   return (
     <>
@@ -182,6 +215,7 @@ export default function ExploreScreen() {
         filters={filtersForModal}
         onApply={applyField}
         onClose={closeModal}
+        onResetToGlobal={resetToGlobal}
       />
 
       <TabScreenSafeArea className="flex-1 bg-gray-50">
@@ -212,6 +246,40 @@ export default function ExploreScreen() {
               error={searchError}
             />
           </View>
+        ) : isFlowMode ? (
+          <View className="min-h-0 flex-1">
+            <FlowFeedScreen
+              variant="explore"
+              filters={filters}
+              enabled={isFocused}
+              ListHeaderComponent={listHeader}
+              emptyMessage={emptyMessage}
+            />
+          </View>
+        ) : feedV2 ? (
+          <View className="min-h-0 flex-1">
+            <FeedScroller
+              items={v2Engine.items}
+              loading={v2Engine.loading}
+              error={v2Engine.error}
+              emptyMessage={emptyMessage}
+              onRefresh={handleRefresh}
+              onScoreUpdate={v2Engine.updatePostScore}
+              ListHeaderComponent={listHeader}
+              contentContainerStyle={feedListContentStyle}
+              hasNextPage={v2Engine.hasNextPage}
+              isFetchingNextPage={v2Engine.isFetchingNextPage}
+              isFetching={v2Engine.isFetching}
+              onLoadMore={v2Engine.fetchNextPage}
+              isRefetching={v2Engine.isRefetching}
+              engagementResetKey={engagementResetKey}
+              listKey={engagementResetKey}
+              listRef={v2ListRef}
+              currentUserId={user?.uid ?? null}
+              exploreFilters={filters}
+              prefetchEnabled={isFocused}
+            />
+          </View>
         ) : (
           <View className="min-h-0 flex-1">
             <FeedFlashList
@@ -230,7 +298,7 @@ export default function ExploreScreen() {
               isRefetching={isRefetching}
               engagementResetKey={engagementResetKey}
               listKey={engagementResetKey}
-              listRef={listRef}
+              listRef={legacyListRef}
               currentUserId={user?.uid ?? null}
               exploreFilters={filters}
               prefetchEnabled={isFocused}

@@ -35,4 +35,19 @@ describe("mapPostDoc", () => {
       content: "orijinal",
     });
   });
+
+  it("maps link fields on whisp posts", () => {
+    expect(
+      mapPostDoc("post-2", {
+        authorId: "user-1",
+        contentType: "tweet",
+        content: "selam",
+        linkUrl: "https://example.com/haber",
+        linkTitle: "Örnek haber",
+      })
+    ).toMatchObject({
+      linkUrl: "https://example.com/haber",
+      linkTitle: "Örnek haber",
+    });
+  });
 });

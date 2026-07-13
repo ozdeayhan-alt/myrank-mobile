@@ -8,6 +8,7 @@ export type {
 
 export { useFeedEngineState, useBufferedPosts } from "./engine/FeedEngine";
 export { useHomeFeedEngine } from "./engine/adapters/useHomeFeedEngine";
+export { useExploreFeedEngine } from "./engine/adapters/useExploreFeedEngine";
 export {
   mapPostsToFeedItems,
   resolveFeedListItemKind,

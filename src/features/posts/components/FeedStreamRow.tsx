@@ -1,15 +1,14 @@
-import type { VoteBurstDirection } from "@/components/LikeHeartBurst";
-import { memo, useCallback, useRef } from "react";
+import { memo } from "react";
 import { usePostEngagement } from "@/features/ranking/store/useEngagementStore";
 import type { EngagementStatus } from "@/features/ranking/types";
 import { useIsFeedPostMediaHighPriority } from "../context/FeedVisiblePostsContext";
 import { useOpenCommentSheet } from "../hooks/useOpenCommentSheet";
 import { usePostInteractions } from "../hooks/usePostInteractions";
+import { usePostVoteFeedback } from "../hooks/usePostVoteFeedback";
 import { useFeedInteractionStore } from "../store/useFeedInteractionStore";
 import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 import type { Post } from "../types";
 import { FeedStreamCell } from "./FeedStreamCell";
-import { type PostVoteBurstHandle } from "./PostVoteBurstLayer";
 
 type FeedStreamRowProps = PostFeedMediaLayoutOptions & {
   post: Post;
@@ -35,14 +34,12 @@ export const FeedStreamRow = memo(function FeedStreamRow({
   const openShare = useFeedInteractionStore((s) => s.openShare);
   const openOwnerMenu = useFeedInteractionStore((s) => s.openOwnerMenu);
   const openMoreMenu = useFeedInteractionStore((s) => s.openMoreMenu);
-  const burstRef = useRef<PostVoteBurstHandle>(null);
+  const { fountainRef, triggerFeedback, buttonPulseSeq, lastButtonPulse } =
+    usePostVoteFeedback();
 
-  const handlePatch = useCallback(
-    (patch: Partial<EngagementStatus>) => {
-      patchEngagement(post.id, patch);
-    },
-    [post.id, patchEngagement]
-  );
+  const handlePatch = (patch: Partial<EngagementStatus>) => {
+    patchEngagement(post.id, patch);
+  };
 
   const {
     counts,
@@ -63,24 +60,12 @@ export const FeedStreamRow = memo(function FeedStreamRow({
 
   const isOwner = Boolean(currentUserId && post.authorId === currentUserId);
 
-  const triggerVoteBurst = useCallback((direction: VoteBurstDirection) => {
-    burstRef.current?.trigger(direction);
-  }, []);
-
-  const handleLikePress = useCallback(() => {
-    handleLike();
-    triggerVoteBurst("up");
-  }, [handleLike, triggerVoteBurst]);
-
-  const handleDislikePress = useCallback(() => {
-    handleDislike();
-    triggerVoteBurst("down");
-  }, [handleDislike, triggerVoteBurst]);
-
   return (
     <FeedStreamCell
       post={post}
-      burstRef={burstRef}
+      fountainRef={fountainRef}
+      buttonPulseSeq={buttonPulseSeq}
+      lastButtonPulse={lastButtonPulse}
       counts={counts}
       shareActive={shareActive}
       saveActive={saveActive}
@@ -88,10 +73,15 @@ export const FeedStreamRow = memo(function FeedStreamRow({
       isOwner={isOwner}
       currentUserId={currentUserId}
       onLike={handleLike}
-      onLikeAnimated={() => triggerVoteBurst("up")}
-      onLikePress={handleLikePress}
-      onDislikePress={handleDislikePress}
-      onDislike={handleDislike}
+      onLikeAnimated={() => triggerFeedback("up")}
+      onLikePress={() => {
+        handleLike();
+        triggerFeedback("up");
+      }}
+      onDislikePress={() => {
+        handleDislike();
+        triggerFeedback("down");
+      }}
       onComment={() => openCommentSheet(post.id, applyCommentResult)}
       onShare={() => openShare(post)}
       onSave={handleSave}

@@ -72,6 +72,20 @@ export function mapPostDoc(id: string, data: DocumentData): Post {
     mentionUserIds: Array.isArray(data.mentionUserIds)
       ? data.mentionUserIds.map((id) => String(id))
       : undefined,
+    linkUrl: data.linkUrl ? String(data.linkUrl) : undefined,
+    linkTitle: data.linkTitle ? String(data.linkTitle) : undefined,
+    linkDescription: data.linkDescription
+      ? String(data.linkDescription)
+      : undefined,
+    linkImageUrl: data.linkImageUrl ? String(data.linkImageUrl) : undefined,
+    provider: data.provider ? String(data.provider) : undefined,
+    providerUrl: data.providerUrl ? String(data.providerUrl) : undefined,
+    providerVideoId: data.providerVideoId
+      ? String(data.providerVideoId)
+      : undefined,
+    thumbnailUrl: data.thumbnailUrl ? String(data.thumbnailUrl) : undefined,
+    title: data.title ? String(data.title) : undefined,
+    duration: typeof data.duration === "number" ? data.duration : undefined,
     createdAt: data.createdAt?.toDate?.() ?? undefined,
   };
 }

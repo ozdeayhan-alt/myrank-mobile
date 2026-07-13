@@ -1,8 +1,8 @@
 import type { UserMetadata } from "@/features/profile/types";
 
-export type PostContentType = "tweet" | "image" | "video" | "repost";
+export type PostContentType = "tweet" | "image" | "video" | "repost" | "flow";
 
-export type ShareContentType = "tweet" | "image";
+export type ShareContentType = "tweet" | "image" | "flow";
 
 export type OriginalPostSnapshot = {
   authorId: string;
@@ -14,6 +14,12 @@ export type OriginalPostSnapshot = {
   hlsURL?: string;
   posterURL?: string;
   thumbURL?: string;
+  provider?: string;
+  providerUrl?: string;
+  providerVideoId?: string;
+  thumbnailUrl?: string;
+  title?: string;
+  duration?: number;
   mediaWidth?: number;
   mediaHeight?: number;
 };
@@ -47,6 +53,16 @@ export type Post = {
   mediaHeight?: number;
   hashtags?: string[];
   mentionUserIds?: string[];
+  linkUrl?: string;
+  linkTitle?: string;
+  linkDescription?: string;
+  linkImageUrl?: string;
+  provider?: string;
+  providerUrl?: string;
+  providerVideoId?: string;
+  thumbnailUrl?: string;
+  title?: string;
+  duration?: number;
   createdAt?: Date;
 };
 
@@ -60,4 +76,9 @@ export type CreatePostInput = {
   thumbURL?: string;
   mediaWidth?: number;
   mediaHeight?: number;
+  linkUrl?: string;
+  linkTitle?: string;
+  linkDescription?: string;
+  linkImageUrl?: string;
+  providerUrl?: string;
 };

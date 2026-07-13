@@ -21,8 +21,12 @@ import {
 } from "@/features/posts/components/FeedFlashList";
 import { useHomeFeedContentStore } from "@/features/posts/store/useHomeFeedContentStore";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
+import { DEFAULT_LIST_HORIZONTAL_INSET } from "@/features/posts/constants/feedMediaLayout";
 import { isFixedSlotFeedEnabled, isFeedV2Enabled } from "@/lib/featureFlags/feedFlags";
 import { useFeedBuffer } from "@/features/feed/useFeedBuffer";
+import { FlowFeedScreen } from "@/features/flow/components/FlowFeedScreen";
+import { usePrefetchFlowFeedOnHome } from "@/features/flow/hooks/usePrefetchFlowFeedOnHome";
+import { mapPostsToLegacyFeedItems } from "@/features/flow/utils/groupPostsForMixedFeed";
 import {
   FeedScroller,
   useHomeFeedEngine,
@@ -42,17 +46,27 @@ export default function HomeScreen() {
   const setContentFilter = useHomeFeedContentStore((s) => s.setContentFilter);
 
   const [feedMode, setFeedMode] = useState<HomeFeedMode>("global");
+  const isFlowMode = contentFilter === "flow";
   const apiContentType = toFeedApiContentType(contentFilter);
+
+  usePrefetchFlowFeedOnHome({
+    feedMode,
+    enabled: isFocused && !isFlowMode,
+  });
 
   const globalFeed = useHomeFeedInfinite(
     apiContentType,
-    feedMode === "global" && !feedV2
+    feedMode === "global" && !feedV2 && !isFlowMode
   );
   const followingFeed = useFollowingFeedInfinite(
     apiContentType,
-    feedMode === "following" && !feedV2
+    feedMode === "following" && !feedV2 && !isFlowMode
   );
-  const v2Engine = useHomeFeedEngine(feedMode, contentFilter, feedV2);
+  const v2Engine = useHomeFeedEngine(
+    feedMode,
+    contentFilter,
+    feedV2 && !isFlowMode
+  );
 
   const activeFeed = feedMode === "global" ? globalFeed : followingFeed;
   const fixedSlotFeed = isFixedSlotFeedEnabled(user?.uid ?? null);
@@ -83,21 +97,20 @@ export default function HomeScreen() {
     }
     const posts =
       feedMode === "following" ? bufferedFollowingPosts : bufferedGlobalPosts;
-    return posts.map((post) => ({
-      kind: "post" as const,
-      key: post.id,
-      post,
-    }));
+    return mapPostsToLegacyFeedItems(posts);
   }, [feedV2, feedMode, bufferedFollowingPosts, bufferedGlobalPosts]);
 
   const emptyMessage = useMemo(() => {
+    if (contentFilter === "flow") {
+      return "Henüz Flow yok.";
+    }
     if (contentFilter === "tweet" || contentFilter === "image") {
       return getEmptyFeedMessage(contentFilter);
     }
     if (feedMode === "following") {
       return "Henüz kimseyi takip etmiyorsun veya takip ettiklerinden gönderi yok. Profillere gidip Takip Et'e basabilirsin.";
     }
-    return "Henüz gönderi yok. Paylaş sekmesinden ilk gönderinizi oluşturun.";
+    return "Henüz gönderi yok. Düello kartı en az bir gönderi olduğunda feed içinde görünür.";
   }, [feedMode, contentFilter]);
 
   const listHeader = useMemo(
@@ -115,12 +128,27 @@ export default function HomeScreen() {
 
   const feedListContentStyle = useMemo(
     (): StyleProp<ViewStyle> => ({
-      paddingHorizontal: 16,
+      paddingHorizontal: DEFAULT_LIST_HORIZONTAL_INSET,
       paddingTop: 0,
       paddingBottom: 16,
     }),
     []
   );
+
+  if (isFlowMode) {
+    return (
+      <TabScreenSafeArea className="flex-1 bg-white">
+        <View className="min-h-0 flex-1">
+          <FlowFeedScreen
+            variant={feedMode === "following" ? "following" : "home"}
+            enabled={isFocused}
+            ListHeaderComponent={listHeader}
+            emptyMessage={emptyMessage}
+          />
+        </View>
+      </TabScreenSafeArea>
+    );
+  }
 
   if (feedV2) {
     return (

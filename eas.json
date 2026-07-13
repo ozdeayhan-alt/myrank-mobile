@@ -22,7 +22,8 @@
       "env": {
         "APP_VARIANT": "preview",
         "EXPO_PUBLIC_API_URL": "https://myrank.com.tr",
-        "EXPO_PUBLIC_MEDIA_PROXY_ORIGIN": "https://myrank.com.tr"
+        "EXPO_PUBLIC_MEDIA_PROXY_ORIGIN": "https://myrank.com.tr",
+        "EXPO_PUBLIC_FEED_V2": "1"
       },
       "android": {
         "buildType": "apk",
@@ -38,7 +39,8 @@
       "env": {
         "APP_VARIANT": "preview",
         "EXPO_PUBLIC_API_URL": "https://staging.myrank.com.tr",
-        "EXPO_PUBLIC_MEDIA_PROXY_ORIGIN": "https://staging.myrank.com.tr"
+        "EXPO_PUBLIC_MEDIA_PROXY_ORIGIN": "https://staging.myrank.com.tr",
+        "EXPO_PUBLIC_FEED_V2": "1"
       },
       "android": {
         "buildType": "apk",
@@ -53,7 +55,8 @@
       "env": {
         "APP_VARIANT": "production",
         "EXPO_PUBLIC_API_URL": "https://myrank.com.tr",
-        "EXPO_PUBLIC_MEDIA_PROXY_ORIGIN": "https://myrank.com.tr"
+        "EXPO_PUBLIC_MEDIA_PROXY_ORIGIN": "https://myrank.com.tr",
+        "EXPO_PUBLIC_FEED_V2": "1"
       },
       "android": {
         "buildType": "app-bundle",

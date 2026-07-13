@@ -8,7 +8,7 @@ export type ShareComposerOption = {
   type: ShareContentType;
   label: string;
   hint: string;
-  icon: "chatbubble-outline" | "image-outline";
+  icon: "chatbubble-outline" | "image-outline" | "play-circle-outline";
 };
 
 export const SHARE_COMPOSER_OPTIONS: ShareComposerOption[] = [
@@ -23,5 +23,11 @@ export const SHARE_COMPOSER_OPTIONS: ShareComposerOption[] = [
     label: CONTENT_TYPE_LABELS.image,
     hint: SHARE_COMPOSER_HINTS.image,
     icon: "image-outline",
+  },
+  {
+    type: "flow",
+    label: CONTENT_TYPE_LABELS.flow,
+    hint: SHARE_COMPOSER_HINTS.flow,
+    icon: "play-circle-outline",
   },
 ];

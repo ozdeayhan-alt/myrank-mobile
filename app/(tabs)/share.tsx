@@ -31,6 +31,12 @@ const HUB_OPTIONS: HubOption[] = [
     subtitle: SHARE_HUB_SUBTITLES.image,
     icon: "image-outline",
   },
+  {
+    type: "flow",
+    title: CONTENT_TYPE_LABELS.flow,
+    subtitle: SHARE_HUB_SUBTITLES.flow,
+    icon: "play-circle-outline",
+  },
 ];
 
 function HubOptionCard({
@@ -73,12 +79,11 @@ export default function ShareScreen() {
   };
 
   if (fullScreenType) {
+    // TabScreenSafeArea already pads for the tab bar — do not add tabBarInset again
+    // or the Share button sits under ~2cm of empty white space.
     return (
       <TabScreenSafeArea className="flex-1 bg-white">
-        <View
-          className="flex-1 px-5 pt-2"
-          style={{ flex: 1, paddingBottom: tabBarInset + 8 }}
-        >
+        <View className="flex-1 px-5 pt-2" style={{ flex: 1 }}>
           <ShareComposer
             key={fullScreenType}
             initialType={fullScreenType}

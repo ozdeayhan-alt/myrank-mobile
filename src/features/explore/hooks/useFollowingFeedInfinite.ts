@@ -58,7 +58,7 @@ export function useFollowingFeedInfinite(
   }, [followingQuery.error]);
 
   const refresh = useCallback(async () => {
-    await invalidateServerFeedCache();
+    void invalidateServerFeedCache();
     await queryClient.invalidateQueries({ queryKey: [...HOME_FOLLOWING_KEY] });
   }, [queryClient]);
 

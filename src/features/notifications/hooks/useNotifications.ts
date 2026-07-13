@@ -29,6 +29,7 @@ export function useNotifications(
   return {
     notifications: query.data ?? [],
     loading: query.isLoading && query.data === undefined,
+    isFetching: query.isFetching,
     error: query.error ? getUserFacingErrorMessage(query.error) : null,
     refresh: query.refetch,
   };

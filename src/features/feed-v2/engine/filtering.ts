@@ -1,9 +1,10 @@
 import type { Post } from "@/features/posts/types";
 import { resolvePostContentType } from "@/features/posts/utils/filterPostsByContentType";
 import { isRepostPost } from "@/features/posts/utils/repostUtils";
-import type { FeedListItemKind, FeedV2ListItem } from "./FeedEngine.types";
+import { groupPostsForMixedFeed } from "@/features/flow/utils/groupPostsForMixedFeed";
+import type { FeedListItemKind, FeedV2ListItem, PostFeedListItemKind } from "./FeedEngine.types";
 
-export function resolveFeedListItemKind(post: Post): FeedListItemKind {
+export function resolveFeedListItemKind(post: Post): PostFeedListItemKind {
   if (isRepostPost(post)) {
     return "repost";
   }
@@ -17,9 +18,19 @@ export function resolveFeedListItemKind(post: Post): FeedListItemKind {
 }
 
 export function mapPostsToFeedItems(posts: Post[]): FeedV2ListItem[] {
-  return posts.map((post) => ({
-    kind: resolveFeedListItemKind(post),
-    key: post.id,
-    post,
-  }));
+  return groupPostsForMixedFeed(posts).map((item) => {
+    if (item.kind === "flow_grid") {
+      return {
+        kind: "flow_grid",
+        key: item.key,
+        posts: item.posts,
+      };
+    }
+
+    return {
+      kind: resolveFeedListItemKind(item.post),
+      key: item.key,
+      post: item.post,
+    };
+  });
 }

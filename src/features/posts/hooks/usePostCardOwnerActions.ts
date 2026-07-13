@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import type { ReportReason } from "@/features/blocks/api/reportContent";
 import { reportContent } from "@/features/blocks/api/reportContent";
@@ -37,6 +37,15 @@ export function usePostCardOwnerActions({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [reportMenuOpen, setReportMenuOpen] = useState(false);
   const [ownerActionLoading, setOwnerActionLoading] = useState(false);
+
+  useEffect(() => {
+    setContentOverride(null);
+    setEditOpen(false);
+    setOwnerMenuOpen(false);
+    setMoreMenuOpen(false);
+    setDeleteConfirmOpen(false);
+    setReportMenuOpen(false);
+  }, [post.id]);
 
   const displayPost = useMemo(
     () =>

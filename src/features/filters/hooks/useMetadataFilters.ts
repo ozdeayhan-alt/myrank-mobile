@@ -62,6 +62,11 @@ export function useMetadataFilters(options: UseMetadataFiltersOptions = {}) {
     setActiveField(null);
   }, [profileMetadata]);
 
+  const replaceFilters = useCallback((next: UserMetadata | null) => {
+    setFilters(next);
+    setActiveField(null);
+  }, []);
+
   const activeConfig = getFieldConfig(activeField);
 
   const filtersForModal = filters ?? { ...EMPTY_METADATA };
@@ -76,5 +81,6 @@ export function useMetadataFilters(options: UseMetadataFiltersOptions = {}) {
     applyField,
     resetToGlobal,
     resetToProfile,
+    replaceFilters,
   };
 }

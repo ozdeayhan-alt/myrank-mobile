@@ -2,7 +2,7 @@ import {
   getProfileScoreCardWidth,
   getProfileSegmentGaugeLayout,
   getProfileVoteControlLayout,
-  PROFILE_HORIZONTAL_PADDING,
+  getProfileHorizontalPadding,
 } from "./profileLayout";
 
 describe("getProfileSegmentGaugeLayout", () => {
@@ -24,12 +24,15 @@ describe("getProfileSegmentGaugeLayout", () => {
     expect(layout.gaugeWidth).toBeGreaterThanOrEqual(240);
     expect(layout.gaugeWidth).toBeLessThanOrEqual(layout.containerWidth);
     expect(layout.barStroke).toBeGreaterThanOrEqual(4);
+    expect(layout.stackedMeta).toBe(false);
   });
 
-  it("respects large font scale without overflowing content", () => {
+  it("respects large font scale without shrinking gauge or stacking meta", () => {
     const layout = getProfileSegmentGaugeLayout(360, 1.3);
 
     expect(layout.gaugeWidth).toBeLessThanOrEqual(360);
+    expect(layout.gaugeWidth).toBeGreaterThanOrEqual(240);
+    expect(layout.stackedMeta).toBe(false);
   });
 });
 
@@ -41,7 +44,7 @@ describe("getProfileVoteControlLayout", () => {
     expect(layout.voteDiameter).toBe(54);
     expect(layout.sideDiameter).toBe(54);
     expect(layout.sideButtonHeight).toBeLessThan(layout.voteDiameter);
-    expect(layout.sideButtonMaxWidth).toBeGreaterThanOrEqual(96);
+    expect(layout.sideButtonMaxWidth).toBeGreaterThanOrEqual(88);
     expect(layout.sideButtonMaxWidth).toBeLessThanOrEqual(112);
   });
 
@@ -55,12 +58,13 @@ describe("getProfileVoteControlLayout", () => {
       layout.centerNudge;
 
     expect(layout.stacked).toBe(false);
-    expect(rowWidth).toBeLessThanOrEqual(contentWidth);
+    expect(rowWidth).toBeLessThanOrEqual(contentWidth - 6);
     expect(layout.voteDiameter).toBeLessThanOrEqual(54);
   });
 
   it("fits very narrow content width without overlapping side buttons", () => {
-    const screenWidth = PROFILE_HORIZONTAL_PADDING * 2 + 240;
+    const screenWidth =
+      getProfileHorizontalPadding(288) * 2 + 240;
     const layout = getProfileVoteControlLayout(screenWidth);
     const contentWidth = getProfileScoreCardWidth(screenWidth);
 

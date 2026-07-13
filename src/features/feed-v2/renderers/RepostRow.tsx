@@ -3,6 +3,7 @@ import { Text, View, useWindowDimensions } from "react-native";
 import type { EngagementStatus } from "@/features/ranking/types";
 import type { Post } from "@/features/posts/types";
 import { FeedPostErrorBoundary } from "@/features/posts/components/FeedPostErrorBoundary";
+import { WHISP_BODY_TEXT_CLASS } from "@/features/posts/constants/whispTypography";
 import { RichPostText } from "@/features/posts/components/RichPostText";
 import { DEFAULT_LIST_HORIZONTAL_INSET } from "@/features/posts/constants/feedMediaLayout";
 import {
@@ -47,7 +48,11 @@ function EmbeddedRepostContent({
     }
     return (
       <View className="px-4 pb-3">
-        <RichPostText content={text} currentUserId={currentUserId} />
+        <RichPostText
+          content={text}
+          className={WHISP_BODY_TEXT_CLASS}
+          currentUserId={currentUserId}
+        />
       </View>
     );
   }

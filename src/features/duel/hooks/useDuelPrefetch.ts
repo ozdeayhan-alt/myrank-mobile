@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useDuelPrefetchStore } from "../store/useDuelPrefetchStore";
 
-/** Prefetch duel match + images when feed card becomes visible. */
-export function useDuelCardPrefetch(visible: boolean) {
-  const prefetch = useDuelPrefetchStore((s) => s.prefetch);
-  const readyMatch = useDuelPrefetchStore((s) => s.readyMatch);
-  const isFetching = useDuelPrefetchStore((s) => s.isFetching);
+/** Prefetch duel match + images when a feed card becomes visible. */
+export function useDuelCardPrefetch(cardKey: string, visible: boolean) {
+  const prefetchForCard = useDuelPrefetchStore((s) => s.prefetchForCard);
+  const readyMatch = useDuelPrefetchStore((s) => s.cardMatches[cardKey] ?? null);
+  const isFetching = useDuelPrefetchStore((s) => s.cardFetching[cardKey] ?? false);
   const triggeredRef = useRef(false);
 
   useEffect(() => {
@@ -17,29 +17,28 @@ export function useDuelCardPrefetch(visible: boolean) {
       return;
     }
     triggeredRef.current = true;
-    void prefetch();
-  }, [visible, readyMatch, isFetching, prefetch]);
+    void prefetchForCard(cardKey);
+  }, [cardKey, visible, readyMatch, isFetching, prefetchForCard]);
 
-  return { ready: Boolean(readyMatch), isFetching };
+  return { ready: Boolean(readyMatch), isFetching, match: readyMatch };
 }
 
-export function useDuelJoin() {
-  const consumeReady = useDuelPrefetchStore((s) => s.consumeReady);
-  const prefetch = useDuelPrefetchStore((s) => s.prefetch);
-  const setReady = useDuelPrefetchStore((s) => s.setReady);
+export function useDuelJoin(cardKey: string) {
+  const consumeCardMatch = useDuelPrefetchStore((s) => s.consumeCardMatch);
+  const prefetchForCard = useDuelPrefetchStore((s) => s.prefetchForCard);
+  const getMatchForCard = useDuelPrefetchStore((s) => s.getMatchForCard);
 
-  const resolveMatch = useCallback(async () => {
-    const cached = consumeReady();
+  const resolveMatch = async () => {
+    const cached = getMatchForCard(cardKey);
     if (cached) {
-      return cached;
+      return consumeCardMatch(cardKey);
     }
-    const fetched = await prefetch();
+    const fetched = await prefetchForCard(cardKey);
     if (fetched) {
-      consumeReady();
-      return fetched;
+      return consumeCardMatch(cardKey);
     }
     return null;
-  }, [consumeReady, prefetch]);
+  };
 
-  return { resolveMatch, setReady };
+  return { resolveMatch };
 }

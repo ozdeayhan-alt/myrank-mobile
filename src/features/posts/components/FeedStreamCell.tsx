@@ -1,9 +1,10 @@
 import { DoubleTapToLike } from "@/components/DoubleTapToLike";
-import { memo, type RefObject } from "react";
+import { memo } from "react";
 import { Platform, Text, View } from "react-native";
 import type { PostCounts } from "@/features/ranking/types";
 import { ui } from "@/lib/uiClasses";
 import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
+import type { PostVoteButtonPulse } from "../hooks/usePostVoteFeedback";
 import type { Post } from "../types";
 import { postBodyText } from "../utils/postBodyText";
 import {
@@ -14,15 +15,18 @@ import { EmbeddedOriginalPost } from "./EmbeddedOriginalPost";
 import { FeedStreamMedia } from "./FeedStreamMedia";
 import { PostCardActionBar } from "./PostCardActionBar";
 import { PostHeader } from "./PostHeader";
+import { WHISP_BODY_TEXT_CLASS } from "../constants/whispTypography";
 import { RichPostText } from "./RichPostText";
-import {
-  PostVoteBurstLayer,
-  type PostVoteBurstHandle,
-} from "./PostVoteBurstLayer";
+import { WhispLinkCard } from "./WhispLinkCard";
+import type { PostVoteFountainHandle } from "./PostVoteFountainLayer";
+import { PostVoteFountainLayer } from "./PostVoteFountainLayer";
+import type { RefObject } from "react";
 
 type FeedStreamCellProps = PostFeedMediaLayoutOptions & {
   post: Post;
-  burstRef?: RefObject<PostVoteBurstHandle | null>;
+  fountainRef: RefObject<PostVoteFountainHandle | null>;
+  buttonPulseSeq: number;
+  lastButtonPulse: PostVoteButtonPulse | null;
   counts: PostCounts;
   shareActive: boolean;
   saveActive: boolean;
@@ -33,7 +37,6 @@ type FeedStreamCellProps = PostFeedMediaLayoutOptions & {
   onLikeAnimated: () => void;
   onLikePress: () => void;
   onDislikePress: () => void;
-  onDislike: () => void;
   onComment: () => void;
   onShare: () => void;
   onSave: () => void;
@@ -44,7 +47,9 @@ type FeedStreamCellProps = PostFeedMediaLayoutOptions & {
 
 function FeedStreamCellInner({
   post,
-  burstRef,
+  fountainRef,
+  buttonPulseSeq,
+  lastButtonPulse,
   counts,
   shareActive,
   saveActive,
@@ -55,7 +60,6 @@ function FeedStreamCellInner({
   onLikeAnimated,
   onLikePress,
   onDislikePress,
-  onDislike,
   onComment,
   onShare,
   onSave,
@@ -75,14 +79,12 @@ function FeedStreamCellInner({
   return (
     <View
       className={ui.postCard}
-      style={Platform.OS === "android" ? { elevation: 2 } : undefined}
+      style={Platform.OS === "android" ? { elevation: 2, position: "relative" } : { position: "relative" }}
     >
       <PostHeader
         post={post}
         isOwner={isOwner}
         currentUserId={currentUserId}
-        onOwnerMenuPress={isOwner ? onOwnerMenu : undefined}
-        onMoreMenuPress={!isOwner ? onMoreMenu : undefined}
       />
 
       {isRepostPost(post) ? (
@@ -123,10 +125,13 @@ function FeedStreamCellInner({
             <View className="px-4 pb-3">
               <RichPostText
                 content={bodyText}
+                className={WHISP_BODY_TEXT_CLASS}
                 currentUserId={currentUserId}
               />
             </View>
           ) : null}
+
+          <WhispLinkCard post={post} />
 
           <FeedStreamMedia
             post={post}
@@ -143,8 +148,6 @@ function FeedStreamCellInner({
               />
             </View>
           ) : null}
-
-          <PostVoteBurstLayer ref={burstRef} />
         </DoubleTapToLike>
       )}
 
@@ -158,7 +161,14 @@ function FeedStreamCellInner({
         onCommentPress={onComment}
         onSharePress={onShare}
         onSavePress={onSave}
+        onMenuPress={isOwner ? onOwnerMenu : onMoreMenu}
+        menuAccessibilityLabel="Gönderi seçenekleri"
+        fountainRef={fountainRef}
+        buttonPulseSeq={buttonPulseSeq}
+        lastButtonPulse={lastButtonPulse}
       />
+
+      <PostVoteFountainLayer ref={fountainRef} />
     </View>
   );
 }

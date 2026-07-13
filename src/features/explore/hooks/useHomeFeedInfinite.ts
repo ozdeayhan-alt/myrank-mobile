@@ -57,7 +57,7 @@ export function useHomeFeedInfinite(
   }, [recentQuery.error]);
 
   const refresh = useCallback(async () => {
-    await invalidateServerFeedCache();
+    void invalidateServerFeedCache();
     await queryClient.invalidateQueries({ queryKey: [...HOME_RECENT_KEY] });
   }, [queryClient]);
 

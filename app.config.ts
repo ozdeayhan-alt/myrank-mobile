@@ -198,6 +198,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "@react-native-firebase/crashlytics",
       "expo-splash-screen",
       "./plugins/withAndroidLegacyStoragePermission",
+      [
+        "expo-share-intent",
+        {
+          disableIOS: true,
+          androidIntentFilters: ["text/*", "image/*"],
+          androidMultiIntentFilters: ["image/*"],
+          androidMainActivityAttributes: {
+            "android:launchMode": "singleTask",
+          },
+        },
+      ],
     ],
     extra: {
       ...(typeof config.extra === "object" && config.extra !== null

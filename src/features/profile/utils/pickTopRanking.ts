@@ -52,6 +52,7 @@ export function pickTopRanking(
 
   return {
     rank: best.rank,
+    key: best.key,
     label: formatAchievementBadgeLabel(best.key, metadata, best.rank),
   };
 }

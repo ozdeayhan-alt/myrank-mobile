@@ -11,6 +11,8 @@ import { PROFILE_METRIC_CARD_MIN_HEIGHT } from "@/components/ProfileMetricCard";
 import type { ProfileSegmentGaugeLayout } from "../profileLayout";
 import type { GaugeVoteMode } from "../lib/gaugeVoteModeStorage";
 import { ProfileEnergyCapsuleBar } from "./ProfileEnergyCapsuleBar";
+import { profileVoteDisplayKey } from "@/features/ranking/vote/voteDisplayStore";
+import { useVoteDisplay } from "@/features/ranking/vote/useVoteDisplay";
 import { ProfileVoteScoreLabel } from "./ProfileVoteScoreLabel";
 import type { VoteFlashDirection } from "./ProfileVoteProvider";
 import {
@@ -39,8 +41,7 @@ function easeOutCubic(t: number): number {
 type ProfileTotalScoreGaugeProps = {
   userId: string;
   initialTotalScore: number;
-  /** Sunucu snapshot — progress bar; optimistic oylar label'da kalır */
-  gaugeScore: number;
+  /** Gece listesi açılış TP'si — progress bar başlangıç çizgisi */
   snapshotScore: number;
   aheadRungs: LadderRung[];
   behindRungs: LadderRung[];
@@ -71,7 +72,6 @@ function resolveEffectiveDirection(
 function ProfileTotalScoreGaugeInner({
   userId,
   initialTotalScore,
-  gaugeScore,
   snapshotScore,
   aheadRungs,
   behindRungs,
@@ -109,6 +109,10 @@ function ProfileTotalScoreGaugeInner({
   } = layout;
 
   const effectiveDirection = resolveEffectiveDirection(gaugeVoteMode);
+  const currentScore = useVoteDisplay(
+    profileVoteDisplayKey(userId),
+    initialTotalScore
+  );
   const showCard = variant === "card";
 
   const showGaugeInfo = useCallback(() => {
@@ -123,7 +127,7 @@ function ProfileTotalScoreGaugeInner({
       return null;
     }
     return computeLadderGaugeProgress({
-      score: gaugeScore,
+      score: currentScore,
       baselineScore: snapshotScore,
       direction: effectiveDirection,
       aheadRungs,
@@ -132,7 +136,7 @@ function ProfileTotalScoreGaugeInner({
     });
   }, [
     snapshotReady,
-    gaugeScore,
+    currentScore,
     snapshotScore,
     effectiveDirection,
     aheadRungs,

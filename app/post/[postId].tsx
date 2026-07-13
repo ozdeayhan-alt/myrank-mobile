@@ -7,9 +7,12 @@ import { PostInteractionProvider } from "@/features/posts/context/PostInteractio
 import { fetchPostById } from "@/features/posts/api/fetchPostById";
 import type { Post } from "@/features/posts/types";
 import { isVideoPost } from "@/features/posts/utils/filterPostsByContentType";
+import { useRouter } from "expo-router";
+import { isFlowPost } from "@/features/flow/utils/isFlowPost";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 
 export default function PostDetailScreen() {
+  const router = useRouter();
   const { user } = useAuth();
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const [post, setPost] = useState<Post | null>(null);
@@ -28,11 +31,13 @@ export default function PostDetailScreen() {
         } else if (isVideoPost(data)) {
           setError("Video içerikleri geçici olarak kullanılamıyor.");
           setPost(null);
+        } else if (isFlowPost(data)) {
+          router.replace(`/flow/${data.id}`);
         }
       })
       .catch((err) => setError(getUserFacingErrorMessage(err)))
       .finally(() => setLoading(false));
-  }, [postId]);
+  }, [postId, router]);
 
   return (
     <ScrollView className="flex-1 bg-gray-50" contentContainerClassName="px-4 py-4">

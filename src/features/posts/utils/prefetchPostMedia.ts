@@ -9,12 +9,24 @@ import {
   resolveEmbeddedOriginalPost,
 } from "./repostUtils";
 
+function prefetchFlowThumbnail(post: Post): void {
+  const uri = (post.thumbnailUrl ?? post.posterURL)?.trim();
+  if (uri) {
+    void Image.prefetch(uri, { cachePolicy: "memory-disk" });
+  }
+}
+
 function prefetchSinglePostMedia(post: Post): void {
   if (post.contentType === "image") {
     const uri = resolveMediaDisplayUrl(post.mediaURL);
     if (uri) {
       void Image.prefetch(uri, { cachePolicy: "memory-disk" });
     }
+    return;
+  }
+
+  if (post.contentType === "flow") {
+    prefetchFlowThumbnail(post);
   }
 }
 

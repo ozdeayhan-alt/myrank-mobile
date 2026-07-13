@@ -3,7 +3,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   type RefObject,
 } from "react";
 import {
@@ -23,7 +22,9 @@ import { DEFAULT_LIST_HORIZONTAL_INSET } from "@/features/posts/constants/feedMe
 import { estimateFeedStreamRowHeight } from "@/features/posts/utils/feedStreamLayout";
 import {
   resetFeedScrollVisibilityStore,
+  updateFeedVisibleDuelKeys,
   updateFeedVisiblePostIds,
+  useIsFeedDuelVisible,
 } from "@/features/posts/store/feedScrollVisibilityStore";
 import type { Post } from "@/features/posts/types";
 import {
@@ -38,6 +39,8 @@ import { WhispRow } from "../renderers/whisp/WhispRow";
 import { GlowRow } from "../renderers/glow/GlowRow";
 import { RepostRow } from "../renderers/RepostRow";
 import { DuelFeedCard } from "@/features/duel/components/DuelFeedCard";
+import { FlowInlineGrid } from "@/features/flow/components/FlowInlineGrid";
+import { collectPostIdsFromMixedFeedItems } from "@/features/flow/utils/groupPostsForMixedFeed";
 
 const FEED_STREAM_DRAW_DISTANCE_MULTIPLIER = 1.9;
 const PREFETCH_AHEAD_COUNT = 6;
@@ -81,6 +84,11 @@ function getItemType(item: FeedV2ListItem): string {
   return item.kind;
 }
 
+function FeedDuelRow({ cardKey }: { cardKey: string }) {
+  const visible = useIsFeedDuelVisible(cardKey);
+  return <DuelFeedCard cardKey={cardKey} visible={visible} />;
+}
+
 export function FeedScroller({
   items,
   loading,
@@ -112,9 +120,6 @@ export function FeedScroller({
   const streamContainerWidth = Math.max(0, screenWidth - horizontalInset * 2);
 
   const visiblePostIdsRef = useRef<Set<string>>(new Set());
-  const [visibleDuelKeys, setVisibleDuelKeys] = useState<ReadonlySet<string>>(
-    () => new Set()
-  );
   const visibleIdsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prefetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prefetchEnabledRef = useRef(prefetchEnabled);
@@ -123,10 +128,7 @@ export function FeedScroller({
   itemsRef.current = items;
 
   const postIds = useMemo(
-    () =>
-      items
-        .filter((item): item is FeedV2ListItem & { post: Post } => item.kind !== "duel")
-        .map((item) => item.post.id),
+    () => collectPostIdsFromMixedFeedItems(items),
     [items]
   );
   const postIdsRef = useRef(postIds);
@@ -155,12 +157,30 @@ export function FeedScroller({
     engagementFetchEnabled
   );
 
+  const initialPrefetchKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
-    const batch = items
-      .slice(0, INITIAL_PREFETCH_DEFERRED_COUNT)
-      .filter((item): item is FeedV2ListItem & { post: Post } => item.kind !== "duel")
-      .map((item) => item.post);
+    const batch: Post[] = [];
+    for (const item of items) {
+      if (item.kind === "duel") {
+        continue;
+      }
+      if (item.kind === "flow_grid") {
+        batch.push(...item.posts);
+      } else {
+        batch.push(item.post);
+      }
+      if (batch.length >= INITIAL_PREFETCH_DEFERRED_COUNT) {
+        break;
+      }
+    }
     if (batch.length === 0 || !prefetchEnabledRef.current) return;
+
+    const prefetchKey = batch.map((post) => post.id).join(",");
+    if (initialPrefetchKeyRef.current === prefetchKey) {
+      return;
+    }
+    initialPrefetchKeyRef.current = prefetchKey;
 
     const task = InteractionManager.runAfterInteractions(() => {
       if (!prefetchEnabledRef.current) return;
@@ -180,6 +200,12 @@ export function FeedScroller({
       if (row.kind === "duel") {
         continue;
       }
+      if (row.kind === "flow_grid") {
+        if (row.posts.some((post) => visibleIds.has(post.id))) {
+          visibleIndexes.push(index);
+        }
+        continue;
+      }
       if (visibleIds.has(row.post.id)) {
         visibleIndexes.push(index);
       }
@@ -190,23 +216,26 @@ export function FeedScroller({
     const maxVisible = Math.max(...visibleIndexes);
     const toPrefetch: Post[] = [];
 
-    for (let index = 0; index < postItems.length; index += 1) {
-      const row = postItems[index];
-      if (row.kind === "duel") {
-        continue;
+    const collectPosts = (item: FeedV2ListItem): Post[] => {
+      if (item.kind === "duel") {
+        return [];
       }
-      toPrefetch.push(row.post);
-    }
+      if (item.kind === "flow_grid") {
+        return item.posts;
+      }
+      return [item.post];
+    };
+
     for (let offset = 1; offset <= PREFETCH_AHEAD_COUNT; offset += 1) {
       const upcoming = postItems[maxVisible + offset];
-      if (upcoming && upcoming.kind !== "duel") {
-        toPrefetch.push(upcoming.post);
+      if (upcoming) {
+        toPrefetch.push(...collectPosts(upcoming));
       }
     }
     for (let offset = 1; offset <= PREFETCH_BEHIND_COUNT; offset += 1) {
       const previous = postItems[minVisible - offset];
-      if (previous && previous.kind !== "duel") {
-        toPrefetch.push(previous.post);
+      if (previous) {
+        toPrefetch.push(...collectPosts(previous));
       }
     }
 
@@ -224,8 +253,7 @@ export function FeedScroller({
     };
   }, []);
 
-  const visibleDuelKeysRef = useRef(visibleDuelKeys);
-  visibleDuelKeysRef.current = visibleDuelKeys;
+  const visibleDuelKeysRef = useRef<ReadonlySet<string>>(new Set());
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken<FeedV2ListItem>[] }) => {
@@ -235,6 +263,12 @@ export function FeedScroller({
         if (!token.item) continue;
         if (token.item.kind === "duel") {
           nextVisibleDuels.add(token.item.key);
+          continue;
+        }
+        if (token.item.kind === "flow_grid") {
+          for (const post of token.item.posts) {
+            nextVisible.add(post.id);
+          }
           continue;
         }
         nextVisible.add(token.item.post.id);
@@ -252,7 +286,8 @@ export function FeedScroller({
         }
       }
       if (duelChanged) {
-        setVisibleDuelKeys(nextVisibleDuels);
+        visibleDuelKeysRef.current = nextVisibleDuels;
+        updateFeedVisibleDuelKeys(nextVisibleDuels);
       }
 
       if (visibleIdsDebounceRef.current) clearTimeout(visibleIdsDebounceRef.current);
@@ -280,14 +315,11 @@ export function FeedScroller({
   const renderItem = useCallback(
     ({ item }: { item: FeedV2ListItem }) => {
       if (item.kind === "duel") {
-        return (
-          <View style={{ minHeight: 168 }}>
-            <DuelFeedCard
-              cardKey={item.key}
-              visible={visibleDuelKeys.has(item.key)}
-            />
-          </View>
-        );
+        return <FeedDuelRow cardKey={item.key} />;
+      }
+
+      if (item.kind === "flow_grid") {
+        return <FlowInlineGrid posts={item.posts} horizontalPadding={horizontalInset} />;
       }
 
       const rowProps = {
@@ -312,8 +344,9 @@ export function FeedScroller({
         }
       })();
 
+      // Whisp: doğal yükseklik — minHeight fazla boşluk bırakıyordu.
       if (item.kind === "whisp") {
-        return <View collapsable={false}>{row}</View>;
+        return row;
       }
 
       const estimatedRowHeight = estimateFeedStreamRowHeight(
@@ -329,17 +362,17 @@ export function FeedScroller({
       onScoreUpdate,
       patchEngagement,
       streamContainerWidth,
-      visibleDuelKeys,
+      horizontalInset,
     ]
   );
 
   const listContentStyle = useMemo(
     () =>
       contentContainerStyle ?? {
-        paddingHorizontal: 16,
+        paddingHorizontal: horizontalInset,
         paddingVertical: 16,
       },
-    [contentContainerStyle]
+    [contentContainerStyle, horizontalInset]
   );
 
   const hasPostItems = items.length > 0;

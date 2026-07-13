@@ -1,10 +1,10 @@
-import type { VoteBurstDirection } from "@/components/LikeHeartBurst";
-import { memo, useCallback, useRef } from "react";
+import { memo } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 import type { EngagementStatus } from "@/features/ranking/types";
 import { SPINNER_COLOR, ui } from "@/lib/uiClasses";
 import { useOpenCommentSheet } from "../hooks/useOpenCommentSheet";
 import { usePostCardOwnerActions } from "../hooks/usePostCardOwnerActions";
+import { usePostVoteFeedback } from "../hooks/usePostVoteFeedback";
 import { useShareAndRepost } from "../hooks/useShareAndRepost";
 import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 import type { Post } from "../types";
@@ -14,7 +14,7 @@ import { PostCardBody } from "./PostCardBody";
 import { PostCardOwnerSheets } from "./PostCardOwnerSheets";
 import { PostHeader } from "./PostHeader";
 import { PostShareModals } from "./PostShareModals";
-import { type PostVoteBurstHandle } from "./PostVoteBurstLayer";
+import { PostVoteFountainLayer } from "./PostVoteFountainLayer";
 
 type FeedPostCellProps = PostFeedMediaLayoutOptions & {
   post: Post;
@@ -37,9 +37,10 @@ export const FeedPostCell = memo(function FeedPostCell({
   listHorizontalInset,
   mediaEdgeBleed,
 }: FeedPostCellProps) {
-  const burstRef = useRef<PostVoteBurstHandle>(null);
   const openCommentSheet = useOpenCommentSheet();
   const isOwner = Boolean(currentUserId && post.authorId === currentUserId);
+  const { fountainRef, triggerFeedback, buttonPulseSeq, lastButtonPulse } =
+    usePostVoteFeedback();
 
   const {
     displayPost,
@@ -95,39 +96,22 @@ export const FeedPostCell = memo(function FeedPostCell({
     onScoreUpdate,
   });
 
-  const triggerVoteBurst = useCallback((direction: VoteBurstDirection) => {
-    burstRef.current?.trigger(direction);
-  }, []);
-
-  const handleLikePress = useCallback(() => {
-    handleLike();
-    triggerVoteBurst("up");
-  }, [handleLike, triggerVoteBurst]);
-
-  const handleDislikePress = useCallback(() => {
-    handleDislike();
-    triggerVoteBurst("down");
-  }, [handleDislike, triggerVoteBurst]);
-
   return (
     <>
       <View
         className={ui.postCard}
-        style={Platform.OS === "android" ? { elevation: 3 } : undefined}
+        style={Platform.OS === "android" ? { elevation: 3, position: "relative" } : { position: "relative" }}
       >
         <PostHeader
           post={displayPost}
           isOwner={isOwner}
           currentUserId={currentUserId}
-          onOwnerMenuPress={isOwner ? handleOwnerMenuPress : undefined}
-          onMoreMenuPress={!isOwner ? handleMoreMenuPress : undefined}
         />
 
         <PostCardBody
           post={displayPost}
-          burstRef={burstRef}
           onLike={handleLike}
-          onLikeAnimated={() => triggerVoteBurst("up")}
+          onLikeAnimated={() => triggerFeedback("up")}
           currentUserId={currentUserId}
           mediaImagePriority="high"
           listHorizontalInset={listHorizontalInset}
@@ -139,13 +123,26 @@ export const FeedPostCell = memo(function FeedPostCell({
           shareActive={shareActive}
           saveActive={saveActive}
           loading={loading}
-          onLikePress={handleLikePress}
-          onDislikePress={handleDislikePress}
+          onLikePress={() => {
+            handleLike();
+            triggerFeedback("up");
+          }}
+          onDislikePress={() => {
+            handleDislike();
+            triggerFeedback("down");
+          }}
           onCommentPress={() =>
             openCommentSheet(post.id, applyCommentResult)
           }
           onSharePress={handleSharePress}
           onSavePress={handleSave}
+          onMenuPress={
+            isOwner ? handleOwnerMenuPress : handleMoreMenuPress
+          }
+          menuAccessibilityLabel="Gönderi seçenekleri"
+          fountainRef={fountainRef}
+          buttonPulseSeq={buttonPulseSeq}
+          lastButtonPulse={lastButtonPulse}
         />
 
         {loading || ownerActionLoading ? (
@@ -153,6 +150,8 @@ export const FeedPostCell = memo(function FeedPostCell({
             <ActivityIndicator size="small" color={SPINNER_COLOR} />
           </View>
         ) : null}
+
+        <PostVoteFountainLayer ref={fountainRef} />
       </View>
 
       {editOpen ? (

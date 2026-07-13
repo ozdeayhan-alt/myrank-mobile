@@ -11,6 +11,7 @@ export function FeedCellShell({ children, style, ...rest }: FeedCellShellProps) 
       className={ui.postCard}
       style={[
         Platform.OS === "android" ? { elevation: 2 } : undefined,
+        { position: "relative" },
         style,
       ]}
       {...rest}

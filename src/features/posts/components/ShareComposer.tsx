@@ -1,6 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
+import * as Clipboard from "expo-clipboard";
+import { Image } from "expo-image";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,11 +13,17 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "@/features/auth";
+import { findProviderForUrl } from "@/features/flow/providers/registry";
 import {
   pickImageFromCamera,
   pickImageFromLibrary,
 } from "@/lib/media/pickMedia";
-import { getShareComposerPlaceholder, getContentTypeLabel } from "../constants/contentTypeLabels";
+import { SPINNER_COLOR } from "@/lib/uiClasses";
+import { fetchLinkPreview, type LinkPreview } from "../api/fetchLinkPreview";
+import {
+  getShareComposerPlaceholder,
+  getContentTypeLabel,
+} from "../constants/contentTypeLabels";
 import { SHARE_COMPOSER_OPTIONS } from "../constants/shareComposerOptions";
 import { useShareComposerSubmit } from "../hooks/useShareComposerSubmit";
 import {
@@ -48,20 +57,83 @@ export function ShareComposer({
   const { user } = useAuth();
   const [selected, setSelected] = useState<ShareContentType>(initialType);
   const [content, setContent] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [mediaMimeType, setMediaMimeType] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [prepareMessage, setPrepareMessage] = useState<string | null>(null);
   const [prepareProgress, setPrepareProgress] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
+  const [linkPreviewLoading, setLinkPreviewLoading] = useState(false);
+  const clipboardAutofillDoneRef = useRef(false);
 
   useEffect(() => {
     setSelected(initialType);
     setContent("");
+    setLinkUrl("");
     setMediaUri(null);
     setMediaMimeType(null);
     setSuccessMessage(null);
+    setLinkPreview(null);
+    setLinkPreviewLoading(false);
+    clipboardAutofillDoneRef.current = false;
   }, [initialType]);
+
+  useEffect(() => {
+    if (selected !== "tweet") {
+      setLinkPreview(null);
+      setLinkPreviewLoading(false);
+      return;
+    }
+
+    const trimmed = linkUrl.trim();
+    if (trimmed.length < 4) {
+      setLinkPreview(null);
+      setLinkPreviewLoading(false);
+      return;
+    }
+
+    setLinkPreviewLoading(true);
+    const handle = setTimeout(() => {
+      void (async () => {
+        try {
+          const preview = await fetchLinkPreview(trimmed);
+          setLinkPreview(preview);
+        } catch {
+          setLinkPreview(null);
+        } finally {
+          setLinkPreviewLoading(false);
+        }
+      })();
+    }, 450);
+
+    return () => clearTimeout(handle);
+  }, [linkUrl, selected]);
+
+  useEffect(() => {
+    if (selected !== "flow") {
+      clipboardAutofillDoneRef.current = false;
+      return;
+    }
+
+    if (clipboardAutofillDoneRef.current || linkUrl.trim()) {
+      return;
+    }
+
+    clipboardAutofillDoneRef.current = true;
+
+    void (async () => {
+      try {
+        const text = (await Clipboard.getStringAsync()).trim();
+        if (text && findProviderForUrl(text)) {
+          setLinkUrl(text);
+        }
+      } catch {
+        // Clipboard okunamazsa sessizce devam et.
+      }
+    })();
+  }, [selected, linkUrl]);
 
   const maxLength =
     selected === "tweet" ? TWEET_MAX_LENGTH : POST_CAPTION_MAX_LENGTH;
@@ -71,15 +143,39 @@ export function ShareComposer({
     if (selected === "tweet") {
       return content.trim().length > 0;
     }
+    if (selected === "flow") {
+      return linkUrl.trim().length > 0;
+    }
     return mediaUri !== null;
-  }, [content, mediaUri, selected]);
+  }, [content, linkUrl, mediaUri, selected]);
 
   const handleSelectType = (type: ShareContentType) => {
     setSelected(type);
-    if (type === "tweet") {
+    if (type === "tweet" || type === "flow") {
       setMediaUri(null);
       setMediaMimeType(null);
     }
+    if (type !== "tweet") {
+      if (type !== "flow") {
+        setLinkUrl("");
+      }
+    }
+    if (type === "flow") {
+      clipboardAutofillDoneRef.current = false;
+    }
+  };
+
+  const handlePasteFromClipboard = () => {
+    void (async () => {
+      try {
+        const text = (await Clipboard.getStringAsync()).trim();
+        if (text) {
+          setLinkUrl(text);
+        }
+      } catch {
+        // ignore
+      }
+    })();
   };
 
   const handleMediaAsset = (uri: string, mimeType: string | null) => {
@@ -117,6 +213,7 @@ export function ShareComposer({
     userId: user?.uid,
     selected,
     content,
+    linkUrl,
     mediaUri,
     mediaMimeType,
     canSubmit,
@@ -134,28 +231,59 @@ export function ShareComposer({
     ? "Yeni gönderi"
     : `Yeni ${getContentTypeLabel(selected)}`;
 
+  const flowLinkField = (
+    <View className="mb-3">
+      <TextInput
+        className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
+        placeholder="Video bağlantısı (ör. youtube.com/...)"
+        placeholderTextColor="#9CA3AF"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="url"
+        value={linkUrl}
+        onChangeText={setLinkUrl}
+        editable={!submitting}
+      />
+      <Pressable
+        onPress={handlePasteFromClipboard}
+        disabled={submitting}
+        className="mt-2 self-start flex-row items-center rounded-lg px-1 py-1"
+        accessibilityRole="button"
+        accessibilityLabel="Panodan yapıştır"
+      >
+        <Ionicons name="clipboard-outline" size={16} color="#6B7280" />
+        <Text className="ml-1.5 text-xs font-medium text-gray-500">
+          Panodan yapıştır
+        </Text>
+      </Pressable>
+    </View>
+  );
+
+  const commentField = (
+    <TextInput
+      className={`rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900 ${
+        selected === "flow" ? "mb-4 min-h-[96px]" : "mb-2 min-h-[120px]"
+      }`}
+      placeholder={getShareComposerPlaceholder(selected)}
+      placeholderTextColor="#9CA3AF"
+      multiline
+      maxLength={maxLength}
+      value={content}
+      onChangeText={setContent}
+      editable={!submitting}
+      textAlignVertical="top"
+    />
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1"
     >
-      <View className="mb-4 flex-row items-center justify-between">
-        <Pressable
-          onPress={onClose}
-          disabled={submitting}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="İptal"
-          className="min-w-[64px] py-1"
-        >
-          <Text className="text-base font-medium text-gray-600">İptal</Text>
-        </Pressable>
-
+      <View className="mb-4 flex-row items-center justify-center">
         <Text className="text-base font-semibold text-gray-900">
           {headerTitle}
         </Text>
-
-        <View className="min-w-[64px]" />
       </View>
 
       {successMessage ? (
@@ -233,31 +361,78 @@ export function ShareComposer({
           />
         ) : null}
 
-        <TextInput
-          className="mb-2 min-h-[120px] rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
-          placeholder={getShareComposerPlaceholder(
-            selected === "image" ? "image" : "tweet"
-          )}
-          placeholderTextColor="#9CA3AF"
-          multiline
-          maxLength={maxLength}
-          value={content}
-          onChangeText={setContent}
-          editable={!submitting}
-          textAlignVertical="top"
-        />
+        {selected === "flow" ? (
+          <>
+            {flowLinkField}
+            {commentField}
+          </>
+        ) : (
+          <>
+            {commentField}
+            {selected === "tweet" ? (
+              <>
+                <TextInput
+                  className="mb-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900"
+                  placeholder="Link ekle (isteğe bağlı, örnek: site.com)"
+                  placeholderTextColor="#9CA3AF"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  value={linkUrl}
+                  onChangeText={setLinkUrl}
+                  editable={!submitting}
+                />
+                {linkPreviewLoading ? (
+                  <View className="mb-4 items-center py-3">
+                    <ActivityIndicator size="small" color={SPINNER_COLOR} />
+                  </View>
+                ) : linkPreview ? (
+                  <View className="mb-4 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                    {linkPreview.linkImageUrl ? (
+                      <Image
+                        source={{ uri: linkPreview.linkImageUrl }}
+                        className="h-28 w-full bg-gray-200"
+                        contentFit="cover"
+                      />
+                    ) : null}
+                    <View className="px-3 py-2">
+                      <Text
+                        className="text-sm font-medium text-gray-900"
+                        numberOfLines={2}
+                      >
+                        {linkPreview.linkTitle ?? linkPreview.linkUrl}
+                      </Text>
+                      {linkPreview.linkDescription ? (
+                        <Text
+                          className="mt-1 text-xs text-gray-600"
+                          numberOfLines={2}
+                        >
+                          {linkPreview.linkDescription}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : null}
+              </>
+            ) : null}
+          </>
+        )}
 
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="text-xs text-gray-400">
             Paylaşım puan kazandırır
           </Text>
-          <Text
-            className={`text-xs font-medium ${
-              content.length >= maxLength ? "text-red-500" : "text-gray-400"
-            }`}
-          >
-            {content.length}/{maxLength}
-          </Text>
+          {selected !== "flow" || content.length > 0 ? (
+            <Text
+              className={`text-xs font-medium ${
+                content.length >= maxLength ? "text-red-500" : "text-gray-400"
+              }`}
+            >
+              {content.length}/{maxLength}
+            </Text>
+          ) : (
+            <Text className="text-xs text-gray-400">Yorum isteğe bağlı</Text>
+          )}
         </View>
 
         {submitting && prepareMessage ? (
@@ -279,12 +454,23 @@ export function ShareComposer({
           </View>
         ) : null}
 
-        <View className="items-center pb-6 pt-2">
+        <View className="flex-row items-end justify-between pb-6 pt-2">
+          <Pressable
+            onPress={onClose}
+            disabled={submitting}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="İptal"
+            className="min-w-[64px] py-1"
+          >
+            <Text className="text-base font-medium text-gray-600">İptal</Text>
+          </Pressable>
           <ShareCircleButton
             onPress={() => void handleShare()}
             disabled={!canSubmit}
             loading={submitting}
           />
+          <View className="min-w-[64px]" />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

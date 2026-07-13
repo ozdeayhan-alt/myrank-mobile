@@ -18,6 +18,9 @@ export default function ProfileScreen() {
     (s) => s.isProfileBootstrapSettled
   );
   const profileSavedOnServer = useProfileStore((s) => s.profileSavedOnServer);
+  const isProfileRemoteReconcilePending = useProfileStore(
+    (s) => s.isProfileRemoteReconcilePending
+  );
   const setEditHandler = useProfileMenuStore((s) => s.setEditHandler);
 
   const complete = isMetadataComplete(metadata);
@@ -49,6 +52,14 @@ export default function ProfileScreen() {
   }
 
   if (!profileReady) {
+    if (complete || isProfileRemoteReconcilePending) {
+      return (
+        <TabScreenSafeArea className="flex-1 bg-white">
+          <ProfileLoadingSkeleton />
+        </TabScreenSafeArea>
+      );
+    }
+
     return (
       <TabScreenSafeArea className="flex-1 bg-white">
         <ProfileForm

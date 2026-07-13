@@ -1,13 +1,20 @@
 import type { Post } from "@/features/posts/types";
 import type { PostCounts } from "@/features/ranking/types";
 
-export type FeedListItemKind = "whisp" | "glow" | "repost" | "duel";
+export type FeedListItemKind = "whisp" | "glow" | "repost" | "duel" | "flow_grid";
+
+export type PostFeedListItemKind = "whisp" | "glow" | "repost";
 
 export type FeedV2ListItem =
   | {
       kind: "whisp" | "glow" | "repost";
       key: string;
       post: Post;
+    }
+  | {
+      kind: "flow_grid";
+      key: string;
+      posts: Post[];
     }
   | {
       kind: "duel";

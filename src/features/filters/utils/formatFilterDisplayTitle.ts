@@ -55,13 +55,6 @@ function getLocativeSuffix(name: string, withKi: boolean): string {
   return withKi ? `${base}ki` : base;
 }
 
-/** İstanbul → İstanbul'da, İzmir → İzmir'de */
-function withLocative(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return "";
-  return `${trimmed}${getLocativeSuffix(trimmed, false)}`;
-}
-
 /** İstanbul → İstanbul'daki, İzmir → İzmir'deki */
 function withLocativeDeki(name: string): string {
   const trimmed = name.trim();
@@ -121,19 +114,6 @@ function toPossessivePlural(group: string): string {
   const lastVowel = findLastVowel(lower);
   const suffix = isFrontVowel(lastVowel) ? "in" : "ın";
   return `${group}${suffix}`;
-}
-
-function buildLocationPhrase(filters: UserMetadata): string {
-  const country = filters.country.trim();
-  const city = filters.city.trim();
-
-  if (!country) {
-    return `${withLocative("Dünya")} yaşayan`;
-  }
-  if (city) {
-    return `${country} ${withLocative(city)} yaşayan`;
-  }
-  return `${withLocative(country)} yaşayan`;
 }
 
 function buildLocationDekiPhrase(filters: UserMetadata): string {
@@ -221,6 +201,38 @@ function buildPostOwnerPhrase(filters: UserMetadata): string {
   return owner;
 }
 
+/** İstanbul → İstanbul'un, Türkiye → Türkiye'nin */
+function withGenitive(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return "";
+  const lower = trimmed.toLocaleLowerCase("tr-TR");
+  const lastVowel = findLastVowel(lower);
+  const front = isFrontVowel(lastVowel);
+  const lastChar = lower[lower.length - 1] ?? "";
+  const endsWithVowel = VOWELS.includes(lastChar);
+  const suffix = endsWithVowel
+    ? front
+      ? "'nin"
+      : "'nın"
+    : front
+      ? "'in"
+      : "'ın";
+  return `${trimmed}${suffix}`;
+}
+
+function buildRankingLocationPhrase(filters: UserMetadata): string {
+  const country = filters.country.trim();
+  const city = filters.city.trim();
+
+  if (!country) {
+    return withLocativeDeki("Dünya");
+  }
+  if (city) {
+    return `${country} ${withLocativeDeki(city)}`;
+  }
+  return withGenitive(country);
+}
+
 function formatExploreTitle(filters: UserMetadata): string {
   const parts: string[] = [];
 
@@ -243,7 +255,7 @@ function formatExploreTitle(filters: UserMetadata): string {
 function formatRankingTitle(filters: UserMetadata): string {
   const parts: string[] = [];
 
-  const location = buildLocationPhrase(filters);
+  const location = buildRankingLocationPhrase(filters);
   if (location) {
     parts.push(location);
   }
@@ -262,7 +274,17 @@ function formatRankingTitle(filters: UserMetadata): string {
   }
 
   const audience = buildAudiencePhrase(filters);
-  parts.push(`en popüler ${audience}`);
+  const usesGenitiveLocation =
+    Boolean(filters.country.trim()) && !filters.city.trim();
+  const peoplePhrase = usesGenitiveLocation
+    ? "en popüler insanları"
+    : "en popüler insanlar";
+
+  if (audience === "insanlar") {
+    parts.push(peoplePhrase);
+  } else {
+    parts.push(`${audience} arasında en popüler insanlar`);
+  }
 
   return capitalizeTitle(parts.join(" "));
 }

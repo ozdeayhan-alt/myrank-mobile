@@ -1,8 +1,12 @@
 import { memo, useEffect } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useDuelCardPrefetch } from "../hooks/useDuelPrefetch";
+import { formatDuelVoteCountLabel } from "../lib/formatDuelVoteCount";
 import { useDuelPrefetchStore } from "../store/useDuelPrefetchStore";
+import { DuelEntryButton } from "./DuelEntryButton";
+import { DuelGoldBorderFrame } from "./DuelGoldBorderFrame";
+import { DuelVsArena } from "./DuelVsArena";
 
 type DuelFeedCardProps = {
   cardKey: string;
@@ -11,57 +15,56 @@ type DuelFeedCardProps = {
 
 function DuelFeedCardInner({ cardKey, visible = false }: DuelFeedCardProps) {
   const router = useRouter();
-  const { ready } = useDuelCardPrefetch(visible);
-  const prefetch = useDuelPrefetchStore((s) => s.prefetch);
+  const { ready, isFetching, match } = useDuelCardPrefetch(cardKey, visible);
+  const prefetchForCard = useDuelPrefetchStore((s) => s.prefetchForCard);
 
   useEffect(() => {
-    if (visible && !ready) {
-      void prefetch();
+    if (visible && !ready && !isFetching) {
+      void prefetchForCard(cardKey);
     }
-  }, [visible, ready, prefetch]);
+  }, [cardKey, visible, ready, isFetching, prefetchForCard]);
+
+  const voteLabel = match ? formatDuelVoteCountLabel(match) : "Hazırlanıyor…";
 
   const handleJoin = () => {
-    router.push("/duel");
+    if (!match) {
+      return;
+    }
+    router.push({
+      pathname: "/duel",
+      params: { cardKey },
+    });
   };
 
   return (
-    <View
-      className="mb-4 overflow-hidden rounded-2xl"
-      style={{
-        borderWidth: 1,
-        borderColor: "#FED7AA",
-        backgroundColor: "#FFF7ED",
-      }}
-      accessibilityLabel="Düello kartı"
-    >
-      <View className="px-4 py-5">
-        <Text className="text-xs font-semibold uppercase tracking-wider text-orange-500">
-          🔥 Düello
-        </Text>
-        <Text className="mt-1 text-lg font-bold text-gray-900">
-          Kazananı sen belirle.
-        </Text>
-        <Text className="mt-1 text-sm text-gray-600">
-          İki Glow karşı karşıya — 9 saniyede oylarını kullan.
-        </Text>
-        <Pressable
-          onPress={handleJoin}
-          className="mt-4 items-center rounded-xl bg-orange-500 py-3 active:opacity-90"
-          accessibilityRole="button"
-          accessibilityLabel="Düelloya katıl"
-          testID={`duel-join-${cardKey}`}
-        >
-          <Text className="text-base font-semibold text-white">
-            Düelloya Katıl
-          </Text>
-        </Pressable>
-        {!ready ? (
+    <DuelGoldBorderFrame animate={visible} testID={`duel-card-${cardKey}`}>
+      <DuelVsArena
+        postA={match?.postA ?? null}
+        postB={match?.postB ?? null}
+        showParticipantDetails
+        rankingsEnabled={visible}
+      />
+
+      <View className="px-4 pb-4 pt-3">
+        <Text className="text-center text-sm text-gray-600">{voteLabel}</Text>
+
+        <View className="mt-3">
+          <DuelEntryButton
+            label="Başlamak için dokun"
+            onPress={handleJoin}
+            disabled={!ready}
+            accessibilityLabel="Düelloya başlamak için dokun"
+            testID={`duel-join-${cardKey}`}
+          />
+        </View>
+
+        {!ready && isFetching ? (
           <Text className="mt-2 text-center text-xs text-gray-400">
             Hazırlanıyor…
           </Text>
         ) : null}
       </View>
-    </View>
+    </DuelGoldBorderFrame>
   );
 }
 

@@ -1,6 +1,6 @@
-import { memo, useRef, type RefObject } from "react";
-import { Text, View } from "react-native";
+import { memo } from "react";
 import { DoubleTapToLike } from "@/components/DoubleTapToLike";
+import { Text, View } from "react-native";
 import type { Post } from "../types";
 import { postBodyText } from "../utils/postBodyText";
 import {
@@ -10,16 +10,13 @@ import {
 import { resolvePostAuthorDisplayName } from "../utils/resolvePostAuthor";
 import { EmbeddedOriginalPost } from "./EmbeddedOriginalPost";
 import { PostFeedMedia } from "./PostFeedMedia";
-import {
-  PostVoteBurstLayer,
-  type PostVoteBurstHandle,
-} from "./PostVoteBurstLayer";
+import { WHISP_BODY_TEXT_CLASS } from "../constants/whispTypography";
 import { RichPostText } from "./RichPostText";
+import { WhispLinkCard } from "./WhispLinkCard";
 import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 
 type PostCardBodyProps = PostFeedMediaLayoutOptions & {
   post: Post;
-  burstRef?: RefObject<PostVoteBurstHandle | null>;
   onLike: () => void;
   onLikeAnimated: () => void;
   currentUserId?: string | null;
@@ -28,7 +25,6 @@ type PostCardBodyProps = PostFeedMediaLayoutOptions & {
 
 function PostCardBodyInner({
   post,
-  burstRef: externalBurstRef,
   onLike,
   onLikeAnimated,
   currentUserId = null,
@@ -36,8 +32,6 @@ function PostCardBodyInner({
   listHorizontalInset,
   mediaEdgeBleed,
 }: PostCardBodyProps) {
-  const localBurstRef = useRef<PostVoteBurstHandle>(null);
-  const burstRef = externalBurstRef ?? localBurstRef;
   const embeddedOriginal = resolveEmbeddedOriginalPost(post);
   const repostAttribution =
     isRepostPost(post) && embeddedOriginal
@@ -76,9 +70,15 @@ function PostCardBodyInner({
         >
           {bodyText && post.contentType === "tweet" ? (
             <View className="px-4 pb-3">
-              <RichPostText content={bodyText} currentUserId={currentUserId} />
+              <RichPostText
+                content={bodyText}
+                className={WHISP_BODY_TEXT_CLASS}
+                currentUserId={currentUserId}
+              />
             </View>
           ) : null}
+
+          <WhispLinkCard post={post} />
 
           <View className="relative">
             <PostFeedMedia
@@ -96,8 +96,6 @@ function PostCardBodyInner({
           ) : null}
         </DoubleTapToLike>
       )}
-
-      {!isRepostPost(post) ? <PostVoteBurstLayer ref={burstRef} /> : null}
     </View>
   );
 }

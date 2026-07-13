@@ -2,6 +2,8 @@ import { memo, useMemo } from "react";
 import { useWindowDimensions, View } from "react-native";
 import { PROFILE_METRIC_CARD_MIN_HEIGHT } from "@/components/ProfileMetricCard";
 import { useRankingLadder } from "../hooks/useRankingLadder";
+import { profileVoteDisplayKey } from "@/features/ranking/vote/voteDisplayStore";
+import { useVoteDisplay } from "@/features/ranking/vote/useVoteDisplay";
 import { getProfileSegmentGaugeLayout } from "../profileLayout";
 import type { GaugeVoteMode } from "../lib/gaugeVoteModeStorage";
 import type { VoteFlashDirection } from "./ProfileVoteProvider";
@@ -36,10 +38,15 @@ function ProfileTotalScoreDisplayInner({
     [screenWidth, fontScale]
   );
 
+  const currentScore = useVoteDisplay(
+    profileVoteDisplayKey(userId),
+    initialTotalScore
+  );
+
   const { snapshotScore, aheadRungs, behindRungs, labelLoading, pointsLoading, ready, labelCategory, gaugeOfficialRank, atPinnacle, atGlobalLast } =
     useRankingLadder(userId, metadata, {
       rankingsReady,
-      displayScore: initialTotalScore,
+      displayScore: currentScore,
       gaugeVoteMode,
       fullLadderEnabled,
     });
@@ -53,7 +60,6 @@ function ProfileTotalScoreDisplayInner({
       <ProfileTotalScoreGauge
         userId={userId}
         initialTotalScore={initialTotalScore}
-        gaugeScore={snapshotScore}
         snapshotScore={snapshotScore}
         aheadRungs={aheadRungs}
         behindRungs={behindRungs}

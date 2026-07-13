@@ -83,7 +83,7 @@ export function useExploreFeedInfinite(
     : null;
 
   const refresh = useCallback(async () => {
-    await invalidateServerFeedCache();
+    void invalidateServerFeedCache();
     await queryClient.invalidateQueries({ queryKey: [...EXPLORE_KEY] });
   }, [queryClient]);
 

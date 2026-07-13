@@ -18,23 +18,27 @@ type DuelVoteSide = {
   initialScore: number;
 };
 
+import type { DuelRoundSide } from "../types";
+
 type UseDuelVoteAccumulatorOptions = {
   sideA: DuelVoteSide;
   sideB: DuelVoteSide;
-  enabled: boolean;
+  activeSide: DuelRoundSide | null;
 };
 
 export function useDuelVoteAccumulator({
   sideA,
   sideB,
-  enabled,
+  activeSide,
 }: UseDuelVoteAccumulatorOptions) {
   const pendingARef = useRef(0);
   const pendingBRef = useRef(0);
+  const upCountARef = useRef(0);
+  const upCountBRef = useRef(0);
   const serverARef = useRef(sideA.initialScore);
   const serverBRef = useRef(sideB.initialScore);
-  const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
+  const activeSideRef = useRef(activeSide);
+  activeSideRef.current = activeSide;
 
   const [netA, setNetA] = useState(0);
   const [netB, setNetB] = useState(0);
@@ -51,16 +55,22 @@ export function useDuelVoteAccumulator({
   }, [keyA, keyB]);
 
   const registerVote = useCallback(
-    (side: "a" | "b", direction: 1 | -1) => {
-      if (!enabledRef.current) {
+    (side: DuelRoundSide, direction: 1 | -1) => {
+      if (activeSideRef.current !== side) {
         return;
       }
 
       if (side === "a") {
         pendingARef.current = clampPending(pendingARef.current + direction);
+        if (direction > 0) {
+          upCountARef.current += 1;
+        }
         setNetA(pendingARef.current);
       } else {
         pendingBRef.current = clampPending(pendingBRef.current + direction);
+        if (direction > 0) {
+          upCountBRef.current += 1;
+        }
         setNetB(pendingBRef.current);
       }
 
@@ -89,13 +99,46 @@ export function useDuelVoteAccumulator({
     []
   );
 
-  const resetPending = useCallback(() => {
+  const getUpCounts = useCallback(
+    () => ({
+      upA: upCountARef.current,
+      upB: upCountBRef.current,
+    }),
+    []
+  );
+
+  const resetVoteStats = useCallback(() => {
     pendingARef.current = 0;
     pendingBRef.current = 0;
+    upCountARef.current = 0;
+    upCountBRef.current = 0;
     setNetA(0);
     setNetB(0);
     publish();
   }, [publish]);
+
+  const resetPending = useCallback(() => {
+    resetVoteStats();
+  }, [resetVoteStats]);
+
+  const commitFlushResults = useCallback(
+    (results: Array<{ postId: string; postScore: number }>) => {
+      for (const result of results) {
+        if (result.postId === sideA.postId) {
+          serverARef.current = result.postScore;
+        }
+        if (result.postId === sideB.postId) {
+          serverBRef.current = result.postScore;
+        }
+      }
+      pendingARef.current = 0;
+      pendingBRef.current = 0;
+      setNetA(0);
+      setNetB(0);
+      publish();
+    },
+    [publish, sideA.postId, sideB.postId]
+  );
 
   return {
     registerUpA,
@@ -103,7 +146,10 @@ export function useDuelVoteAccumulator({
     registerUpB,
     registerDownB,
     getPendingDeltas,
+    getUpCounts,
     resetPending,
+    resetVoteStats,
+    commitFlushResults,
     publish,
     netA,
     netB,

@@ -17,6 +17,7 @@ const DEFAULT_IMAGE_ASPECT_RATIO = 4 / 5;
 const HEADER_BLOCK_HEIGHT = 56;
 const ACTION_BAR_HEIGHT = 56;
 const TEXT_LINE_HEIGHT = 22;
+const WHISP_TEXT_LINE_HEIGHT = 24;
 const CARD_VERTICAL_PADDING = 16;
 /** ui.postCard mb-5 */
 const CARD_MARGIN_BOTTOM = 20;
@@ -63,13 +64,16 @@ export function resolveFeedStreamMediaLayout(
   );
 }
 
-function estimateTextBlockHeight(text: string | null | undefined): number {
+function estimateTextBlockHeight(
+  text: string | null | undefined,
+  lineHeight = TEXT_LINE_HEIGHT
+): number {
   const trimmed = text?.trim() ?? "";
   if (!trimmed) {
     return 0;
   }
   const lines = Math.min(6, Math.max(1, Math.ceil(trimmed.length / 38)));
-  return lines * TEXT_LINE_HEIGHT + 12;
+  return lines * lineHeight + 12;
 }
 
 function postHasStreamMedia(post: Post): boolean {
@@ -97,7 +101,7 @@ function embeddedRepostExtraHeight(post: Post, containerWidth: number): number {
   const embeddedBody = embedded.content?.trim() ?? "";
 
   if (embeddedBody && embedded.contentType === "tweet") {
-    height += estimateTextBlockHeight(embeddedBody);
+    height += estimateTextBlockHeight(embeddedBody, WHISP_TEXT_LINE_HEIGHT);
   }
 
   height += mediaBlockHeight(embedded, containerWidth - 32);
@@ -133,14 +137,20 @@ export function estimateFeedStreamRowHeight(
   }
 
   if (bodyText && post.contentType === "tweet") {
-    height += estimateTextBlockHeight(bodyText);
+    height -= CARD_VERTICAL_PADDING;
+    height += estimateTextBlockHeight(bodyText, WHISP_TEXT_LINE_HEIGHT);
+    if (post.linkUrl?.trim()) {
+      height += 56;
+    }
+    height += mediaBlockHeight(post, containerWidth);
+    return height;
   }
-
-  height += mediaBlockHeight(post, containerWidth);
 
   if (bodyText && post.contentType !== "tweet") {
     height += estimateTextBlockHeight(bodyText);
   }
+
+  height += mediaBlockHeight(post, containerWidth);
 
   return height;
 }

@@ -85,7 +85,7 @@ export function EmbeddedOriginalPost({
       {bodyText && post.contentType === "tweet" ? (
         <View className="px-3 pb-2">
           <Text
-            className="text-sm text-gray-800"
+            className="text-base text-gray-800"
             numberOfLines={compact ? 3 : undefined}
           >
             {bodyText}

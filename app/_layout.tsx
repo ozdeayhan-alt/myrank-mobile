@@ -9,6 +9,7 @@ import {
   useRouter,
   useSegments,
 } from "expo-router";
+import { ShareIntentProvider } from "expo-share-intent";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/features/auth";
 import {
@@ -19,6 +20,7 @@ import { CommentSheetHost } from "@/features/posts/components/CommentSheetHost";
 import { PushNotificationHandler } from "@/features/push";
 import { HomeFeedPrefetch } from "@/features/explore/components/HomeFeedPrefetch";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { ShareIntentOrchestrator } from "@/features/share-intent/ShareIntentOrchestrator";
 import {
   isMetadataComplete,
   useLoadProfile,
@@ -49,7 +51,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isProfileBootstrapSettled = useProfileStore(
     (s) => s.isProfileBootstrapSettled
   );
-  const profileSavedOnServer = useProfileStore((s) => s.profileSavedOnServer);
 
   useLoadProfile(user?.uid, user?.displayName, user?.photoURL);
 
@@ -61,7 +62,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       (segments.includes("profile") || segments.includes("user"))) ||
     segments[0] === "user";
   const metadataComplete = isMetadataComplete(metadata);
-  const profileReady = metadataComplete && profileSavedOnServer;
+  const needsProfileCompletion =
+    isProfileBootstrapSettled && !metadataComplete;
 
   const isBootstrapping = initializing || !navigationReady;
 
@@ -78,12 +80,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (
-      user &&
-      isProfileBootstrapSettled &&
-      !profileReady &&
-      !inProfileRoute
-    ) {
+    if (user && needsProfileCompletion && !inProfileRoute) {
       router.replace("/(tabs)/profile");
     }
   }, [
@@ -92,8 +89,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     inAuthGroup,
     inLegalGroup,
     inProfileRoute,
-    isProfileBootstrapSettled,
-    profileReady,
+    needsProfileCompletion,
     router,
   ]);
 
@@ -139,7 +135,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (
     user &&
     isProfileBootstrapSettled &&
-    !profileReady &&
+    needsProfileCompletion &&
     !inProfileRoute
   ) {
     return (
@@ -164,15 +160,27 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  const router = useRouter();
+
   return (
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <QueryProvider>
-          <AuthProvider>
-            <ProtectedRoute>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="(auth)" />
+        <ShareIntentProvider
+          options={{
+            resetOnBackground: false,
+            onResetShareIntent: () => {
+              router.replace("/(tabs)");
+            },
+          }}
+        >
+          <QueryProvider>
+            <AuthProvider>
+              <ShareIntentOrchestrator />
+              <ProtectedRoute>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="shareintent" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)" />
                 <Stack.Screen name="legal" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen
@@ -220,9 +228,10 @@ export default function RootLayout() {
                   }}
                 />
               </Stack>
-          </ProtectedRoute>
-        </AuthProvider>
+            </ProtectedRoute>
+          </AuthProvider>
         </QueryProvider>
+        </ShareIntentProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>
   );

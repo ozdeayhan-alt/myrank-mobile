@@ -5,12 +5,13 @@ import { invalidateServerFeedCache } from "../api/invalidateServerFeedCache";
 import { createPost } from "../api/createPost";
 import { uploadPostMedia } from "../api/uploadPostMedia";
 import { useFeedRefreshStore } from "../store/useFeedRefreshStore";
-import type { PostContentType } from "../types";
+import type { ShareContentType } from "../types";
 
 type UseShareComposerSubmitOptions = {
   userId: string | undefined;
-  selected: PostContentType;
+  selected: ShareContentType;
   content: string;
+  linkUrl: string;
   mediaUri: string | null;
   mediaMimeType: string | null;
   canSubmit: boolean;
@@ -26,6 +27,7 @@ export function useShareComposerSubmit({
   userId,
   selected,
   content,
+  linkUrl,
   mediaUri,
   mediaMimeType,
   canSubmit,
@@ -87,12 +89,18 @@ export function useShareComposerSubmit({
         mediaHeight = uploaded.mediaHeight;
       }
 
+      const trimmedLink = linkUrl.trim();
       const created = await createPost(userId, {
         contentType: selected,
         content: content.trim(),
         mediaURL,
         mediaWidth,
         mediaHeight,
+        ...(selected === "flow"
+          ? { providerUrl: trimmedLink }
+          : trimmedLink
+            ? { linkUrl: trimmedLink }
+            : {}),
       });
 
       useFeedRefreshStore.getState().bump();
@@ -117,6 +125,7 @@ export function useShareComposerSubmit({
   }, [
     canSubmit,
     content,
+    linkUrl,
     mediaMimeType,
     mediaUri,
     onClose,

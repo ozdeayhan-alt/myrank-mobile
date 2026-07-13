@@ -45,6 +45,7 @@ function GlowRowInner({
     <FeedRowChrome
       row={row}
       currentUserId={currentUserId}
+      bodyAbove={<View />}
       bodyBelow={
         bodyText ? (
           <View className="px-4 py-3">

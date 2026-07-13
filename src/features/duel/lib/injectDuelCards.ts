@@ -30,5 +30,13 @@ export function injectDuelCards(items: FeedV2ListItem[]): FeedV2ListItem[] {
     }
   }
 
+  // İlk duel henüz aralığa ulaşmadan feed bittiyse (1–2 gönderi) yine bir kart göster.
+  if (duelCardIndex === 0 && postsSinceLastDuel > 0) {
+    result.push({
+      kind: "duel",
+      key: `duel-card-${duelCardIndex}`,
+    });
+  }
+
   return result;
 }
