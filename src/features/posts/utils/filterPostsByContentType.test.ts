@@ -35,6 +35,12 @@ describe("filterPostsByContentType", () => {
       post({ id: "t1", contentType: "tweet" }),
       post({ id: "i1", contentType: "image", mediaURL: "https://x/img.jpg" }),
       post({ id: "v1", contentType: "video", mediaURL: "https://x/v.mp4" }),
+      post({
+        id: "f1",
+        contentType: "flow",
+        provider: "youtube",
+        providerVideoId: "abc",
+      }),
     ];
 
     expect(filterPostsByContentType(posts, "tweet").map((p) => p.id)).toEqual([
@@ -43,6 +49,13 @@ describe("filterPostsByContentType", () => {
     expect(filterPostsByContentType(posts, "image").map((p) => p.id)).toEqual([
       "i1",
     ]);
-    expect(filterPostsByContentType(posts, null)).toHaveLength(3);
+    expect(filterPostsByContentType(posts, "flow").map((p) => p.id)).toEqual([
+      "f1",
+    ]);
+    expect(filterPostsByContentType(posts, null).map((p) => p.id)).toEqual([
+      "t1",
+      "i1",
+      "f1",
+    ]);
   });
 });

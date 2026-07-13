@@ -4,6 +4,13 @@ import {
   useInfiniteQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import type { FeedApiContentType } from "@/features/feed/feedContentType";
+import { resolveFeedPageLimit } from "@/features/feed/feedPagination";
+import {
+  FEED_INFINITE_QUERY_DEFAULTS,
+  feedInfiniteGetNextPageParam,
+} from "@/features/feed/feedInfiniteQueryDefaults";
+import { useGuardedFeedFetchNextPage } from "@/features/feed/useGuardedFeedFetchNextPage";
 import {
   fetchRecentFeedPage,
   type FeedPageResult,
@@ -16,21 +23,24 @@ import { invalidateServerFeedCache } from "@/features/posts/api/invalidateServer
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 
 const HOME_RECENT_KEY = ["feed", "home", "recent"] as const;
-const HOME_FEED_STALE_MS = 5 * 60_000;
 
-export function useHomeFeedInfinite(enabled = true) {
+export function useHomeFeedInfinite(
+  contentType: FeedApiContentType = "all",
+  enabled = true
+) {
   const queryClient = useQueryClient();
   const feedVersion = useFeedRefreshStore((s) => s.version);
 
   const recentQuery = useInfiniteQuery({
-    queryKey: [...HOME_RECENT_KEY, feedVersion],
-    queryFn: ({ pageParam }) =>
-      fetchRecentFeedPage(pageParam as string | null),
-    initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.cursor : undefined,
-    staleTime: HOME_FEED_STALE_MS,
-    refetchOnMount: false,
+    queryKey: [...HOME_RECENT_KEY, contentType, feedVersion],
+    queryFn: ({ pageParam, signal }) =>
+      fetchRecentFeedPage(pageParam as string | null, {
+        limit: resolveFeedPageLimit(pageParam as string | null),
+        contentType,
+        signal,
+      }),
+    ...FEED_INFINITE_QUERY_DEFAULTS,
+    getNextPageParam: feedInfiniteGetNextPageParam,
     enabled,
   });
 
@@ -47,33 +57,20 @@ export function useHomeFeedInfinite(enabled = true) {
   }, [recentQuery.error]);
 
   const refresh = useCallback(async () => {
-    await invalidateServerFeedCache();
+    void invalidateServerFeedCache();
     await queryClient.invalidateQueries({ queryKey: [...HOME_RECENT_KEY] });
   }, [queryClient]);
 
-  const fetchNextPage = useCallback(() => {
-    if (
-      recentQuery.hasNextPage &&
-      !recentQuery.isFetchingNextPage &&
-      !recentQuery.isFetching
-    ) {
-      void recentQuery.fetchNextPage();
-    }
-  }, [
-    recentQuery.fetchNextPage,
-    recentQuery.hasNextPage,
-    recentQuery.isFetching,
-    recentQuery.isFetchingNextPage,
-  ]);
+  const fetchNextPage = useGuardedFeedFetchNextPage(recentQuery);
 
   const updatePostScore = useCallback(
     (postId: string, postScore: number, counts?: PostCounts) => {
       queryClient.setQueryData<InfiniteData<FeedPageResult>>(
-        [...HOME_RECENT_KEY, feedVersion],
+        [...HOME_RECENT_KEY, contentType, feedVersion],
         (old) => patchPostInPages(old, postId, { postScore, counts })
       );
     },
-    [queryClient, feedVersion]
+    [queryClient, contentType, feedVersion]
   );
 
   return {
@@ -84,6 +81,7 @@ export function useHomeFeedInfinite(enabled = true) {
     updatePostScore,
     hasNextPage: recentQuery.hasNextPage ?? false,
     isFetchingNextPage: recentQuery.isFetchingNextPage,
+    isFetching: recentQuery.isFetching,
     fetchNextPage,
     isRefetching: recentQuery.isRefetching,
   };

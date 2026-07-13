@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import {
   buildSegmentKey,
   EMPTY_METADATA,
@@ -38,10 +39,7 @@ export async function fetchProfileRankings(
   );
 
   const data = (await response.json()) as ProfileRankingsApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Profile rankings request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Profile rankings request failed");
 
   return (data.rankings ?? []).map((ranking) => ({
     key: ranking.key,

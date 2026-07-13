@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { CreatePostInput } from "../types";
 
 export type CreatePostResult = {
@@ -28,10 +29,7 @@ export async function createPost(
   });
 
   const data = (await response.json()) as CreatePostApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Gönderi paylaşılamadı");
-  }
+  throwIfNotOk(response, data, data.error ?? "Gönderi paylaşılamadı");
 
   return {
     id: data.id,

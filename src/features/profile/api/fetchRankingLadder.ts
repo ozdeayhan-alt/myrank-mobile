@@ -1,6 +1,7 @@
 import { GLOBAL_RANKING_SEGMENT } from "@/features/filters/constants";
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 export type LadderRung = {
   rank: number;
@@ -154,10 +155,7 @@ export async function fetchRankingLadderFull(
     ladder: RankingLadderResult;
     error?: string;
   };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Ladder request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Ladder request failed");
 
   return data.ladder;
 }

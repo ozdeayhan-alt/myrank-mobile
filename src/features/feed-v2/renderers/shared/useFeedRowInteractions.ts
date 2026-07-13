@@ -1,5 +1,4 @@
-import type { VoteBurstDirection } from "@/components/LikeHeartBurst";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { ReportReason } from "@/features/blocks/api/reportContent";
 import { usePostEngagement } from "@/features/ranking/store/useEngagementStore";
 import type { EngagementStatus } from "@/features/ranking/types";
@@ -14,14 +13,11 @@ export type FeedRowInteractionState = {
   post: Post;
   displayPost: Post;
   engagement: EngagementStatus;
-  score: number;
   counts: ReturnType<typeof usePostInteractions>["counts"];
   loading: boolean;
   shareActive: boolean;
   saveActive: boolean;
   isOwner: boolean;
-  voteBurstKey: number;
-  voteBurstDirection: VoteBurstDirection;
   ownerActionLoading: boolean;
   ownerMenuOpen: boolean;
   moreMenuOpen: boolean;
@@ -31,9 +27,8 @@ export type FeedRowInteractionState = {
   shareSheetOpen: boolean;
   repostOpen: boolean;
   canRepost: boolean;
-  handleLikePress: () => void;
-  handleDislikePress: () => void;
-  handleLikeAnimated: () => void;
+  handleLike: () => void;
+  handleDislike: () => void;
   handleSave: () => void;
   handleSharePress: () => void;
   openComment: () => void;
@@ -50,7 +45,6 @@ export type FeedRowInteractionState = {
   handleReportReason: (reason: ReportReason) => void;
   handleEditSave: (content: string) => Promise<void>;
   handleRepostSelect: () => void;
-  handleStorySelect: () => void;
   handleExternalShareSelect: () => void;
   handleReposted: () => void;
   setOwnerMenuOpen: (open: boolean) => void;
@@ -80,12 +74,6 @@ export function useFeedRowInteractions({
   const engagement = usePostEngagement(post.id);
   const openCommentSheet = useOpenCommentSheet();
   const openShareStore = useFeedInteractionStore((s) => s.openShare);
-  const openOwnerMenuStore = useFeedInteractionStore((s) => s.openOwnerMenu);
-  const openMoreMenuStore = useFeedInteractionStore((s) => s.openMoreMenu);
-
-  const [voteBurstKey, setVoteBurstKey] = useState(0);
-  const [voteBurstDirection, setVoteBurstDirection] =
-    useState<VoteBurstDirection>("up");
 
   const isOwner = Boolean(currentUserId && post.authorId === currentUserId);
 
@@ -104,7 +92,6 @@ export function useFeedRowInteractions({
   );
 
   const {
-    score,
     counts,
     loading,
     handleLike,
@@ -129,68 +116,107 @@ export function useFeedRowInteractions({
     onScoreUpdate,
   });
 
-  const triggerVoteBurst = useCallback((direction: VoteBurstDirection) => {
-    setVoteBurstDirection(direction);
-    setVoteBurstKey((key) => key + 1);
-  }, []);
+  const openComment = useCallback(() => {
+    openCommentSheet(post.id, applyCommentResult);
+  }, [openCommentSheet, post.id, applyCommentResult]);
 
-  const handleLikePress = useCallback(() => {
-    handleLike();
-    triggerVoteBurst("up");
-  }, [handleLike, triggerVoteBurst]);
+  const openShare = useCallback(() => {
+    openShareStore(post);
+  }, [openShareStore, post]);
 
-  const handleDislikePress = useCallback(() => {
-    handleDislike();
-    triggerVoteBurst("down");
-  }, [handleDislike, triggerVoteBurst]);
+  // Use local owner-action state so PostCardOwnerSheets in this row opens.
+  // Global store menus are for legacy FeedInteractionHost only.
+  const openOwnerMenu = owner.handleOwnerMenuPress;
+  const openMoreMenu = owner.handleMoreMenuPress;
 
-  return {
-    post,
-    displayPost: owner.displayPost,
-    engagement,
-    score,
-    counts,
-    loading,
-    shareActive,
-    saveActive,
-    isOwner,
-    voteBurstKey,
-    voteBurstDirection,
-    ownerActionLoading: owner.ownerActionLoading,
-    ownerMenuOpen: owner.ownerMenuOpen,
-    moreMenuOpen: owner.moreMenuOpen,
-    deleteConfirmOpen: owner.deleteConfirmOpen,
-    reportMenuOpen: owner.reportMenuOpen,
-    editOpen: owner.editOpen,
-    shareSheetOpen: share.shareSheetOpen,
-    repostOpen: share.repostOpen,
-    canRepost: share.canRepost,
-    handleLikePress,
-    handleDislikePress,
-    handleLikeAnimated: () => triggerVoteBurst("up"),
-    handleSave,
-    handleSharePress: share.handleSharePress,
-    openComment: () => openCommentSheet(post.id, applyCommentResult),
-    openShare: () => openShareStore(post),
-    openOwnerMenu: () => openOwnerMenuStore(post),
-    openMoreMenu: () => openMoreMenuStore(post),
-    setEditOpen: owner.setEditOpen,
-    setShareSheetOpen: share.setShareSheetOpen,
-    setRepostOpen: share.setRepostOpen,
-    handleEditFromMenu: owner.handleEditFromMenu,
-    handleRequestDelete: owner.handleRequestDelete,
-    handleConfirmDelete: owner.handleConfirmDelete,
-    handleOpenReportMenu: owner.handleOpenReportMenu,
-    handleReportReason: owner.handleReportReason,
-    handleEditSave: owner.handleEditSave,
-    handleRepostSelect: share.handleRepostSelect,
-    handleStorySelect: share.handleStorySelect,
-    handleExternalShareSelect: share.handleExternalShareSelect,
-    handleReposted: share.handleReposted,
-    setOwnerMenuOpen: owner.setOwnerMenuOpen,
-    setMoreMenuOpen: owner.setMoreMenuOpen,
-    setDeleteConfirmOpen: owner.setDeleteConfirmOpen,
-    setReportMenuOpen: owner.setReportMenuOpen,
-    patchEngagement: handlePatch,
-  };
+  return useMemo(
+    () => ({
+      post,
+      displayPost: owner.displayPost,
+      engagement,
+      counts,
+      loading,
+      shareActive,
+      saveActive,
+      isOwner,
+      ownerActionLoading: owner.ownerActionLoading,
+      ownerMenuOpen: owner.ownerMenuOpen,
+      moreMenuOpen: owner.moreMenuOpen,
+      deleteConfirmOpen: owner.deleteConfirmOpen,
+      reportMenuOpen: owner.reportMenuOpen,
+      editOpen: owner.editOpen,
+      shareSheetOpen: share.shareSheetOpen,
+      repostOpen: share.repostOpen,
+      canRepost: share.canRepost,
+      handleLike,
+      handleDislike,
+      handleSave,
+      handleSharePress: share.handleSharePress,
+      openComment,
+      openShare,
+      openOwnerMenu,
+      openMoreMenu,
+      setEditOpen: owner.setEditOpen,
+      setShareSheetOpen: share.setShareSheetOpen,
+      setRepostOpen: share.setRepostOpen,
+      handleEditFromMenu: owner.handleEditFromMenu,
+      handleRequestDelete: owner.handleRequestDelete,
+      handleConfirmDelete: owner.handleConfirmDelete,
+      handleOpenReportMenu: owner.handleOpenReportMenu,
+      handleReportReason: owner.handleReportReason,
+      handleEditSave: owner.handleEditSave,
+      handleRepostSelect: share.handleRepostSelect,
+      handleExternalShareSelect: share.handleExternalShareSelect,
+      handleReposted: share.handleReposted,
+      setOwnerMenuOpen: owner.setOwnerMenuOpen,
+      setMoreMenuOpen: owner.setMoreMenuOpen,
+      setDeleteConfirmOpen: owner.setDeleteConfirmOpen,
+      setReportMenuOpen: owner.setReportMenuOpen,
+      patchEngagement: handlePatch,
+    }),
+    [
+      post,
+      owner.displayPost,
+      owner.ownerActionLoading,
+      owner.ownerMenuOpen,
+      owner.moreMenuOpen,
+      owner.deleteConfirmOpen,
+      owner.reportMenuOpen,
+      owner.editOpen,
+      owner.setEditOpen,
+      owner.handleEditFromMenu,
+      owner.handleRequestDelete,
+      owner.handleConfirmDelete,
+      owner.handleOpenReportMenu,
+      owner.handleReportReason,
+      owner.handleEditSave,
+      owner.setOwnerMenuOpen,
+      owner.setMoreMenuOpen,
+      owner.setDeleteConfirmOpen,
+      owner.setReportMenuOpen,
+      engagement,
+      counts,
+      loading,
+      shareActive,
+      saveActive,
+      isOwner,
+      share.shareSheetOpen,
+      share.repostOpen,
+      share.canRepost,
+      share.handleSharePress,
+      share.setShareSheetOpen,
+      share.setRepostOpen,
+      share.handleRepostSelect,
+      share.handleExternalShareSelect,
+      share.handleReposted,
+      handleLike,
+      handleDislike,
+      handleSave,
+      openComment,
+      openShare,
+      openOwnerMenu,
+      openMoreMenu,
+      handlePatch,
+    ]
+  );
 }

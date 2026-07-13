@@ -3,12 +3,16 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export ANDROID_HOME="${ANDROID_HOME:-/opt/android-sdk}"
-export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+
+# shellcheck source=scripts/build-runtime-env.sh
+source "$ROOT/scripts/build-runtime-env.sh"
 export APP_VARIANT="${APP_VARIANT:-preview}"
 export SKIP_NATIVE_PURGE=1
 
 cd "$ROOT"
+
+trap 'bash "$ROOT/scripts/build-memory-restore.sh"' EXIT
+bash "$ROOT/scripts/build-memory-prep.sh"
 
 echo "[preview:fast] disk cleanup..."
 bash "$ROOT/scripts/clean-build-disk.sh"

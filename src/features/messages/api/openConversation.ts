@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { OpenConversationResult } from "../types";
 
 export async function openConversation(
@@ -20,10 +21,7 @@ export async function openConversation(
   const data = (await response.json()) as OpenConversationResult & {
     error?: string;
   };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Sohbet açılamadı");
-  }
+  throwIfNotOk(response, data, data.error ?? "Sohbet açılamadı");
 
   return data;
 }

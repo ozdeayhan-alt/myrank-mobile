@@ -6,9 +6,11 @@ type Listener = () => void;
 
 let autoplayPostId: string | null = null;
 let visiblePostIds = new Set<string>();
+let visibleDuelKeys = new Set<string>();
 
 const autoplayListeners = new Map<string, Set<Listener>>();
 const visibilityListeners = new Map<string, Set<Listener>>();
+const duelVisibilityListeners = new Map<string, Set<Listener>>();
 
 function subscribeMap(
   map: Map<string, Set<Listener>>,
@@ -51,9 +53,13 @@ export function resetFeedScrollVisibilityStore(): void {
   const visibilityChanged = [...visiblePostIds];
   visiblePostIds = new Set();
 
+  const duelChanged = [...visibleDuelKeys];
+  visibleDuelKeys = new Set();
+
   notifyKeys(autoplayListeners, autoplayChanged);
   notifyKeys(autoplayListeners, [GLOBAL_AUTOPLAY_LISTENER_KEY]);
   notifyKeys(visibilityListeners, visibilityChanged);
+  notifyKeys(duelVisibilityListeners, duelChanged);
 }
 
 export function updateFeedScrollAutoplay(next: string | null): void {
@@ -122,5 +128,35 @@ export function useIsFeedPostMediaHighPriority(postId: string): boolean {
     (listener) => subscribeMap(visibilityListeners, postId, listener),
     () => visiblePostIds.has(postId),
     () => visiblePostIds.has(postId)
+  );
+}
+
+export function updateFeedVisibleDuelKeys(next: Set<string>): void {
+  const changed = new Set<string>();
+
+  for (const key of next) {
+    if (!visibleDuelKeys.has(key)) {
+      changed.add(key);
+    }
+  }
+  for (const key of visibleDuelKeys) {
+    if (!next.has(key)) {
+      changed.add(key);
+    }
+  }
+
+  if (changed.size === 0) {
+    return;
+  }
+
+  visibleDuelKeys = next;
+  notifyKeys(duelVisibilityListeners, changed);
+}
+
+export function useIsFeedDuelVisible(cardKey: string): boolean {
+  return useSyncExternalStore(
+    (listener) => subscribeMap(duelVisibilityListeners, cardKey, listener),
+    () => visibleDuelKeys.has(cardKey),
+    () => visibleDuelKeys.has(cardKey)
   );
 }

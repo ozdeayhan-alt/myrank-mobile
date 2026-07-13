@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 type ImagePriority = "low" | "normal" | "high";
@@ -15,6 +16,12 @@ export function FeedGlowImage({
   recyclingKey = "feed-preview",
   priority = "normal",
 }: FeedGlowImageProps) {
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  if (loadFailed) {
+    return <View className="h-full w-full bg-neutral-200" />;
+  }
+
   return (
     <View className="h-full w-full overflow-hidden bg-neutral-950">
       <Image
@@ -25,6 +32,7 @@ export function FeedGlowImage({
         priority="low"
         cachePolicy="memory-disk"
         recyclingKey={`${recyclingKey}-bg`}
+        onError={() => setLoadFailed(true)}
       />
       <View
         pointerEvents="none"
@@ -38,6 +46,7 @@ export function FeedGlowImage({
         cachePolicy="memory-disk"
         recyclingKey={recyclingKey}
         priority={priority}
+        onError={() => setLoadFailed(true)}
       />
     </View>
   );

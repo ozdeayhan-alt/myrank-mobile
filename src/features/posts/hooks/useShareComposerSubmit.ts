@@ -5,12 +5,13 @@ import { invalidateServerFeedCache } from "../api/invalidateServerFeedCache";
 import { createPost } from "../api/createPost";
 import { uploadPostMedia } from "../api/uploadPostMedia";
 import { useFeedRefreshStore } from "../store/useFeedRefreshStore";
-import type { PostContentType } from "../types";
+import type { ShareContentType } from "../types";
 
 type UseShareComposerSubmitOptions = {
   userId: string | undefined;
-  selected: PostContentType;
+  selected: ShareContentType;
   content: string;
+  linkUrl: string;
   mediaUri: string | null;
   mediaMimeType: string | null;
   canSubmit: boolean;
@@ -26,6 +27,7 @@ export function useShareComposerSubmit({
   userId,
   selected,
   content,
+  linkUrl,
   mediaUri,
   mediaMimeType,
   canSubmit,
@@ -64,12 +66,10 @@ export function useShareComposerSubmit({
 
     try {
       let mediaURL: string | undefined;
-      let hlsURL: string | undefined;
-      let posterURL: string | undefined;
       let mediaWidth: number | undefined;
       let mediaHeight: number | undefined;
 
-      if (mediaUri && (selected === "image" || selected === "video")) {
+      if (mediaUri && selected === "image") {
         const uploaded = await uploadPostMedia(
           userId,
           mediaUri,
@@ -85,20 +85,22 @@ export function useShareComposerSubmit({
           }
         );
         mediaURL = uploaded.mediaURL;
-        hlsURL = uploaded.hlsURL;
-        posterURL = uploaded.posterURL;
         mediaWidth = uploaded.mediaWidth;
         mediaHeight = uploaded.mediaHeight;
       }
 
+      const trimmedLink = linkUrl.trim();
       const created = await createPost(userId, {
         contentType: selected,
         content: content.trim(),
         mediaURL,
-        hlsURL,
-        posterURL,
         mediaWidth,
         mediaHeight,
+        ...(selected === "flow"
+          ? { providerUrl: trimmedLink }
+          : trimmedLink
+            ? { linkUrl: trimmedLink }
+            : {}),
       });
 
       useFeedRefreshStore.getState().bump();
@@ -123,6 +125,7 @@ export function useShareComposerSubmit({
   }, [
     canSubmit,
     content,
+    linkUrl,
     mediaMimeType,
     mediaUri,
     onClose,

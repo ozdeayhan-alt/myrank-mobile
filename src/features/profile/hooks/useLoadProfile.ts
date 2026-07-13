@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { recordError } from "@/lib/crashReporting";
 import { shouldRefreshAvatarFromProfile } from "@/lib/media/normalizeAvatarUrl";
 import { ensureRankingEntriesIfNeeded } from "../api/ensureRankingEntriesIfNeeded";
 import {
@@ -10,8 +11,57 @@ import { ensureProfileSavedOnServer } from "../api/ensureProfileSavedOnServer";
 import { syncPublicProfile } from "../api/syncPublicProfile";
 import { isMetadataComplete } from "../types";
 import { useProfileStore } from "../store/useProfileStore";
+import { queryClient } from "@/lib/queryClient";
+import { publicProfileQueryKey } from "./usePublicProfile";
 
-const HYDRATION_TIMEOUT_MS = 2500;
+const HYDRATION_TIMEOUT_MS = 10_000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function waitForProfileStoreHydration(): Promise<void> {
+  if (useProfileStore.persist.hasHydrated()) {
+    return;
+  }
+
+  await Promise.race([
+    new Promise<void>((resolve) => {
+      const unsub = useProfileStore.persist.onFinishHydration(() => {
+        unsub();
+        resolve();
+      });
+    }),
+    delay(HYDRATION_TIMEOUT_MS),
+  ]);
+
+  if (!useProfileStore.persist.hasHydrated()) {
+    await new Promise<void>((resolve) => {
+      const unsub = useProfileStore.persist.onFinishHydration(() => {
+        unsub();
+        resolve();
+      });
+    });
+  }
+}
+
+function seedStartupProfileCaches(userId: string): void {
+  const state = useProfileStore.getState();
+  if (state.profileOwnerId !== userId) {
+    return;
+  }
+
+  queryClient.setQueryData(publicProfileQueryKey(userId), {
+    displayName: state.displayName,
+    photoURL: state.photoURL,
+    bio: state.bio,
+    bioCategoryVisibility: state.bioCategoryVisibility,
+    metadata: state.metadata,
+    totalScore: state.totalScore,
+  });
+}
 
 function pickProfilePhotoURL(
   remote: string,
@@ -34,28 +84,6 @@ function pickProfilePhotoURL(
   return localTrim;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-async function waitForProfileStoreHydration(): Promise<void> {
-  if (useProfileStore.persist.hasHydrated()) {
-    return;
-  }
-
-  await Promise.race([
-    new Promise<void>((resolve) => {
-      const unsub = useProfileStore.persist.onFinishHydration(() => {
-        unsub();
-        resolve();
-      });
-    }),
-    delay(HYDRATION_TIMEOUT_MS),
-  ]);
-}
-
 function hasCachedProfileForUser(userId: string): boolean {
   const local = useProfileStore.getState();
   if (local.profileOwnerId !== userId) {
@@ -74,14 +102,6 @@ function hasCachedDisplayIdentity(userId: string): boolean {
   return local.displayName.trim().length > 0 || local.photoURL.trim().length > 0;
 }
 
-function isCachedProfileReady(userId: string): boolean {
-  const local = useProfileStore.getState();
-  return (
-    local.profileOwnerId === userId &&
-    isMetadataComplete(local.metadata) &&
-    local.profileSavedOnServer
-  );
-}
 
 function applyCachedProfile(
   userId: string,
@@ -102,6 +122,7 @@ function applyCachedProfile(
     local.bioCategoryVisibility
   );
   useProfileStore.setState({ profileOwnerId: userId });
+  seedStartupProfileCaches(userId);
 }
 
 function applyAuthBootstrap(
@@ -123,6 +144,7 @@ function applyAuthBootstrap(
     local.bioCategoryVisibility
   );
   useProfileStore.setState({ profileOwnerId: userId });
+  seedStartupProfileCaches(userId);
 }
 
 function remoteProfileDiffersFromLocal(
@@ -189,6 +211,7 @@ function applyRemoteProfile(
     remote.bioCategoryVisibility
   );
   useProfileStore.setState({ profileOwnerId: userId });
+  seedStartupProfileCaches(userId);
 
   if (shouldSyncPublic) {
     void syncPublicProfile(userId, {
@@ -326,8 +349,6 @@ export function useLoadProfile(
     const displayName = authDisplayNameRef.current;
     const photoURL = authPhotoURLRef.current;
 
-    useProfileStore.getState().beginProfileBootstrap();
-
     (async () => {
       try {
         await waitForProfileStoreHydration();
@@ -338,12 +359,20 @@ export function useLoadProfile(
         const state = useProfileStore.getState();
         if (state.profileOwnerId && state.profileOwnerId !== userId) {
           reset();
+        }
+
+        const hydrated = useProfileStore.getState();
+        const skipBootstrapReset =
+          hydrated.profileOwnerId === userId &&
+          (isMetadataComplete(hydrated.metadata) ||
+            hydrated.profileSavedOnServer);
+
+        if (!skipBootstrapReset) {
           useProfileStore.getState().beginProfileBootstrap();
         }
 
         const hadCachedProfile = hasCachedProfileForUser(userId);
         const hadCachedIdentity = hasCachedDisplayIdentity(userId);
-        const cachedReady = isCachedProfileReady(userId);
 
         if (hadCachedProfile) {
           applyCachedProfile(userId, displayName, photoURL);
@@ -353,27 +382,41 @@ export function useLoadProfile(
           useProfileStore.setState({ profileOwnerId: userId });
         }
 
-        if (cachedReady) {
+        if (hadCachedProfile) {
           useProfileStore.getState().finishProfileBootstrap();
+
           if (!cancelled) {
             void reconcileRemoteProfile(
               userId,
               hadCachedProfile,
               displayName,
               photoURL
-            );
+            ).catch((err) => recordError(err, "useLoadProfile.reconcile"));
           }
           return;
         }
 
-        await reconcileRemoteProfile(
-          userId,
-          hadCachedProfile,
-          displayName,
-          photoURL
-        );
-      } finally {
+        useProfileStore.getState().setProfileRemoteReconcilePending(true);
+
+        try {
+          await reconcileRemoteProfile(
+            userId,
+            hadCachedProfile,
+            displayName,
+            photoURL
+          );
+        } catch (err) {
+          recordError(err, "useLoadProfile.reconcile");
+        } finally {
+          if (!cancelled) {
+            useProfileStore.getState().setProfileRemoteReconcilePending(false);
+            useProfileStore.getState().finishProfileBootstrap();
+          }
+        }
+      } catch (err) {
+        recordError(err, "useLoadProfile");
         if (!cancelled) {
+          useProfileStore.getState().setProfileRemoteReconcilePending(false);
           useProfileStore.getState().finishProfileBootstrap();
         }
       }

@@ -1,11 +1,10 @@
-import { memo, useMemo } from "react";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
-import { Image } from "expo-image";
+import { memo } from "react";
+import { Text, View, useWindowDimensions } from "react-native";
 import type { EngagementStatus } from "@/features/ranking/types";
 import type { Post } from "@/features/posts/types";
 import { FeedPostErrorBoundary } from "@/features/posts/components/FeedPostErrorBoundary";
+import { WHISP_BODY_TEXT_CLASS } from "@/features/posts/constants/whispTypography";
 import { RichPostText } from "@/features/posts/components/RichPostText";
-import { resolveFeedSlotMediaLayout } from "@/features/feed/resolveFeedSlotLayout";
 import { DEFAULT_LIST_HORIZONTAL_INSET } from "@/features/posts/constants/feedMediaLayout";
 import {
   isRepostPost,
@@ -14,9 +13,7 @@ import {
 import { resolvePostAuthorDisplayName } from "@/features/posts/utils/resolvePostAuthor";
 import { estimateFeedStreamRowHeight } from "@/features/posts/utils/feedStreamLayout";
 import { postBodyText } from "@/features/posts/utils/postBodyText";
-import { isVideoPost } from "@/features/posts/utils/videoPosts";
 import { resolveFeedListItemKind } from "@/features/feed-v2/engine/filtering";
-import { listVideoPosterCandidateUrls } from "@/lib/media/resolveMediaDisplayUrl";
 import { FeedRowChrome } from "./shared/FeedRowChrome";
 import { useFeedRowInteractions } from "./shared/useFeedRowInteractions";
 import { GlowImageFrame } from "./glow/GlowImageFrame";
@@ -27,70 +24,14 @@ type RepostRowProps = {
   onScoreUpdate?: (postId: string, postScore: number) => void;
   onPostDeleted?: (postId: string) => void;
   onPostContentUpdated?: (postId: string, content: string) => void;
-  onOpenFlow: (postId: string) => void;
   currentUserId?: string | null;
 };
 
-function EmbeddedFlowPoster({
-  post,
-  onOpenFlow,
-}: {
-  post: Post;
-  onOpenFlow: (postId: string) => void;
-}) {
-  const { width: screenWidth } = useWindowDimensions();
-  const containerWidth = Math.max(
-    0,
-    screenWidth - DEFAULT_LIST_HORIZONTAL_INSET * 2
-  );
-  const layout = useMemo(
-    () => resolveFeedSlotMediaLayout(post, containerWidth),
-    [post, containerWidth]
-  );
-  const posterUri = listVideoPosterCandidateUrls(post)[0];
-
-  if (!isVideoPost(post) || !posterUri) {
-    return null;
-  }
-
-  return (
-    <Pressable
-      onPress={() => onOpenFlow(post.id)}
-      accessibilityRole="button"
-      accessibilityLabel="Videoyu aç"
-      style={{ width: "100%", alignItems: "center" }}
-    >
-      <View
-        style={{ width: layout.width, height: layout.height }}
-        className="overflow-hidden bg-neutral-300"
-      >
-        <Image
-          source={{ uri: posterUri }}
-          style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
-          cachePolicy="memory-disk"
-          recyclingKey={`${post.id}-embedded-poster`}
-        />
-        <View
-          pointerEvents="none"
-          className="absolute inset-0 items-center justify-center"
-        >
-          <View className="rounded-full bg-black/50 px-5 py-3">
-            <Text className="text-2xl text-white">▶</Text>
-          </View>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
 function EmbeddedRepostContent({
   post,
-  onOpenFlow,
   currentUserId,
 }: {
   post: Post;
-  onOpenFlow: (postId: string) => void;
   currentUserId?: string | null;
 }) {
   const embedded = resolveEmbeddedOriginalPost(post);
@@ -107,17 +48,17 @@ function EmbeddedRepostContent({
     }
     return (
       <View className="px-4 pb-3">
-        <RichPostText content={text} currentUserId={currentUserId} />
+        <RichPostText
+          content={text}
+          className={WHISP_BODY_TEXT_CLASS}
+          currentUserId={currentUserId}
+        />
       </View>
     );
   }
 
   if (kind === "glow") {
     return <GlowImageFrame post={embedded} />;
-  }
-
-  if (kind === "flow-teaser") {
-    return <EmbeddedFlowPoster post={embedded} onOpenFlow={onOpenFlow} />;
   }
 
   return null;
@@ -129,7 +70,6 @@ function RepostRowInner({
   onScoreUpdate,
   onPostDeleted,
   onPostContentUpdated,
-  onOpenFlow,
   currentUserId = null,
 }: RepostRowProps) {
   const embedded = resolveEmbeddedOriginalPost(post);
@@ -163,11 +103,7 @@ function RepostRowInner({
             <RichPostText content={bodyText} currentUserId={currentUserId} />
           </View>
         ) : null}
-        <EmbeddedRepostContent
-          post={post}
-          onOpenFlow={onOpenFlow}
-          currentUserId={currentUserId}
-        />
+        <EmbeddedRepostContent post={post} currentUserId={currentUserId} />
       </>
     </FeedRowChrome>
   );

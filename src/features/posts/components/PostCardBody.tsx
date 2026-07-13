@@ -1,10 +1,6 @@
-import { useCallback } from "react";
-import { Text, View } from "react-native";
+import { memo } from "react";
 import { DoubleTapToLike } from "@/components/DoubleTapToLike";
-import {
-  LikeHeartBurst,
-  type VoteBurstDirection,
-} from "@/components/LikeHeartBurst";
+import { Text, View } from "react-native";
 import type { Post } from "../types";
 import { postBodyText } from "../utils/postBodyText";
 import {
@@ -12,34 +8,27 @@ import {
   resolveEmbeddedOriginalPost,
 } from "../utils/repostUtils";
 import { resolvePostAuthorDisplayName } from "../utils/resolvePostAuthor";
-import { isVideoPost } from "../utils/videoPosts";
 import { EmbeddedOriginalPost } from "./EmbeddedOriginalPost";
 import { PostFeedMedia } from "./PostFeedMedia";
+import { WHISP_BODY_TEXT_CLASS } from "../constants/whispTypography";
 import { RichPostText } from "./RichPostText";
+import { WhispLinkCard } from "./WhispLinkCard";
 import type { PostFeedMediaLayoutOptions } from "../constants/feedMediaLayout";
 
 type PostCardBodyProps = PostFeedMediaLayoutOptions & {
   post: Post;
-  voteBurstKey: number;
-  voteBurstDirection: VoteBurstDirection;
   onLike: () => void;
   onLikeAnimated: () => void;
-  onOpenVideo?: (postId: string) => void;
   currentUserId?: string | null;
   mediaImagePriority?: "low" | "normal" | "high";
-  inlineAutoplay?: boolean;
 };
 
-export function PostCardBody({
+function PostCardBodyInner({
   post,
-  voteBurstKey,
-  voteBurstDirection,
   onLike,
   onLikeAnimated,
-  onOpenVideo,
   currentUserId = null,
   mediaImagePriority = "normal",
-  inlineAutoplay = false,
   listHorizontalInset,
   mediaEdgeBleed,
 }: PostCardBodyProps) {
@@ -49,12 +38,6 @@ export function PostCardBody({
       ? `${resolvePostAuthorDisplayName(post)}, ${resolvePostAuthorDisplayName(embeddedOriginal)} adlı kullanıcının gönderisini paylaştı`
       : null;
   const bodyText = postBodyText(post);
-
-  const openVideo = useCallback(() => {
-    if (isVideoPost(post)) {
-      onOpenVideo?.(post.id);
-    }
-  }, [post, onOpenVideo]);
 
   return (
     <View className="relative" style={{ minHeight: 80 }}>
@@ -73,7 +56,6 @@ export function PostCardBody({
           {embeddedOriginal ? (
             <EmbeddedOriginalPost
               post={embeddedOriginal}
-              onOpenVideo={onOpenVideo}
               currentUserId={currentUserId}
               listHorizontalInset={listHorizontalInset}
               mediaEdgeBleed={mediaEdgeBleed}
@@ -84,24 +66,24 @@ export function PostCardBody({
         <DoubleTapToLike
           onLike={onLike}
           onLikeAnimated={onLikeAnimated}
-          onSinglePress={isVideoPost(post) ? openVideo : undefined}
-          accessibilityLabel={
-            isVideoPost(post)
-              ? "Tek dokunuşla videoyu aç, çift dokunarak beğen"
-              : "Çift dokunarak beğen"
-          }
+          accessibilityLabel="Çift dokunarak beğen"
         >
           {bodyText && post.contentType === "tweet" ? (
             <View className="px-4 pb-3">
-              <RichPostText content={bodyText} currentUserId={currentUserId} />
+              <RichPostText
+                content={bodyText}
+                className={WHISP_BODY_TEXT_CLASS}
+                currentUserId={currentUserId}
+              />
             </View>
           ) : null}
+
+          <WhispLinkCard post={post} />
 
           <View className="relative">
             <PostFeedMedia
               post={post}
               imagePriority={mediaImagePriority}
-              inlineAutoplay={inlineAutoplay}
               listHorizontalInset={listHorizontalInset}
               mediaEdgeBleed={mediaEdgeBleed}
             />
@@ -114,13 +96,8 @@ export function PostCardBody({
           ) : null}
         </DoubleTapToLike>
       )}
-
-      {!isRepostPost(post) ? (
-        <LikeHeartBurst
-          burstKey={voteBurstKey}
-          direction={voteBurstDirection}
-        />
-      ) : null}
     </View>
   );
 }
+
+export const PostCardBody = memo(PostCardBodyInner);

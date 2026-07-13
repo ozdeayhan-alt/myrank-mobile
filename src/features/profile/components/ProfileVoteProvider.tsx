@@ -38,6 +38,7 @@ export type VoteButtonPulse = {
 
 type ProfileVoteActionsContextValue = {
   targetUserId: string;
+  initialTotalScore: number;
   isOwnProfile: boolean;
   registerUp: () => void;
   registerDown: () => void;
@@ -47,7 +48,6 @@ type ProfileVoteActionsContextValue = {
 };
 
 type ProfileVoteDisplayContextValue = {
-  displayTP: number;
   voteFlash: VoteFlashDirection;
   voteBurstKey: number;
   arrowSpawn: VoteArrowSpawn | null;
@@ -124,7 +124,7 @@ export function ProfileVoteProvider({
     [isOwnProfile, setStoreTotalScore]
   );
 
-  const { displayTP, registerUp, registerDown } = useProfileVoteTap({
+  const { registerUp, registerDown } = useProfileVoteTap({
     targetUserId,
     initialTotalScore,
     enabled: votesEnabled,
@@ -236,6 +236,7 @@ export function ProfileVoteProvider({
   const actionsValue = useMemo(
     (): ProfileVoteActionsContextValue => ({
       targetUserId,
+      initialTotalScore,
       isOwnProfile,
       registerUp: registerUpWithFeedback,
       registerDown: registerDownWithFeedback,
@@ -245,6 +246,7 @@ export function ProfileVoteProvider({
     }),
     [
       targetUserId,
+      initialTotalScore,
       isOwnProfile,
       registerUpWithFeedback,
       registerDownWithFeedback,
@@ -256,7 +258,6 @@ export function ProfileVoteProvider({
 
   const displayValue = useMemo(
     (): ProfileVoteDisplayContextValue => ({
-      displayTP,
       voteFlash,
       voteBurstKey,
       arrowSpawn,
@@ -266,7 +267,6 @@ export function ProfileVoteProvider({
       fullLadderRequested,
     }),
     [
-      displayTP,
       voteFlash,
       voteBurstKey,
       arrowSpawn,

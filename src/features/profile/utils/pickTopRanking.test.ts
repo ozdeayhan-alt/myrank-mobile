@@ -49,6 +49,7 @@ describe("pickTopRanking", () => {
 
     expect(pickTopRanking(rankings, metadata)).toEqual({
       rank: 1,
+      key: "profession",
       label: "Yazar Kategorisinde 1.",
     });
   });

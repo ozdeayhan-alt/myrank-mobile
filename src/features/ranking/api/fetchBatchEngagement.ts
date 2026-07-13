@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { EngagementStatus } from "../types";
 
 type BatchEngagementResponse = {
@@ -29,10 +30,7 @@ export async function fetchBatchEngagement(
   const data = (await response.json()) as BatchEngagementResponse & {
     error?: string;
   };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Batch engagement request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Batch engagement request failed");
 
   return data.engagements ?? {};
 }

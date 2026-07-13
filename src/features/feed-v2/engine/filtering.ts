@@ -1,41 +1,36 @@
 import type { Post } from "@/features/posts/types";
-import {
-  filterPostsByContentType,
-  resolvePostContentType,
-  type HomeContentFilter,
-} from "@/features/posts/utils/filterPostsByContentType";
+import { resolvePostContentType } from "@/features/posts/utils/filterPostsByContentType";
 import { isRepostPost } from "@/features/posts/utils/repostUtils";
-import { isVideoPost } from "@/features/posts/utils/videoPosts";
-import type { FeedListItemKind, FeedV2ListItem } from "./FeedEngine.types";
+import { groupPostsForMixedFeed } from "@/features/flow/utils/groupPostsForMixedFeed";
+import type { FeedListItemKind, FeedV2ListItem, PostFeedListItemKind } from "./FeedEngine.types";
 
-export function resolveFeedListItemKind(post: Post): FeedListItemKind {
+export function resolveFeedListItemKind(post: Post): PostFeedListItemKind {
   if (isRepostPost(post)) {
     return "repost";
   }
 
   const contentType = resolvePostContentType(post);
-  if (contentType === "tweet") {
-    return "whisp";
-  }
   if (contentType === "image") {
     return "glow";
-  }
-  if (isVideoPost(post)) {
-    return "flow-teaser";
   }
 
   return "whisp";
 }
 
-export function mapPostsToFeedItems(
-  posts: Post[],
-  contentFilter: HomeContentFilter | null
-): FeedV2ListItem[] {
-  const filtered = filterPostsByContentType(posts, contentFilter);
+export function mapPostsToFeedItems(posts: Post[]): FeedV2ListItem[] {
+  return groupPostsForMixedFeed(posts).map((item) => {
+    if (item.kind === "flow_grid") {
+      return {
+        kind: "flow_grid",
+        key: item.key,
+        posts: item.posts,
+      };
+    }
 
-  return filtered.map((post) => ({
-    kind: resolveFeedListItemKind(post),
-    key: post.id,
-    post,
-  }));
+    return {
+      kind: resolveFeedListItemKind(item.post),
+      key: item.key,
+      post: item.post,
+    };
+  });
 }

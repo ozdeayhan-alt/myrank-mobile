@@ -74,9 +74,26 @@ export function useConversationMessages(conversationId: string | null) {
     messagesRef.current = [];
     void refetch({ full: true });
 
-    pollTimerRef.current = setInterval(() => {
-      void refetch({ silent: true });
-    }, POLL_INTERVAL_MS);
+    const startPoll = () => {
+      if (pollTimerRef.current) {
+        return;
+      }
+      pollTimerRef.current = setInterval(() => {
+        void refetch({ silent: true });
+      }, POLL_INTERVAL_MS);
+    };
+
+    const stopPoll = () => {
+      if (!pollTimerRef.current) {
+        return;
+      }
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    };
+
+    if (AppState.currentState === "active") {
+      startPoll();
+    }
 
     const unsubscribePush = subscribeMessagePush((pushedConversationId) => {
       if (pushedConversationId !== conversationId) {
@@ -88,16 +105,16 @@ export function useConversationMessages(conversationId: string | null) {
     const onAppStateChange = (state: AppStateStatus) => {
       if (state === "active") {
         void refetch({ silent: true });
+        startPoll();
+      } else {
+        stopPoll();
       }
     };
 
     const subscription = AppState.addEventListener("change", onAppStateChange);
 
     return () => {
-      if (pollTimerRef.current) {
-        clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
+      stopPoll();
       unsubscribePush();
       subscription.remove();
     };

@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { ChatMessage } from "../types";
 
 type ConversationMessagesApiResponse = {
@@ -51,10 +52,7 @@ export async function fetchConversationMessages(
   );
 
   const data = (await response.json()) as ConversationMessagesApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Mesajlar yüklenemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Mesajlar yüklenemedi");
 
   return (data.messages ?? []).map(mapApiMessage);
 }

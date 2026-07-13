@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { InteractionManager } from "react-native";
 import { fetchBatchEngagement } from "../api/fetchBatchEngagement";
 import {
   isEngagementHydratedFromFeed,
@@ -81,46 +82,61 @@ export function useIncrementalEngagement(
     }
 
     let cancelled = false;
+    let interactionTask: ReturnType<
+      typeof InteractionManager.runAfterInteractions
+    > | null = null;
 
     debounceTimerRef.current = setTimeout(() => {
       debounceTimerRef.current = null;
+      if (cancelled) {
+        return;
+      }
+
       const batch = [...pendingIdsRef.current].filter(
         (id) => !isEngagementLoaded(id)
       );
       pendingIdsRef.current = new Set();
-      if (batch.length === 0) return;
+      if (batch.length === 0) {
+        return;
+      }
 
-      void (async () => {
-        const loadBatch = async () => {
-          const chunks = chunkArray(batch, BATCH_CHUNK_SIZE);
-          const results = await Promise.all(
-            chunks.map((chunk) => fetchBatchEngagement(chunk))
-          );
-          if (cancelled) return;
+      interactionTask = InteractionManager.runAfterInteractions(() => {
+        if (cancelled) {
+          return;
+        }
 
-          const merged = results.reduce<Record<string, EngagementStatus>>(
-            (acc, chunkData) => ({ ...acc, ...chunkData }),
-            {}
-          );
+        void (async () => {
+          const loadBatch = async () => {
+            const chunks = chunkArray(batch, BATCH_CHUNK_SIZE);
+            const results = await Promise.all(
+              chunks.map((chunk) => fetchBatchEngagement(chunk))
+            );
+            if (cancelled) return;
 
-          for (const id of batch) {
-            knownIdsRef.current.add(id);
-          }
-          mergeBatch(merged);
-        };
+            const merged = results.reduce<Record<string, EngagementStatus>>(
+              (acc, chunkData) => ({ ...acc, ...chunkData }),
+              {}
+            );
 
-        try {
-          await loadBatch();
-        } catch {
-          if (cancelled) return;
+            for (const id of batch) {
+              knownIdsRef.current.add(id);
+            }
+            mergeBatch(merged);
+          };
+
           try {
-            await new Promise((resolve) => setTimeout(resolve, 500));
             await loadBatch();
           } catch {
-            // Keep existing engagement state
+            if (cancelled) return;
+            try {
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              await loadBatch();
+            } catch {
+              // Keep existing engagement state
+            }
           }
-        }
-      })();
+        })();
+      });
     }, FETCH_DEBOUNCE_MS);
 
     return () => {
@@ -129,6 +145,7 @@ export function useIncrementalEngagement(
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
       }
+      interactionTask?.cancel();
     };
   }, [enabled, idsKey, mergeBatch, resetKey]);
 

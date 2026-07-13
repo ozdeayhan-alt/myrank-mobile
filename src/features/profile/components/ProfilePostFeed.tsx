@@ -1,10 +1,10 @@
 import { memo, useCallback, useMemo } from "react";
+import { useWindowDimensions } from "react-native";
 import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
-import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
-import { PROFILE_HORIZONTAL_PADDING } from "../profileLayout";
+import { getProfileHorizontalPadding } from "../profileLayout";
 import { useAuthorPosts } from "../hooks/useAuthorPosts";
 
 type ProfilePostFeedProps = {
@@ -12,6 +12,11 @@ type ProfilePostFeedProps = {
 };
 
 function ProfilePostFeedInner({ authorId }: ProfilePostFeedProps) {
+  const { width: screenWidth } = useWindowDimensions();
+  const horizontalPadding = useMemo(
+    () => getProfileHorizontalPadding(screenWidth),
+    [screenWidth]
+  );
   const {
     posts,
     loading,
@@ -35,8 +40,6 @@ function ProfilePostFeedInner({ authorId }: ProfilePostFeedProps) {
     [posts]
   );
 
-  const videoPosts = useMemo(() => collectVideoPostsForPlaylist(posts), [posts]);
-
   const handleRefresh = useCallback(() => {
     void refresh();
   }, [refresh]);
@@ -44,7 +47,6 @@ function ProfilePostFeedInner({ authorId }: ProfilePostFeedProps) {
   return (
     <FeedFlashList
       items={items}
-      videoPosts={videoPosts}
       loading={loading}
       error={error}
       emptyMessage="Henüz gönderi yok."
@@ -57,13 +59,11 @@ function ProfilePostFeedInner({ authorId }: ProfilePostFeedProps) {
       isFetchingNextPage={isFetchingNextPage}
       onLoadMore={fetchNextPage}
       contentContainerStyle={{
-        paddingHorizontal: PROFILE_HORIZONTAL_PADDING,
+        paddingHorizontal: horizontalPadding,
         paddingVertical: 0,
       }}
-      listHorizontalInset={PROFILE_HORIZONTAL_PADDING}
+      listHorizontalInset={horizontalPadding}
       mediaEdgeBleed={false}
-      reelsSource="profile"
-      reelsAuthorId={authorId}
     />
   );
 }

@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 type DeleteAccountResponse = {
   ok?: boolean;
@@ -13,7 +14,5 @@ export async function deleteAccount(): Promise<void> {
   });
 
   const data = (await response.json().catch(() => ({}))) as DeleteAccountResponse;
-  if (!response.ok) {
-    throw new Error(data.error ?? "Hesap silinemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Hesap silinemedi");
 }

@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 export type ProfileVoteBatchResponse = {
   ok: boolean;
@@ -28,10 +29,7 @@ export async function fetchProfileVoteBatch(
   const data = (await response.json()) as ProfileVoteBatchResponse & {
     error?: string;
   };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Profil oyu gönderilemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Profil oyu gönderilemedi");
 
   return data;
 }

@@ -1,5 +1,5 @@
 import { useCallback, type ReactNode } from "react";
-import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { View, type StyleProp, type ViewStyle } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 
@@ -8,22 +8,16 @@ type DoubleTapToLikeProps = {
   onLike: () => void;
   /** Yeni beğeni anında (üst katmanda kalp animasyonu) */
   onLikeAnimated?: () => void;
-  /** Tek tık (ör. feed video → reels aç) */
-  onSinglePress?: () => void;
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
-  /** Video reels: video arkada, şeffaf jest katmanı */
-  overlay?: boolean;
 };
 
 export function DoubleTapToLike({
   children,
   onLike,
   onLikeAnimated,
-  onSinglePress,
   style,
   accessibilityLabel,
-  overlay = false,
 }: DoubleTapToLikeProps) {
   const handleDoubleTap = useCallback(() => {
     onLike();
@@ -37,40 +31,16 @@ export function DoubleTapToLike({
       runOnJS(handleDoubleTap)();
     });
 
-  const containerStyle = [overlay && styles.overlay, style];
-
-  const content = (
-    <View
-      style={containerStyle}
-      accessible
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? "Çift dokunarak beğen"}
-    >
-      {children}
-    </View>
-  );
-
-  if (!onSinglePress) {
-    return <GestureDetector gesture={doubleTap}>{content}</GestureDetector>;
-  }
-
-  const singleTap = Gesture.Tap()
-    .numberOfTaps(1)
-    .requireExternalGestureToFail(doubleTap)
-    .onEnd(() => {
-      runOnJS(onSinglePress)();
-    });
-
   return (
-    <GestureDetector gesture={Gesture.Simultaneous(doubleTap, singleTap)}>
-      {content}
+    <GestureDetector gesture={doubleTap}>
+      <View
+        style={style}
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? "Çift dokunarak beğen"}
+      >
+        {children}
+      </View>
     </GestureDetector>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 10,
-  },
-});

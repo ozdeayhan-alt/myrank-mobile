@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { TabScreenSafeArea } from "@/components/TabScreenSafeArea";
@@ -10,10 +9,10 @@ import {
   SHARE_HUB_SUBTITLES,
 } from "@/features/posts/constants/contentTypeLabels";
 import { useTabBarContentInset } from "@/hooks/useTabBarContentInset";
-import type { PostContentType } from "@/features/posts/types";
+import type { ShareContentType } from "@/features/posts/types";
 
 type HubOption = {
-  type: PostContentType;
+  type: ShareContentType;
   title: string;
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -33,10 +32,10 @@ const HUB_OPTIONS: HubOption[] = [
     icon: "image-outline",
   },
   {
-    type: "video",
-    title: CONTENT_TYPE_LABELS.video,
-    subtitle: SHARE_HUB_SUBTITLES.video,
-    icon: "videocam-outline",
+    type: "flow",
+    title: CONTENT_TYPE_LABELS.flow,
+    subtitle: SHARE_HUB_SUBTITLES.flow,
+    icon: "play-circle-outline",
   },
 ];
 
@@ -69,28 +68,22 @@ function HubOptionCard({
 }
 
 export default function ShareScreen() {
-  const router = useRouter();
   const { bottom: tabBarInset } = useTabBarContentInset();
-  const [fullScreenType, setFullScreenType] = useState<PostContentType | null>(
+  const [fullScreenType, setFullScreenType] = useState<ShareContentType | null>(
     null
   );
   const bumpFeed = useFeedRefreshStore((s) => s.bump);
-
-  const openCompose = (type: PostContentType) => {
-    setFullScreenType(type);
-  };
 
   const closeCompose = () => {
     setFullScreenType(null);
   };
 
   if (fullScreenType) {
+    // TabScreenSafeArea already pads for the tab bar — do not add tabBarInset again
+    // or the Share button sits under ~2cm of empty white space.
     return (
       <TabScreenSafeArea className="flex-1 bg-white">
-        <View
-          className="flex-1 px-5 pt-2"
-          style={{ flex: 1, paddingBottom: tabBarInset + 8 }}
-        >
+        <View className="flex-1 px-5 pt-2" style={{ flex: 1 }}>
           <ShareComposer
             key={fullScreenType}
             initialType={fullScreenType}
@@ -128,15 +121,9 @@ export default function ShareScreen() {
                 title={title}
                 subtitle={subtitle}
                 icon={icon}
-                onPress={() => openCompose(type)}
+                onPress={() => setFullScreenType(type)}
               />
             ))}
-            <HubOptionCard
-              title="Story"
-              subtitle="Fotoğraf veya video — 24 saat görünür"
-              icon="ellipse-outline"
-              onPress={() => router.push("/stories/create")}
-            />
           </View>
         </View>
       </View>

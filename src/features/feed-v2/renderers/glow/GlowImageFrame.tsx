@@ -41,17 +41,19 @@ function GlowImageFrameInner({
   const [fullLoaded, setFullLoaded] = useState(() =>
     Boolean(fullUri && loadedGlowUris.has(fullUri))
   );
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     setPreviewLoaded(Boolean(previewUri && loadedGlowUris.has(previewUri)));
     setFullLoaded(Boolean(fullUri && loadedGlowUris.has(fullUri)));
+    setLoadFailed(false);
   }, [post.id, previewUri, fullUri]);
 
   if (!fullUri && !previewUri) {
     return null;
   }
 
-  const showShimmer = !previewLoaded && !fullLoaded;
+  const showShimmer = !previewLoaded && !fullLoaded && !loadFailed;
   const showFullLayer =
     Boolean(fullUri) && fullUri !== previewUri && fullLoaded;
 
@@ -76,7 +78,7 @@ function GlowImageFrameInner({
 
   return (
     <View style={{ width: "100%", alignItems: "center" }}>
-      <View style={frameStyle} className="overflow-hidden bg-neutral-300">
+      <View style={frameStyle} className="overflow-hidden bg-neutral-950">
         {showShimmer ? (
           <View className="absolute inset-0">
             <ShimmerSkeleton
@@ -90,7 +92,7 @@ function GlowImageFrameInner({
           <Image
             source={{ uri: previewUri }}
             style={{ width: "100%", height: "100%" }}
-            contentFit="cover"
+            contentFit="contain"
             cachePolicy="memory-disk"
             recyclingKey={`${post.id}-preview`}
             priority={imagePriority}
@@ -98,6 +100,7 @@ function GlowImageFrameInner({
               loadedGlowUris.add(previewUri);
               setPreviewLoaded(true);
             }}
+            onError={() => setLoadFailed(true)}
           />
         ) : null}
         {fullUri && fullUri !== previewUri ? (
@@ -111,7 +114,7 @@ function GlowImageFrameInner({
               top: 0,
               left: 0,
             }}
-            contentFit="cover"
+            contentFit="contain"
             cachePolicy="memory-disk"
             recyclingKey={post.id}
             priority={imagePriority}
@@ -120,7 +123,11 @@ function GlowImageFrameInner({
               loadedGlowUris.add(fullUri);
               setFullLoaded(true);
             }}
+            onError={() => setLoadFailed(true)}
           />
+        ) : null}
+        {loadFailed && !previewLoaded && !fullLoaded ? (
+          <View className="absolute inset-0 bg-neutral-200" />
         ) : null}
       </View>
     </View>

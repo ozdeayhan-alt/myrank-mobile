@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import { parseProfileFields, type ParsedProfileFields } from "./profileDocParsing";
 
 export type PublicProfile = ParsedProfileFields;
@@ -23,10 +24,7 @@ export async function getPublicProfile(
   }
 
   const data = (await response.json()) as PublicProfileApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Public profile request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Public profile request failed");
 
   if (!data.profile) {
     return null;

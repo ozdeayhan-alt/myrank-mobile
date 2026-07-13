@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { AppState, type AppStateStatus } from "react-native";
+import {
+  profileVoteDisplayKey,
+  resetVoteDisplay,
+  syncVoteDisplay,
+} from "@/features/ranking/vote/voteDisplayStore";
 import { fetchProfileVoteBatch } from "../api/fetchProfileVoteBatch";
 import { flushVoteDeltaInChunks } from "@/features/ranking/lib/flushVoteDeltaInChunks";
 
@@ -31,6 +36,7 @@ export function useProfileVoteTap({
   enabled,
   onFlushedScore,
 }: UseProfileVoteTapOptions) {
+  const displayKey = profileVoteDisplayKey(targetUserId);
   const serverTPRef = useRef(initialTotalScore);
   const pendingRef = useRef(0);
   const flushingRef = useRef(false);
@@ -42,20 +48,13 @@ export function useProfileVoteTap({
   const enabledRef = useRef(enabled);
   const prevTargetUserIdRef = useRef(targetUserId);
 
-  const [displayTP, setDisplayTP] = useState(initialTotalScore);
-
   targetUserIdRef.current = targetUserId;
   onFlushedScoreRef.current = onFlushedScore;
   enabledRef.current = enabled;
 
-  const computeDisplayTP = useCallback(
-    () => serverTPRef.current + pendingRef.current,
-    []
-  );
-
   const publishDisplay = useCallback(() => {
-    setDisplayTP(computeDisplayTP());
-  }, [computeDisplayTP]);
+    syncVoteDisplay(displayKey, serverTPRef.current, pendingRef.current);
+  }, [displayKey]);
 
   useEffect(() => {
     const targetChanged = prevTargetUserIdRef.current !== targetUserId;
@@ -65,14 +64,13 @@ export function useProfileVoteTap({
       serverTPRef.current = initialTotalScore;
       pendingRef.current = 0;
       authBlockedRef.current = false;
-      publishDisplay();
+      resetVoteDisplay(displayKey, initialTotalScore);
       return;
     }
 
-    // Gönderi puanı / refresh gibi dış güncellemeler bekleyen profil oylarını korur.
     serverTPRef.current = initialTotalScore;
     publishDisplay();
-  }, [targetUserId, initialTotalScore, publishDisplay]);
+  }, [displayKey, targetUserId, initialTotalScore, publishDisplay]);
 
   useEffect(() => {
     if (enabled) {
@@ -231,7 +229,6 @@ export function useProfileVoteTap({
   }, [clearRetryTimer, flushPendingVotes]);
 
   return {
-    displayTP,
     registerUp,
     registerDown,
     flushPendingVotes,

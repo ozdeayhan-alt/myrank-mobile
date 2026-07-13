@@ -22,6 +22,7 @@ play-keystore.properties
 
 # Metro
 .metro-health-check*
+.build-pm2-stopped
 
 # debug
 npm-debug.*

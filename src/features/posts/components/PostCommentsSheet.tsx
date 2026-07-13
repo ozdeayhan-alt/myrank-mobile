@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,9 +17,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { sendPostInteractionSafe } from "@/features/ranking/api/sendPostInteraction";
 import { usePostComments } from "@/features/ranking/hooks/usePostComments";
-import type { InteractionResponse } from "@/features/ranking/types";
+import type { InteractionResponse, PostComment } from "@/features/ranking/types";
 import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 import { SPINNER_COLOR, ui } from "@/lib/uiClasses";
+import { orderCommentsForDisplay } from "../utils/orderCommentsForDisplay";
 import { PostCommentRow } from "./PostCommentRow";
 
 type PostCommentsSheetProps = {
@@ -41,6 +42,7 @@ export function PostCommentsSheet({
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [commentText, setCommentText] = useState("");
+  const [replyTarget, setReplyTarget] = useState<PostComment | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const {
@@ -50,14 +52,29 @@ export function PostCommentsSheet({
     prependComment,
   } = usePostComments(postId, visible);
 
+  const orderedComments = useMemo(
+    () => orderCommentsForDisplay(comments),
+    [comments]
+  );
+
   const sheetMaxHeight = Math.round(windowHeight * 0.88);
 
   useEffect(() => {
     if (visible) {
       setCommentText("");
+      setReplyTarget(null);
       setSubmitting(false);
     }
   }, [visible, postId]);
+
+  const handleReply = useCallback((comment: PostComment) => {
+    setReplyTarget(comment);
+    inputRef.current?.focus();
+  }, []);
+
+  const clearReplyTarget = useCallback(() => {
+    setReplyTarget(null);
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     const trimmed = commentText.trim();
@@ -76,6 +93,7 @@ export function PostCommentsSheet({
         postId,
         type: "comment",
         commentText: trimmed,
+        parentCommentId: replyTarget?.id,
       });
 
       if (!result) {
@@ -83,9 +101,10 @@ export function PostCommentsSheet({
       }
 
       setCommentText("");
+      setReplyTarget(null);
       Keyboard.dismiss();
 
-      if (result.comment) {
+      if (result.comment && !result.comment.parentCommentId) {
         prependComment(result.comment);
       } else {
         await refresh();
@@ -105,6 +124,7 @@ export function PostCommentsSheet({
     postId,
     prependComment,
     refresh,
+    replyTarget?.id,
     submitting,
   ]);
 
@@ -149,13 +169,17 @@ export function PostCommentsSheet({
             >
               {commentsLoading ? (
                 <ActivityIndicator className="my-4" color={SPINNER_COLOR} />
-              ) : comments.length === 0 ? (
+              ) : orderedComments.length === 0 ? (
                 <Text className="py-4 text-center text-sm text-gray-400">
                   Henüz yorum yok. İlk yorumu sen yaz!
                 </Text>
               ) : (
-                comments.map((comment) => (
-                  <PostCommentRow key={comment.id} comment={comment} />
+                orderedComments.map((comment) => (
+                  <PostCommentRow
+                    key={comment.id}
+                    comment={comment}
+                    onReply={handleReply}
+                  />
                 ))
               )}
             </ScrollView>
@@ -164,10 +188,25 @@ export function PostCommentsSheet({
               className="border-t border-gray-100 bg-white px-6 pt-3"
               style={{ paddingBottom: Math.max(insets.bottom, 12) }}
             >
+              {replyTarget ? (
+                <View className="mb-2 flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-2">
+                  <Text className="flex-1 text-xs text-gray-600" numberOfLines={1}>
+                    {resolveReplyLabel(replyTarget)} yanıtlanıyor
+                  </Text>
+                  <Pressable onPress={clearReplyTarget} hitSlop={8}>
+                    <Text className="text-xs font-semibold text-gray-500">İptal</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
               <TextInput
                 ref={inputRef}
                 className="mb-3 min-h-[72px] rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
-                placeholder="Yorumunuzu yazın..."
+                placeholder={
+                  replyTarget
+                    ? "Yanıtınızı yazın..."
+                    : "Yorumunuzu yazın..."
+                }
                 placeholderTextColor="#9CA3AF"
                 multiline
                 blurOnSubmit={false}
@@ -202,6 +241,14 @@ export function PostCommentsSheet({
       </KeyboardAvoidingView>
     </Modal>
   );
+}
+
+function resolveReplyLabel(comment: PostComment): string {
+  const name =
+    comment.actorDisplayName?.trim() ||
+    comment.replyToDisplayName?.trim() ||
+    "Kullanıcı";
+  return `@${name}`;
 }
 
 const styles = StyleSheet.create({

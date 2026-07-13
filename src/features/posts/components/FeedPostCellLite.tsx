@@ -9,7 +9,6 @@ import {
   resolvePostAuthorInitial,
   resolvePostAuthorPhotoURL,
 } from "../utils/resolvePostAuthor";
-import { isVideoPost } from "../utils/videoPosts";
 import { PostFeedMedia } from "./PostFeedMedia";
 import { PostScorePill } from "./PostScorePill";
 
@@ -24,9 +23,7 @@ function FeedPostCellLiteInner({ post }: FeedPostCellLiteProps) {
   const photoURL = resolvePostAuthorPhotoURL(post);
   const bodyText = postBodyText(post);
   const hasMedia =
-    post.contentType === "image" ||
-    isVideoPost(post) ||
-    Boolean(post.mediaURL?.trim());
+    post.contentType === "image" || Boolean(post.mediaURL?.trim());
 
   return (
     <View

@@ -1,9 +1,16 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import {
   type InfiniteData,
   useInfiniteQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import type { FeedApiContentType } from "@/features/feed/feedContentType";
+import { resolveFeedPageLimit } from "@/features/feed/feedPagination";
+import {
+  FEED_INFINITE_QUERY_DEFAULTS,
+  feedInfiniteGetNextPageParam,
+} from "@/features/feed/feedInfiniteQueryDefaults";
+import { useGuardedFeedFetchNextPage } from "@/features/feed/useGuardedFeedFetchNextPage";
 import {
   fetchExploreFeedPage,
   type FeedPageResult,
@@ -19,26 +26,52 @@ import { getUserFacingErrorMessage } from "@/lib/userFacingErrors";
 
 const EXPLORE_KEY = ["feed", "explore"] as const;
 
+/** Busts stale persisted explore pages from pre-contentType sprint caches. */
+const EXPLORE_FEED_CACHE_REVISION = "content-v2" as const;
+
 export function useExploreFeedInfinite(
   filters: UserMetadata | null,
+  contentType: FeedApiContentType = "all",
   enabled = true
 ) {
   const queryClient = useQueryClient();
   const filterKey = getFilterSegmentLabel(filters);
   const feedVersion = useFeedRefreshStore((s) => s.version);
   const queryKey = useMemo(
-    () => [...EXPLORE_KEY, filterKey, feedVersion] as const,
-    [filterKey, feedVersion]
+    () =>
+      [
+        ...EXPLORE_KEY,
+        EXPLORE_FEED_CACHE_REVISION,
+        filterKey,
+        contentType,
+        feedVersion,
+      ] as const,
+    [filterKey, contentType, feedVersion]
   );
+
+  useEffect(() => {
+    void queryClient.removeQueries({
+      predicate: (query) => {
+        const key = query.queryKey;
+        return (
+          key[0] === EXPLORE_KEY[0] &&
+          key[1] === EXPLORE_KEY[1] &&
+          key[2] !== EXPLORE_FEED_CACHE_REVISION
+        );
+      },
+    });
+  }, [queryClient]);
 
   const query = useInfiniteQuery({
     queryKey,
-    queryFn: ({ pageParam }) =>
-      fetchExploreFeedPage(filters, pageParam as string | null),
-    initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.cursor : undefined,
-    staleTime: 60_000,
+    queryFn: ({ pageParam, signal }) =>
+      fetchExploreFeedPage(filters, pageParam as string | null, {
+        limit: resolveFeedPageLimit(pageParam as string | null),
+        contentType,
+        signal,
+      }),
+    ...FEED_INFINITE_QUERY_DEFAULTS,
+    getNextPageParam: feedInfiniteGetNextPageParam,
     enabled,
   });
 
@@ -50,20 +83,11 @@ export function useExploreFeedInfinite(
     : null;
 
   const refresh = useCallback(async () => {
-    await invalidateServerFeedCache();
+    void invalidateServerFeedCache();
     await queryClient.invalidateQueries({ queryKey: [...EXPLORE_KEY] });
   }, [queryClient]);
 
-  const fetchNextPage = useCallback(() => {
-    if (query.hasNextPage && !query.isFetchingNextPage && !query.isFetching) {
-      void query.fetchNextPage();
-    }
-  }, [
-    query.fetchNextPage,
-    query.hasNextPage,
-    query.isFetching,
-    query.isFetchingNextPage,
-  ]);
+  const fetchNextPage = useGuardedFeedFetchNextPage(query);
 
   const updatePostScore = useCallback(
     (postId: string, postScore: number, counts?: PostCounts) => {
@@ -84,8 +108,9 @@ export function useExploreFeedInfinite(
     filterKey,
     hasNextPage: query.hasNextPage ?? false,
     isFetchingNextPage: query.isFetchingNextPage,
+    isFetching: query.isFetching,
     fetchNextPage,
     isRefetching: query.isRefetching,
-    engagementResetKey: filterKey,
+    engagementResetKey: `${filterKey}-${contentType}`,
   };
 }

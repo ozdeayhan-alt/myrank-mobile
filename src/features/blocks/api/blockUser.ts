@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 type BlockResponse = {
   ok?: boolean;
@@ -17,9 +18,7 @@ export async function blockUser(targetUserId: string): Promise<void> {
   );
 
   const data = (await response.json().catch(() => ({}))) as BlockResponse;
-  if (!response.ok) {
-    throw new Error(data.error ?? "Engelleme başarısız");
-  }
+  throwIfNotOk(response, data, data.error ?? "Engelleme başarısız");
 }
 
 export async function unblockUser(targetUserId: string): Promise<void> {
@@ -32,9 +31,7 @@ export async function unblockUser(targetUserId: string): Promise<void> {
   );
 
   const data = (await response.json().catch(() => ({}))) as BlockResponse;
-  if (!response.ok) {
-    throw new Error(data.error ?? "Engel kaldırılamadı");
-  }
+  throwIfNotOk(response, data, data.error ?? "Engel kaldırılamadı");
 }
 
 export async function fetchBlockStatus(
@@ -49,9 +46,7 @@ export async function fetchBlockStatus(
   );
 
   const data = (await response.json().catch(() => ({}))) as BlockResponse;
-  if (!response.ok) {
-    throw new Error(data.error ?? "Engel durumu alınamadı");
-  }
+  throwIfNotOk(response, data, data.error ?? "Engel durumu alınamadı");
 
   return Boolean(data.blocked);
 }

@@ -1,5 +1,16 @@
-/** Profil üst bölümü (avatar, skor, açılır kartlar) yatay iç boşluk */
-export const PROFILE_HORIZONTAL_PADDING = 24;
+/** Profil üst bölümü yatay iç boşluk (geniş ekran) */
+export const PROFILE_HORIZONTAL_PADDING = 12;
+
+/** Dar ekranlarda tek satır oy/takip satırı */
+export const PROFILE_HORIZONTAL_PADDING_NARROW = 10;
+
+const NARROW_SCREEN_MAX_WIDTH = 380;
+
+export function getProfileHorizontalPadding(screenWidth: number): number {
+  return screenWidth < NARROW_SCREEN_MAX_WIDTH
+    ? PROFILE_HORIZONTAL_PADDING_NARROW
+    : PROFILE_HORIZONTAL_PADDING;
+}
 
 /** Kenar butonları (mesaj, takip) ekran kenarından hafif içeride */
 export const PROFILE_EDGE_INSET = 12;
@@ -23,7 +34,7 @@ export const PROFILE_SCORE_SECTION_MARGIN_TOP = 20;
 export const PROFILE_VOTE_CONTROLS_MARGIN_TOP = 20;
 
 export function getProfileScoreCardWidth(screenWidth: number): number {
-  return screenWidth - PROFILE_HORIZONTAL_PADDING * 2;
+  return screenWidth - getProfileHorizontalPadding(screenWidth) * 2;
 }
 
 const GAUGE_WIDTH_RATIO = 0.9;
@@ -63,12 +74,11 @@ export function getProfileSegmentGaugeLayout(
 ): ProfileSegmentGaugeLayout {
   const contentWidth = getProfileScoreCardWidth(screenWidth);
   const scale = Math.min(Math.max(fontScale, 1), FONT_SCALE_CLAMP_MAX);
-  const effectiveContentWidth = contentWidth / scale;
 
   const gaugeWidth = Math.round(
     Math.min(
       GAUGE_WIDTH_MAX,
-      Math.max(GAUGE_WIDTH_MIN, effectiveContentWidth * GAUGE_WIDTH_RATIO)
+      Math.max(GAUGE_WIDTH_MIN, contentWidth * GAUGE_WIDTH_RATIO)
     )
   );
   const gaugeHeight = BAR_HEIGHT;
@@ -83,7 +93,9 @@ export function getProfileSegmentGaugeLayout(
   const trackLength = barLength;
   const metaAreaHeight = Math.round(gaugeWidth * 0.08) + 20;
   const segmentLabelGap = 6;
-  const stackedMeta = gaugeWidth < 260 || contentWidth < 300;
+  const stackedMeta = contentWidth < 272;
+
+  const fontScaleDivisor = Math.sqrt(scale);
 
   return {
     containerWidth: contentWidth,
@@ -96,11 +108,24 @@ export function getProfileSegmentGaugeLayout(
     trackStroke,
     trackLength,
     metaAreaHeight,
-    tpFontSize: Math.round(Math.min(28, Math.max(22, gaugeWidth * 0.075))),
-    tpLineHeight: Math.round(Math.min(32, Math.max(26, gaugeWidth * 0.085))),
-    metaLabelFontSize: Math.max(8, Math.round(gaugeWidth * 0.032)),
-    metaValueFontSize: Math.max(10, Math.round(gaugeWidth * 0.038)),
-    metaTargetFontSize: Math.max(9, Math.round(gaugeWidth * 0.034)),
+    tpFontSize: Math.round(
+      Math.min(28, Math.max(22, (gaugeWidth * 0.075) / fontScaleDivisor))
+    ),
+    tpLineHeight: Math.round(
+      Math.min(32, Math.max(26, (gaugeWidth * 0.085) / fontScaleDivisor))
+    ),
+    metaLabelFontSize: Math.max(
+      8,
+      Math.round((gaugeWidth * 0.032) / fontScaleDivisor)
+    ),
+    metaValueFontSize: Math.max(
+      10,
+      Math.round((gaugeWidth * 0.038) / fontScaleDivisor)
+    ),
+    metaTargetFontSize: Math.max(
+      9,
+      Math.round((gaugeWidth * 0.034) / fontScaleDivisor)
+    ),
     segmentLabelGap,
     stackedMeta,
     gaugeInfoIconSize: Math.max(13, Math.round(gaugeWidth * 0.042)),
@@ -124,19 +149,19 @@ export const PROFILE_SEGMENT_TO_SCORE_GAP = 8;
 export const PROFILE_VOTE_CENTER_NUDGE = 6;
 
 const PROFILE_VOTE_DIAMETER_MAX = 54;
-const PROFILE_VOTE_DIAMETER_MIN = 48;
+const PROFILE_VOTE_DIAMETER_MIN = 44;
 const PROFILE_VOTE_GAP = 10;
 const SIDE_BUTTON_HEIGHT_RATIO = 0.72;
 const SIDE_BUTTON_HEIGHT_MIN = 34;
 const SIDE_BUTTON_HEIGHT_MAX = 42;
-const SIDE_BUTTON_WIDTH_MIN = 96;
+const SIDE_BUTTON_WIDTH_MIN = 88;
 const SIDE_BUTTON_WIDTH_MAX = 112;
 /** Yan buton ile oy dairesi arası minimum boşluk (space-between düzeni) */
-const SIDE_BUTTON_VOTE_GAP = 12;
+const SIDE_BUTTON_VOTE_GAP = 8;
 /** Yükselt/Alçalt alt etiketi için yan butonlarda boşluk (hiza) */
 export const PROFILE_VOTE_BUTTON_LABEL_RESERVE = 16;
 /** Gölge / hitSlop taşması için satır genişliği güvenlik payı */
-const PROFILE_VOTE_ROW_SAFETY = 12;
+const PROFILE_VOTE_ROW_SAFETY = 6;
 
 export type ProfileVoteControlLayout = {
   voteDiameter: number;

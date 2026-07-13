@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 export type RankingSnapshotMeta = {
   rebuiltAt: Date | null;
@@ -23,10 +24,7 @@ export async function fetchRankingSnapshotMeta(): Promise<RankingSnapshotMeta> {
   );
 
   const data = (await response.json()) as SnapshotMetaApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Ranking snapshot meta request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Ranking snapshot meta request failed");
 
   const rebuiltAtRaw = data.meta?.rebuiltAt;
   return {

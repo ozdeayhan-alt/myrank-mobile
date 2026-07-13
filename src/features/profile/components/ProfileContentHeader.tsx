@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { memo, useCallback, useMemo, useRef } from "react";
-import { Pressable, Text, View, type View as RNView } from "react-native";
+import { Pressable, Text, View, useWindowDimensions, type View as RNView } from "react-native";
 import { ProfileHeaderButton } from "@/components/ProfileHeaderButton";
 import { ProfileUserMenuButton } from "@/features/blocks";
 import { WhileYouWereAwaySection } from "@/features/notifications";
@@ -12,19 +12,23 @@ import { formatProfileCategoriesLine } from "../utils/formatProfileCategoriesLin
 import {
   PROFILE_AVATAR_SIZE,
   PROFILE_EDGE_INSET,
-  PROFILE_HORIZONTAL_PADDING,
-  PROFILE_MEDAL_GAP,
+  getProfileHorizontalPadding,
   PROFILE_MENU_RIGHT_INSET,
 } from "../profileLayout";
 import { isSystemProfileUserId } from "@/lib/profile/isSystemProfile";
-import { ProfileStoryAvatar } from "@/features/stories/components/ProfileStoryAvatar";
-import { ProfileRankMedal } from "./ProfileRankMedal";
+import { ProfileAvatar } from "./ProfileAvatar";
+import { ProfileMyRankSegmentBadge } from "./ProfileMyRankSegmentBadge";
 import { ProfileRankingsAccordion } from "./ProfileRankingsAccordion";
 import { ProfileSegmentScoreBadge } from "./ProfileSegmentScoreBadge";
 import { ProfileVoteButtons } from "./ProfileVoteButtons";
 import { AchievementBadge } from "./AchievementBadge";
 import { useProfileTopRanking } from "../hooks/useProfileTopRanking";
 import { useProfileVoteFountain } from "./profileVoteFountainContext";
+import { useRankingNavigationStore } from "@/features/ranking/store/useRankingNavigationStore";
+import {
+  buildRankingFiltersForCategory,
+  buildRankingFiltersForFullSegment,
+} from "@/features/ranking/utils/buildRankingFiltersFromProfile";
 
 type ProfileContentHeaderProps = {
   userId: string;
@@ -50,6 +54,8 @@ function ProfileContentHeaderInner({
   currentUserId = null,
 }: ProfileContentHeaderProps) {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  const horizontalPadding = getProfileHorizontalPadding(screenWidth);
   const { patchFountainAnchor } = useProfileVoteFountain();
   const headerRef = useRef<RNView>(null);
   const avatarRef = useRef<RNView>(null);
@@ -98,6 +104,27 @@ function ProfileContentHeaderInner({
     rankingsReady && !isSystemProfile
   );
 
+  const setRankingIntent = useRankingNavigationStore((s) => s.setIntent);
+
+  const openFullSegmentRanking = useCallback(() => {
+    setRankingIntent({
+      filters: buildRankingFiltersForFullSegment(metadata),
+      scrollToUserId: userId,
+    });
+    router.push("/(tabs)/ranking");
+  }, [metadata, router, setRankingIntent, userId]);
+
+  const openTopCategoryRanking = useCallback(() => {
+    if (!topRanking) {
+      return;
+    }
+    setRankingIntent({
+      filters: buildRankingFiltersForCategory(topRanking.key, metadata),
+      scrollToUserId: userId,
+    });
+    router.push("/(tabs)/ranking");
+  }, [metadata, router, setRankingIntent, topRanking, userId]);
+
   return (
     <View className="pt-4" collapsable={false}>
       <View
@@ -111,7 +138,7 @@ function ProfileContentHeaderInner({
           <View
             className="absolute left-0 right-0 top-0 z-10 flex-row justify-end"
             style={{
-              marginHorizontal: -PROFILE_HORIZONTAL_PADDING,
+              marginHorizontal: -horizontalPadding,
               paddingRight: PROFILE_MENU_RIGHT_INSET,
               overflow: "visible",
             }}
@@ -122,7 +149,7 @@ function ProfileContentHeaderInner({
           <View
             className="absolute left-0 right-0 top-0 z-10 flex-row items-start justify-between"
             style={{
-              marginHorizontal: -PROFILE_HORIZONTAL_PADDING,
+              marginHorizontal: -horizontalPadding,
               paddingLeft: PROFILE_EDGE_INSET,
               paddingRight: PROFILE_MENU_RIGHT_INSET,
               overflow: "visible",
@@ -148,31 +175,14 @@ function ProfileContentHeaderInner({
               alignSelf: "center",
               width: PROFILE_AVATAR_SIZE,
               marginBottom: 14,
-              position: "relative",
-              overflow: "visible",
             }}
             collapsable={false}
           >
-            <ProfileStoryAvatar
-              userId={userId}
+            <ProfileAvatar
+              size={PROFILE_AVATAR_SIZE}
               photoURL={photoURL}
               fallbackLetter={displayName}
-              size={PROFILE_AVATAR_SIZE}
-              isOwnProfile={isOwnProfile}
             />
-            <View
-              style={{
-                position: "absolute",
-                left: PROFILE_AVATAR_SIZE + PROFILE_MEDAL_GAP,
-                bottom: 0,
-              }}
-            >
-              <ProfileRankMedal
-                userId={userId}
-                metadata={metadata}
-                isOwnProfile={isOwnProfile}
-              />
-            </View>
           </View>
           <Text className="text-lg font-bold text-gray-900">{displayName}</Text>
           {hasBioText ? (
@@ -191,9 +201,26 @@ function ProfileContentHeaderInner({
               {categoriesLine}
             </Text>
           ) : null}
+          {!isSystemProfile && rankingsReady ? (
+            <View className="mt-2">
+              <ProfileMyRankSegmentBadge
+                userId={userId}
+                metadata={metadata}
+                isOwnProfile={isOwnProfile}
+                onPress={openFullSegmentRanking}
+              />
+            </View>
+          ) : null}
           {topRanking ? (
             <View className="mb-1 mt-2">
-              <AchievementBadge topRanking={topRanking} />
+              <Pressable
+                onPress={openTopCategoryRanking}
+                accessibilityRole="button"
+                accessibilityLabel={`${topRanking.label}, sıralamada konumunu göster`}
+                style={({ pressed }) => (pressed ? { opacity: 0.88 } : undefined)}
+              >
+                <AchievementBadge topRanking={topRanking} />
+              </Pressable>
             </View>
           ) : null}
           <ProfileSegmentScoreBadge

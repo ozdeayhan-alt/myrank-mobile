@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import type { PostCounts } from "@/features/ranking/types";
 import { fetchPostVoteBatch } from "@/features/ranking/api/fetchPostVoteBatch";
 import { flushVoteDeltaInChunks } from "@/features/ranking/lib/flushVoteDeltaInChunks";
+import {
+  postVoteDisplayKey,
+  resetVoteDisplay,
+  syncVoteDisplay,
+} from "@/features/ranking/vote/voteDisplayStore";
 
 const FLUSH_IDLE_MS = 3000;
 const MAX_PENDING_DELTA = 10_000;
@@ -38,6 +43,7 @@ export function usePostVoteTap({
   enabled,
   onFlushed,
 }: UsePostVoteTapOptions) {
+  const displayKey = postVoteDisplayKey(postId);
   const serverScoreRef = useRef(initialPostScore);
   const pendingRef = useRef(0);
   const flushingRef = useRef(false);
@@ -49,20 +55,13 @@ export function usePostVoteTap({
   const enabledRef = useRef(enabled);
   const prevPostIdRef = useRef(postId);
 
-  const [displayScore, setDisplayScore] = useState(initialPostScore);
-
   postIdRef.current = postId;
   onFlushedRef.current = onFlushed;
   enabledRef.current = enabled;
 
-  const computeDisplayScore = useCallback(
-    () => serverScoreRef.current + pendingRef.current,
-    []
-  );
-
   const publishDisplay = useCallback(() => {
-    setDisplayScore(computeDisplayScore());
-  }, [computeDisplayScore]);
+    syncVoteDisplay(displayKey, serverScoreRef.current, pendingRef.current);
+  }, [displayKey]);
 
   useEffect(() => {
     const postChanged = prevPostIdRef.current !== postId;
@@ -72,13 +71,13 @@ export function usePostVoteTap({
       serverScoreRef.current = initialPostScore;
       pendingRef.current = 0;
       authBlockedRef.current = false;
-      publishDisplay();
+      resetVoteDisplay(displayKey, initialPostScore);
       return;
     }
 
     serverScoreRef.current = initialPostScore;
     publishDisplay();
-  }, [postId, initialPostScore, publishDisplay]);
+  }, [displayKey, postId, initialPostScore, publishDisplay]);
 
   useEffect(() => {
     if (enabled) {
@@ -242,7 +241,6 @@ export function usePostVoteTap({
   }, [clearRetryTimer, flushPendingVotes]);
 
   return {
-    displayScore,
     registerUp,
     registerDown,
     flushPendingVotes,

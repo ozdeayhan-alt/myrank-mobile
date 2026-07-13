@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 export type ReportReason =
   | "spam"
@@ -28,7 +29,5 @@ export async function reportContent(input: {
   });
 
   const data = (await response.json().catch(() => ({}))) as ReportResponse;
-  if (!response.ok) {
-    throw new Error(data.error ?? "Şikayet gönderilemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Şikayet gönderilemedi");
 }

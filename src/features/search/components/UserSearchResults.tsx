@@ -29,7 +29,17 @@ export function UserSearchResults({
     });
   };
 
-  if (trimmed.length > 0 && trimmed.length < MIN_USER_SEARCH_LENGTH) {
+  if (trimmed.length === 0) {
+    return (
+      <View className="flex-1 items-center justify-center px-6">
+        <Text className="text-center text-sm text-gray-500">
+          İsim yazarak kişi ara.
+        </Text>
+      </View>
+    );
+  }
+
+  if (trimmed.length < MIN_USER_SEARCH_LENGTH) {
     return (
       <View className="flex-1 items-center justify-center px-6">
         <Text className="text-center text-sm text-gray-500">
@@ -69,7 +79,7 @@ export function UserSearchResults({
         ) : null
       }
       ListEmptyComponent={
-        !loading ? (
+        !loading && trimmed.length >= MIN_USER_SEARCH_LENGTH ? (
           <View className="px-6 py-10">
             <Text className="text-center text-sm text-gray-500">
               {`"${trimmed}" için kişi bulunamadı.`}

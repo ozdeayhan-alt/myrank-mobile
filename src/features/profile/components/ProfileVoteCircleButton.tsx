@@ -1,3 +1,4 @@
+import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useMemo } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
@@ -14,7 +15,7 @@ const CHROME_GRADIENT_GHOST = [
   "rgba(154,163,174,0.4)",
 ] as const;
 
-type ZikirmatikTheme = {
+export type VoteCircleButtonTheme = {
   cap: readonly [string, string, string];
   capPressed: readonly [string, string, string];
   recess: string;
@@ -24,6 +25,8 @@ type ZikirmatikTheme = {
   labelActive: string;
   activeGlow: string;
 };
+
+type ZikirmatikTheme = VoteCircleButtonTheme;
 
 const ZIKIRMATIK_THEMES: Record<"up" | "down", ZikirmatikTheme> = {
   up: {
@@ -64,6 +67,20 @@ type ProfileVoteCircleButtonProps = {
   visualOpacity?: number;
   /** Reels: daha saydam metalik yüzey */
   ghost?: boolean;
+  /** default | ghost | glass (Flow cam hissi) */
+  surface?: "default" | "ghost" | "glass";
+  /** Flow vb. özel renk teması */
+  themeOverride?: VoteCircleButtonTheme;
+  /** glass yüzey ayarları — yalnızca surface="glass" */
+  glassConfig?: {
+    visualOpacity?: number;
+    blurIntensity?: number;
+    blurTint?: "light" | "dark" | "default";
+    androidBackdrop?: string;
+    chromeRing?: readonly [string, string, string];
+    ringBorder?: string;
+    labelShadow?: string;
+  };
 };
 
 function createStyles(size: number) {
@@ -142,6 +159,13 @@ function createStyles(size: number) {
       fontWeight: "600",
       textAlign: "center",
     },
+    glassBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: size / 2,
+    },
+    glassChromeRing: {
+      borderWidth: StyleSheet.hairlineWidth,
+    },
   });
 }
 
@@ -157,14 +181,34 @@ export function ProfileVoteCircleButton({
   active = false,
   visualOpacity = 1,
   ghost = false,
+  surface,
+  themeOverride,
+  glassConfig,
 }: ProfileVoteCircleButtonProps) {
   const label = direction === "up" ? "Yükselt" : "Alçalt";
-  const theme = ZIKIRMATIK_THEMES[direction];
+  const resolvedSurface = surface ?? (ghost ? "ghost" : "default");
+  const theme = themeOverride ?? ZIKIRMATIK_THEMES[direction];
   const styles = useMemo(() => createStyles(diameter), [diameter]);
   const triangleSize = Math.round(diameter * (showLabel ? 0.34 : 0.38));
-  const chromeColors = ghost ? CHROME_GRADIENT_GHOST : CHROME_GRADIENT;
-  const baseOpacity = ghost ? Math.min(visualOpacity, 0.92) : visualOpacity;
+  const isGlass = resolvedSurface === "glass";
+  const isGhost = resolvedSurface === "ghost";
+  const chromeColors = isGlass
+    ? (glassConfig?.chromeRing ?? CHROME_GRADIENT_GHOST)
+    : isGhost
+      ? CHROME_GRADIENT_GHOST
+      : CHROME_GRADIENT;
+  const baseOpacity = isGlass
+    ? Math.min(visualOpacity, glassConfig?.visualOpacity ?? 0.92)
+    : isGhost
+      ? Math.min(visualOpacity, 0.92)
+      : visualOpacity;
   const disabledOpacity = disabled ? baseOpacity * 0.55 : baseOpacity;
+  const glassBlurIntensity = glassConfig?.blurIntensity ?? 32;
+  const glassBlurTint = glassConfig?.blurTint ?? "dark";
+  const glassAndroidBackdrop =
+    glassConfig?.androidBackdrop ?? "rgba(14,18,24,0.36)";
+  const glassRingBorder = glassConfig?.ringBorder ?? "rgba(255,255,255,0.22)";
+  const glassLabelShadow = glassConfig?.labelShadow ?? "rgba(0,0,0,0.55)";
 
   return (
     <Pressable
@@ -194,12 +238,38 @@ export function ProfileVoteCircleButton({
                 />
               ) : null}
 
+              {isGlass ? (
+                Platform.OS === "ios" ? (
+                  <BlurView
+                    intensity={glassBlurIntensity}
+                    tint={glassBlurTint}
+                    style={styles.glassBackdrop}
+                  />
+                ) : (
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      styles.glassBackdrop,
+                      { backgroundColor: glassAndroidBackdrop },
+                    ]}
+                  />
+                )
+              ) : null}
+
               <LinearGradient
                 colors={[...chromeColors]}
                 locations={[0, 0.45, 1]}
                 start={{ x: 0.15, y: 0 }}
                 end={{ x: 0.85, y: 1 }}
-                style={styles.chromeRing}
+                style={[
+                  styles.chromeRing,
+                  isGlass
+                    ? [
+                        styles.glassChromeRing,
+                        { borderColor: glassRingBorder },
+                      ]
+                    : undefined,
+                ]}
               >
                 <View
                   style={[
@@ -265,6 +335,13 @@ export function ProfileVoteCircleButton({
                 style={[
                   styles.label,
                   { color: active ? theme.labelActive : theme.label },
+                  isGlass
+                    ? {
+                        textShadowColor: glassLabelShadow,
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 3,
+                      }
+                    : undefined,
                 ]}
               >
                 {label}

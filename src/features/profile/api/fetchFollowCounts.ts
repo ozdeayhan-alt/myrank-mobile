@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { FollowCounts } from "../types/followLists";
 
 type FollowCountsResponse = FollowCounts & {
@@ -17,10 +18,7 @@ export async function fetchFollowCounts(): Promise<FollowCounts> {
   );
 
   const data = (await response.json().catch(() => ({}))) as FollowCountsResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Takip sayıları alınamadı");
-  }
+  throwIfNotOk(response, data, data.error ?? "Takip sayıları alınamadı");
 
   return {
     followingCount: data.followingCount ?? 0,

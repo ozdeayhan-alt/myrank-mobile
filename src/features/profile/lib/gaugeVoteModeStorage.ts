@@ -36,6 +36,13 @@ export async function saveGaugeVoteMode(
   }
 }
 
+export function clearPendingGaugeVoteModeTimers(): void {
+  for (const timer of pendingTimers.values()) {
+    clearTimeout(timer);
+  }
+  pendingTimers.clear();
+}
+
 export function saveGaugeVoteModeDebounced(
   userId: string,
   mode: "up" | "down"

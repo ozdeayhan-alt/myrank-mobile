@@ -83,7 +83,7 @@ type NotificationsListProps = {
 export function NotificationsList({ limit = 30 }: NotificationsListProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const { notifications, loading, error, refresh } = useNotifications(
+  const { notifications, loading, isFetching, error, refresh } = useNotifications(
     user?.uid,
     { limit }
   );
@@ -109,17 +109,16 @@ export function NotificationsList({ limit = 30 }: NotificationsListProps) {
   const listFooter = useMemo(() => <CommunitySafetyFooter />, []);
 
   const listEmpty = useMemo(
-    () => (
-      <Text className="px-4 py-10 text-center text-sm text-gray-500">
-        Henüz bildirim yok.
-      </Text>
-    ),
-    []
+    () =>
+      loading ? (
+        <ActivityIndicator className="my-10" color="#374151" />
+      ) : (
+        <Text className="px-4 py-10 text-center text-sm text-gray-500">
+          Henüz bildirim yok.
+        </Text>
+      ),
+    [loading]
   );
-
-  if (loading) {
-    return <ActivityIndicator className="my-10" color="#374151" />;
-  }
 
   if (error) {
     return (
@@ -139,6 +138,8 @@ export function NotificationsList({ limit = 30 }: NotificationsListProps) {
       renderItem={renderItem}
       ListEmptyComponent={listEmpty}
       ListFooterComponent={listFooter}
+      refreshing={isFetching && notifications.length > 0}
+      onRefresh={() => void refresh()}
       contentContainerStyle={{ paddingBottom: 8 }}
     />
   );

@@ -1,23 +1,34 @@
 import type { Post } from "@/features/posts/types";
 import type { PostCounts } from "@/features/ranking/types";
-import type { HomeContentFilter } from "@/features/posts/utils/filterPostsByContentType";
 
-export type FeedListItemKind = "whisp" | "glow" | "flow-teaser" | "repost";
+export type FeedListItemKind = "whisp" | "glow" | "repost" | "duel" | "flow_grid";
 
-export type FeedV2ListItem = {
-  kind: FeedListItemKind;
-  key: string;
-  post: Post;
-};
+export type PostFeedListItemKind = "whisp" | "glow" | "repost";
+
+export type FeedV2ListItem =
+  | {
+      kind: "whisp" | "glow" | "repost";
+      key: string;
+      post: Post;
+    }
+  | {
+      kind: "flow_grid";
+      key: string;
+      posts: Post[];
+    }
+  | {
+      kind: "duel";
+      key: string;
+    };
 
 export type FeedEngineData = {
   posts: Post[];
-  videoPosts: Post[];
   items: FeedV2ListItem[];
   loading: boolean;
   error: string | null;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
+  isFetching: boolean;
   isRefetching: boolean;
 };
 
@@ -35,11 +46,12 @@ export type FeedEngineResult = FeedEngineData & FeedEngineActions;
 
 export type FeedEngineInput = {
   posts: Post[];
-  contentFilter: HomeContentFilter | null;
+  items?: FeedV2ListItem[];
   loading: boolean;
   error: string | null;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
+  isFetching: boolean;
   isRefetching: boolean;
   refresh: () => void | Promise<void>;
   fetchNextPage: () => void;

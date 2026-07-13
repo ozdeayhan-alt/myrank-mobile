@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import { EMPTY_METADATA, type UserMetadata } from "../types";
 import {
   parseProfileFields,
@@ -25,10 +26,7 @@ export async function getProfile(userId: string): Promise<LoadedProfile | null> 
   }
 
   const data = (await response.json()) as OwnProfileApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Profile request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Profile request failed");
 
   if (!data.profile) {
     return null;

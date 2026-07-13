@@ -1,7 +1,10 @@
+import { memo, type RefObject } from "react";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import type { PostCounts } from "@/features/ranking/types";
 import { ui } from "@/lib/uiClasses";
+import type { PostVoteButtonPulse } from "../hooks/usePostVoteFeedback";
 import { getPostActionBarLayout } from "../utils/postActionBarLayout";
+import type { PostVoteFountainHandle } from "./PostVoteFountainLayer";
 import { PostVoteCirclePair } from "./PostVoteCirclePair";
 
 type PostCardActionBarProps = {
@@ -14,6 +17,12 @@ type PostCardActionBarProps = {
   onCommentPress: () => void;
   onSharePress: () => void;
   onSavePress: () => void;
+  /** Owner edit/delete or report menu (⋯). */
+  onMenuPress?: () => void;
+  menuAccessibilityLabel?: string;
+  fountainRef?: RefObject<PostVoteFountainHandle | null>;
+  buttonPulseSeq?: number;
+  lastButtonPulse?: PostVoteButtonPulse | null;
 };
 
 type ActionButtonProps = {
@@ -51,7 +60,7 @@ function ActionButton({
   );
 }
 
-export function PostCardActionBar({
+export const PostCardActionBar = memo(function PostCardActionBar({
   counts,
   shareActive,
   saveActive,
@@ -61,17 +70,36 @@ export function PostCardActionBar({
   onCommentPress,
   onSharePress,
   onSavePress,
+  onMenuPress,
+  menuAccessibilityLabel = "Gönderi seçenekleri",
+  fountainRef,
+  buttonPulseSeq,
+  lastButtonPulse,
 }: PostCardActionBarProps) {
   const { width: screenWidth } = useWindowDimensions();
   const layout = getPostActionBarLayout(screenWidth);
 
+  const menuButton = onMenuPress ? (
+    <Pressable
+      onPress={onMenuPress}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel={menuAccessibilityLabel}
+      className="h-9 w-9 items-center justify-center rounded-full bg-gray-50"
+    >
+      <Text className="text-lg font-bold text-gray-600">⋯</Text>
+    </Pressable>
+  ) : null;
+
   const votePair = (
     <PostVoteCirclePair
-      variant="feed"
       disabled={loading}
       voteDiameter={layout.voteDiameter}
       onUp={onLikePress}
       onDown={onDislikePress}
+      fountainRef={fountainRef}
+      buttonPulseSeq={buttonPulseSeq}
+      lastButtonPulse={lastButtonPulse}
     />
   );
 
@@ -112,9 +140,10 @@ export function PostCardActionBar({
     return (
       <View className="border-b border-gray-50 px-2 py-1">
         <View className="flex-row items-center justify-between">
-          {commentButton}
+          <View className="flex-row items-center">{menuButton}</View>
           <View className="flex-row items-center gap-1">
             {shareButton}
+            {commentButton}
             {saveButton}
           </View>
         </View>
@@ -125,27 +154,49 @@ export function PostCardActionBar({
 
   return (
     <View
-      className="flex-row items-center border-b border-gray-50 px-2 py-1"
+      className="relative flex-row items-center border-b border-gray-50 px-2 py-1"
       style={{ minHeight: 56 }}
     >
       <View
         className="flex-1 items-start justify-center pl-1"
         style={{ flexShrink: 1, overflow: "hidden" }}
       >
-        {commentButton}
-      </View>
-
-      <View className="items-center justify-center px-1" style={{ flexShrink: 0 }}>
-        {votePair}
+        {menuButton}
       </View>
 
       <View
         className="flex-1 flex-row items-center justify-end gap-1 pr-1"
-        style={{ flexShrink: 1, overflow: "hidden" }}
+        style={{
+          flexShrink: 1,
+          overflow: "hidden",
+          paddingLeft: layout.rightActionsInset,
+        }}
       >
-        {shareButton}
+        {commentButton}
         {saveButton}
+      </View>
+
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: "absolute",
+          left: "50%",
+          transform: [{ translateX: layout.shareCenterOffsetX }],
+        }}
+      >
+        <View pointerEvents="auto">{shareButton}</View>
+      </View>
+
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: "absolute",
+          left: "50%",
+          transform: [{ translateX: layout.voteCenterOffsetX }],
+        }}
+      >
+        <View pointerEvents="auto">{votePair}</View>
       </View>
     </View>
   );
-}
+});

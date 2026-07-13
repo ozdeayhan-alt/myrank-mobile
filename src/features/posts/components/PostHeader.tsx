@@ -1,8 +1,8 @@
+import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatRelativeTime } from "@/features/notifications/utils/formatRelativeTime";
 import { navigateToAuthorProfile } from "@/features/profile/navigateToAuthorProfile";
-import { StoryRingAvatar } from "@/features/stories/components/StoryRingAvatar";
-import { isSystemProfileUserId } from "@/lib/profile/isSystemProfile";
+import { ProfileAvatar } from "@/features/profile/components/ProfileAvatar";
 import type { Post } from "../types";
 import {
   resolvePostAuthorDisplayName,
@@ -11,11 +11,8 @@ import {
 } from "../utils/resolvePostAuthor";
 import { getContentTypeLabel } from "../constants/contentTypeLabels";
 import { PostFollowPlusButton } from "./PostFollowPlusButton";
-import { PostScorePill } from "./PostScorePill";
-
-const FEED_AVATAR_SIZE = 40;
-const MENU_BUTTON_CLASS =
-  "h-9 w-9 items-center justify-center rounded-full bg-gray-50";
+import { PostScoreDisplay } from "./PostScoreDisplay";
+import { FEED_AVATAR_SIZE } from "./postFeedHeaderLayout";
 
 function resolveContentTypeLabel(contentType: Post["contentType"]): string | null {
   if (!contentType) return null;
@@ -33,7 +30,7 @@ function resolveSecondaryLabel(post: Post): string | null {
   return resolveContentTypeLabel(post.contentType);
 }
 
-function shouldShowPostFollowPlus(
+function shouldShowPostFollowCta(
   post: Post,
   isOwner: boolean,
   currentUserId: string | null
@@ -41,33 +38,28 @@ function shouldShowPostFollowPlus(
   if (!currentUserId || isOwner) {
     return false;
   }
-  if (isSystemProfileUserId(post.authorId)) {
-    return false;
-  }
-  return post.contentType === "tweet" || post.contentType === "image";
+  return (
+    post.contentType === "tweet" ||
+    post.contentType === "image" ||
+    post.contentType === "flow"
+  );
 }
 
 type PostHeaderProps = {
   post: Post;
-  score: number;
   isOwner?: boolean;
   currentUserId?: string | null;
-  onOwnerMenuPress?: () => void;
-  onMoreMenuPress?: () => void;
 };
 
-export function PostHeader({
+export const PostHeader = memo(function PostHeader({
   post,
-  score,
   isOwner = false,
   currentUserId = null,
-  onOwnerMenuPress,
-  onMoreMenuPress,
 }: PostHeaderProps) {
   const displayName = resolvePostAuthorDisplayName(post);
   const photoURL = resolvePostAuthorPhotoURL(post);
   const secondaryLabel = resolveSecondaryLabel(post);
-  const showFollowPlus = shouldShowPostFollowPlus(post, isOwner, currentUserId);
+  const showFollowCta = shouldShowPostFollowCta(post, isOwner, currentUserId);
 
   const openAuthorProfile = () => {
     navigateToAuthorProfile(post.authorId, currentUserId ?? undefined, {
@@ -78,21 +70,22 @@ export function PostHeader({
 
   return (
     <View className="flex-row items-center justify-between px-4 pb-2.5 pt-3.5">
-      <View className="mr-3 flex-1 flex-row items-center">
-        <StoryRingAvatar
-          userId={post.authorId}
+      <View className="mr-3 min-w-0 flex-1 flex-row items-center">
+        <ProfileAvatar
+          size={FEED_AVATAR_SIZE}
           photoURL={photoURL}
           fallbackLetter={resolvePostAuthorInitial(post)}
-          size={FEED_AVATAR_SIZE}
-          onPressWithoutStory={openAuthorProfile}
         />
         <Pressable
-          className="ml-3 flex-1"
+          className="ml-3 min-w-0 flex-1"
           onPress={openAuthorProfile}
           hitSlop={4}
           accessibilityRole="button"
         >
-          <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+          <Text
+            className="text-sm font-semibold text-gray-900"
+            numberOfLines={1}
+          >
             {displayName}
           </Text>
           {secondaryLabel ? (
@@ -101,32 +94,14 @@ export function PostHeader({
         </Pressable>
       </View>
       <View className="flex-row items-center gap-2">
-        {showFollowPlus ? (
+        {showFollowCta ? (
           <PostFollowPlusButton targetUserId={post.authorId} />
         ) : null}
-        {isOwner ? (
-          <Pressable
-            onPress={onOwnerMenuPress}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Gönderi seçenekleri"
-            className={MENU_BUTTON_CLASS}
-          >
-            <Text className="text-lg font-bold text-gray-600">⋯</Text>
-          </Pressable>
-        ) : onMoreMenuPress ? (
-          <Pressable
-            onPress={onMoreMenuPress}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Gönderi seçenekleri"
-            className={MENU_BUTTON_CLASS}
-          >
-            <Text className="text-lg font-bold text-gray-600">⋯</Text>
-          </Pressable>
-        ) : null}
-        <PostScorePill score={score} />
+        <PostScoreDisplay
+          postId={post.id}
+          initialScore={post.postScore ?? 0}
+        />
       </View>
     </View>
   );
-}
+});

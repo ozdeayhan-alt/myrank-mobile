@@ -1,5 +1,6 @@
 import { getApiAuthToken } from "@/lib/apiAuthToken";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { notifySessionExpired } from "@/lib/sessionExpiry";
 
 export type FetchApiInit = RequestInit & { timeoutMs?: number };
 
@@ -30,6 +31,9 @@ export async function fetchApi(
         Authorization: `Bearer ${token}`,
       },
     });
+    if (response.status === 401) {
+      notifySessionExpired();
+    }
   }
 
   return response;

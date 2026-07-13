@@ -11,11 +11,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 type SharePostSheetProps = {
   visible: boolean;
   canRepost: boolean;
-  canShareToStory: boolean;
   loading?: boolean;
   onClose: () => void;
   onRepost: () => void;
-  onStory: () => void;
   onExternalShare: () => void;
 };
 
@@ -49,11 +47,9 @@ function ShareOption({ icon, label, onPress, disabled }: ShareOptionProps) {
 export function SharePostSheet({
   visible,
   canRepost,
-  canShareToStory,
   loading = false,
   onClose,
   onRepost,
-  onStory,
   onExternalShare,
 }: SharePostSheetProps) {
   const insets = useSafeAreaInsets();
@@ -94,15 +90,6 @@ export function SharePostSheet({
               icon="repeat"
               label="Akışa paylaş"
               onPress={onRepost}
-              disabled={loading}
-            />
-          ) : null}
-
-          {canShareToStory ? (
-            <ShareOption
-              icon="ellipse-outline"
-              label="Story'ye ekle"
-              onPress={onStory}
               disabled={loading}
             />
           ) : null}

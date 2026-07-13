@@ -4,6 +4,7 @@ import { updateProfile } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import { ensureProfileSavedOnServer } from "./ensureProfileSavedOnServer";
 
 type UpdatePhotoApiResponse = {
@@ -35,10 +36,7 @@ export async function uploadProfilePhoto(
   });
 
   const data = (await response.json()) as UpdatePhotoApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Profil fotoğrafı kaydedilemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Profil fotoğrafı kaydedilemedi");
 
   const auth = getFirebaseAuth();
   if (auth.currentUser) {

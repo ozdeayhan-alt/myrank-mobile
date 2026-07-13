@@ -113,7 +113,7 @@ export function usePostInteractions({
     [currentUserId, onScoreUpdate, post.id, queryClient, setAuthorTotalScore]
   );
 
-  const { displayScore, registerUp, registerDown } = usePostVoteTap({
+  const { registerUp, registerDown } = usePostVoteTap({
     postId: post.id,
     initialPostScore: post.postScore,
     enabled: votesEnabled,
@@ -182,7 +182,6 @@ export function usePostInteractions({
   );
 
   return {
-    score: displayScore,
     counts,
     engagement,
     loading: share.commentLoading || share.shareSaveLoading,

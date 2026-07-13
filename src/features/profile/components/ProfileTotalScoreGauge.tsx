@@ -7,17 +7,13 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
 import { PROFILE_METRIC_CARD_MIN_HEIGHT } from "@/components/ProfileMetricCard";
 import type { ProfileSegmentGaugeLayout } from "../profileLayout";
 import type { GaugeVoteMode } from "../lib/gaugeVoteModeStorage";
 import { ProfileEnergyCapsuleBar } from "./ProfileEnergyCapsuleBar";
+import { profileVoteDisplayKey } from "@/features/ranking/vote/voteDisplayStore";
+import { useVoteDisplay } from "@/features/ranking/vote/useVoteDisplay";
+import { ProfileVoteScoreLabel } from "./ProfileVoteScoreLabel";
 import type { VoteFlashDirection } from "./ProfileVoteProvider";
 import {
   PROFILE_TOTAL_SCORE_GAUGE_INFO_MESSAGE,
@@ -35,9 +31,7 @@ import { EMPTY_METADATA } from "../types";
 import { formatGaugeTargetLabel } from "../utils/formatGaugeTargetLabel";
 import { getGaugeTargetLoadingLabel } from "../utils/getGaugeTargetLoadingLabel";
 
-const EASE_OUT = Easing.out(Easing.cubic);
 const OPEN_ANIM_MS = 500;
-const VOTE_ANIM_MS = 120;
 const RUNG_CHANGE_ANIM_MS = 400;
 
 function easeOutCubic(t: number): number {
@@ -45,7 +39,9 @@ function easeOutCubic(t: number): number {
 }
 
 type ProfileTotalScoreGaugeProps = {
-  displayScore: number;
+  userId: string;
+  initialTotalScore: number;
+  /** Gece listesi açılış TP'si — progress bar başlangıç çizgisi */
   snapshotScore: number;
   aheadRungs: LadderRung[];
   behindRungs: LadderRung[];
@@ -73,19 +69,9 @@ function resolveEffectiveDirection(
   return gaugeVoteMode === "down" ? "down" : "up";
 }
 
-function scoreTextClass(
-  voteFlash: VoteFlashDirection,
-  gaugeVoteMode: GaugeVoteMode
-): string {
-  if (voteFlash === "up") return "text-blue-600";
-  if (voteFlash === "down") return "text-red-600";
-  if (gaugeVoteMode === "up") return "text-blue-600";
-  if (gaugeVoteMode === "down") return "text-red-600";
-  return "text-gray-900";
-}
-
 function ProfileTotalScoreGaugeInner({
-  displayScore,
+  userId,
+  initialTotalScore,
   snapshotScore,
   aheadRungs,
   behindRungs,
@@ -123,6 +109,10 @@ function ProfileTotalScoreGaugeInner({
   } = layout;
 
   const effectiveDirection = resolveEffectiveDirection(gaugeVoteMode);
+  const currentScore = useVoteDisplay(
+    profileVoteDisplayKey(userId),
+    initialTotalScore
+  );
   const showCard = variant === "card";
 
   const showGaugeInfo = useCallback(() => {
@@ -137,7 +127,7 @@ function ProfileTotalScoreGaugeInner({
       return null;
     }
     return computeLadderGaugeProgress({
-      score: displayScore,
+      score: currentScore,
       baselineScore: snapshotScore,
       direction: effectiveDirection,
       aheadRungs,
@@ -146,7 +136,7 @@ function ProfileTotalScoreGaugeInner({
     });
   }, [
     snapshotReady,
-    displayScore,
+    currentScore,
     snapshotScore,
     effectiveDirection,
     aheadRungs,
@@ -159,14 +149,12 @@ function ProfileTotalScoreGaugeInner({
     ? `${effectiveDirection}:${gauge.activeRung.rank}:${gauge.activeRung.totalScore}`
     : null;
 
-  const scoreScale = useSharedValue(1);
   const fillProgressRef = useRef(0);
   const remainingFromRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const [fillProgress, setFillProgress] = useState(0);
   const [displayedRemaining, setDisplayedRemaining] = useState(0);
 
-  const prevDisplayScoreRef = useRef(displayScore);
   const prevRungKeyRef = useRef(activeRungKey);
   const prevDirectionRef = useRef(effectiveDirection);
   const hasOpenedRef = useRef(false);
@@ -176,28 +164,12 @@ function ProfileTotalScoreGaugeInner({
       return;
     }
 
-    const scoreDelta = displayScore - prevDisplayScoreRef.current;
-    const isVoteStep = Math.abs(scoreDelta) === 1;
     const rungChanged = prevRungKeyRef.current !== activeRungKey;
     const directionChanged = prevDirectionRef.current !== effectiveDirection;
 
-    if (isVoteStep && scoreDelta > 0) {
-      scoreScale.value = withSequence(
-        withTiming(1.03, { duration: 120, easing: EASE_OUT }),
-        withTiming(1, { duration: 180, easing: EASE_OUT })
-      );
-    } else if (isVoteStep && scoreDelta < 0) {
-      scoreScale.value = withSequence(
-        withTiming(0.97, { duration: 120, easing: EASE_OUT }),
-        withTiming(1, { duration: 180, easing: EASE_OUT })
-      );
-    }
-
     let duration = OPEN_ANIM_MS;
     if (hasOpenedRef.current) {
-      if (isVoteStep) {
-        duration = VOTE_ANIM_MS;
-      } else if (rungChanged || directionChanged) {
+      if (rungChanged || directionChanged) {
         duration = RUNG_CHANGE_ANIM_MS;
       } else {
         duration = 350;
@@ -242,7 +214,6 @@ function ProfileTotalScoreGaugeInner({
     };
 
     rafRef.current = requestAnimationFrame(tick);
-    prevDisplayScoreRef.current = displayScore;
     prevRungKeyRef.current = activeRungKey;
     prevDirectionRef.current = effectiveDirection;
     hasOpenedRef.current = true;
@@ -253,17 +224,7 @@ function ProfileTotalScoreGaugeInner({
         rafRef.current = null;
       }
     };
-  }, [
-    gauge,
-    displayScore,
-    activeRungKey,
-    effectiveDirection,
-    scoreScale,
-  ]);
-
-  const scoreAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scoreScale.value }],
-  }));
+  }, [gauge, activeRungKey, effectiveDirection]);
 
   const neighborLabel =
     effectiveDirection === "down" ? "Arkandaki" : "Önündeki";
@@ -422,16 +383,14 @@ function ProfileTotalScoreGaugeInner({
         </Pressable>
       ) : null}
 
-      <Animated.View style={scoreAnimatedStyle}>
-        <Text
-          className={`text-center font-bold tabular-nums ${scoreTextClass(voteFlash, gaugeVoteMode)}`}
-          style={{ fontSize: tpFontSize, lineHeight: tpLineHeight }}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-        >
-          {formatGaugeScoreLabel(displayScore)}
-        </Text>
-      </Animated.View>
+      <ProfileVoteScoreLabel
+        userId={userId}
+        initialTotalScore={initialTotalScore}
+        voteFlash={voteFlash}
+        gaugeVoteMode={gaugeVoteMode}
+        fontSize={tpFontSize}
+        lineHeight={tpLineHeight}
+      />
 
       {middleSlot ? (
         <View className="items-center" style={{ marginTop: 2 }}>

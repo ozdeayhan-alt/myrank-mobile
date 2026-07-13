@@ -15,7 +15,8 @@ import {
 } from "@/features/posts/components/FeedFlashList";
 import { fetchPostsByHashtagPage } from "@/features/posts/api/fetchPostsByHashtagPage";
 import type { HashtagPostsPage } from "@/features/posts/api/fetchPostsByHashtagPage";
-import { filterVideoPosts } from "@/features/posts/utils/videoPosts";
+import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
+import { mapPostsToLegacyFeedItems } from "@/features/flow/utils/groupPostsForMixedFeed";
 import { normalizeHashtag } from "@/features/posts/utils/parsePostContent";
 import { patchPostInPages } from "@/features/posts/utils/patchPostInCache";
 import type { PostCounts } from "@/features/ranking/types";
@@ -49,15 +50,9 @@ export default function HashtagScreen() {
 
   const feedItems = useMemo(
     (): FeedListItem[] =>
-      posts.map((post) => ({
-        kind: "post" as const,
-        key: post.id,
-        post,
-      })),
+      mapPostsToLegacyFeedItems(filterPostsByContentType(posts, null)),
     [posts]
   );
-
-  const videoPosts = useMemo(() => filterVideoPosts(posts), [posts]);
 
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey });
@@ -91,7 +86,6 @@ export default function HashtagScreen() {
       <FeedFlashList
         listRef={listRef}
         items={feedItems}
-        videoPosts={videoPosts}
         loading={loading}
         error={error}
         emptyMessage={`#${tag} için henüz gönderi yok.`}

@@ -38,6 +38,10 @@ PUBLIC_DIR="/root/myrankapp/public"
 mkdir -p "$PUBLIC_DIR"
 cp -f "$AAB" "$PUBLIC_DIR/myrank-release.aab"
 
+if [[ -f "/root/myrankapp/scripts/sync-download-apks.sh" ]]; then
+  bash /root/myrankapp/scripts/sync-download-apks.sh
+fi
+
 echo "[prod] Done: $AAB"
 echo "[prod] Play upload bundle: $PUBLIC_DIR/myrank-release.aab"
 echo "[prod] Firebase SHA-1 için: bash scripts/print-play-sha1.sh"

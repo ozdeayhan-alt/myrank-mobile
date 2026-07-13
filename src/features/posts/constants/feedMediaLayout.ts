@@ -1,5 +1,5 @@
-/** Ana akış listesinin yatay padding'i (px-4). */
-export const DEFAULT_LIST_HORIZONTAL_INSET = 16;
+/** Ana akış listesinin yatay padding'i. */
+export const DEFAULT_LIST_HORIZONTAL_INSET = 8;
 
 export type PostFeedMediaLayoutOptions = {
   listHorizontalInset?: number;

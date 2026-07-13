@@ -104,7 +104,7 @@ export function ProfileMenu() {
               label="İçerik ve Moderasyon"
               onPress={() => navigate("/legal/moderation")}
             />
-            <MenuItem label="Çıkış Yap" onPress={() => { closeMenu(); signOut(); }} destructive />
+            <MenuItem label="Çıkış Yap" onPress={() => { closeMenu(); void signOut().catch(() => {}); }} destructive />
             <MenuItem
               label="Hesabı Sil"
               onPress={confirmDeleteAccount}

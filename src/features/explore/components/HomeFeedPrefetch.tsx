@@ -27,8 +27,8 @@ export function HomeFeedPrefetch() {
     };
   }, [enabled]);
 
-  useHomeFeedInfinite(enabled);
-  useFollowingFeedInfinite(followingPrefetchEnabled);
+  useHomeFeedInfinite("all", enabled);
+  useFollowingFeedInfinite("all", followingPrefetchEnabled);
 
   return null;
 }

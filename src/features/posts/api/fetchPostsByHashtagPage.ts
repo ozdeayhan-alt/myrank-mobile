@@ -19,7 +19,7 @@ export async function fetchPostsByHashtagPage(
     return { posts: [], cursor: null, hasMore: false };
   }
 
-  const page = await fetchHashtagFeedPage(tag, cursor, pageSize);
+  const page = await fetchHashtagFeedPage(tag, cursor, { limit: pageSize });
   return {
     posts: page.posts,
     cursor: page.cursor,

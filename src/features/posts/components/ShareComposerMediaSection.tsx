@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 import { FeedImagePreview } from "@/features/media/components/FeedImagePreview";
 import type { PostContentType } from "../types";
-import { ShareVideoPreview } from "./ShareVideoPreview";
 
 type ShareComposerMediaSectionProps = {
   selected: PostContentType;
@@ -13,14 +12,12 @@ type ShareComposerMediaSectionProps = {
 };
 
 type MediaSourceCardsProps = {
-  isImage: boolean;
   submitting: boolean;
   onPickFromCamera: () => void;
   onPickFromGallery: () => void;
 };
 
 function MediaSourceCards({
-  isImage,
   submitting,
   onPickFromCamera,
   onPickFromGallery,
@@ -38,9 +35,7 @@ function MediaSourceCards({
           <Ionicons name="camera-outline" size={24} color="#111827" />
         </View>
         <Text className="text-sm font-semibold text-gray-900">Kamera</Text>
-        <Text className="mt-1 text-center text-xs text-gray-500">
-          {isImage ? "Anında çek" : "En fazla 33 sn"}
-        </Text>
+        <Text className="mt-1 text-center text-xs text-gray-500">Anında çek</Text>
       </Pressable>
 
       <Pressable
@@ -54,9 +49,7 @@ function MediaSourceCards({
           <Ionicons name="images-outline" size={24} color="#111827" />
         </View>
         <Text className="text-sm font-semibold text-gray-900">Galeri</Text>
-        <Text className="mt-1 text-center text-xs text-gray-500">
-          {isImage ? "JPG veya PNG" : "Galeriden seç"}
-        </Text>
+        <Text className="mt-1 text-center text-xs text-gray-500">JPG veya PNG</Text>
       </Pressable>
     </View>
   );
@@ -69,21 +62,13 @@ export function ShareComposerMediaSection({
   onPickFromCamera,
   onPickFromGallery,
 }: ShareComposerMediaSectionProps) {
-  if (selected === "tweet") {
+  if (selected !== "image") {
     return null;
   }
 
-  const isImage = selected === "image";
-
   return (
     <View className="mb-4">
-      {mediaUri && isImage ? <FeedImagePreview uri={mediaUri} /> : null}
-
-      {mediaUri && selected === "video" ? (
-        <View className="mb-3">
-          <ShareVideoPreview uri={mediaUri} />
-        </View>
-      ) : null}
+      {mediaUri ? <FeedImagePreview uri={mediaUri} /> : null}
 
       {mediaUri ? (
         <View>
@@ -91,7 +76,6 @@ export function ShareComposerMediaSection({
             Medyayı değiştir
           </Text>
           <MediaSourceCards
-            isImage={isImage}
             submitting={submitting}
             onPickFromCamera={onPickFromCamera}
             onPickFromGallery={onPickFromGallery}
@@ -99,7 +83,6 @@ export function ShareComposerMediaSection({
         </View>
       ) : (
         <MediaSourceCards
-          isImage={isImage}
           submitting={submitting}
           onPickFromCamera={onPickFromCamera}
           onPickFromGallery={onPickFromGallery}

@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 type RegisterPushTokenResponse = {
   ok?: boolean;
@@ -34,8 +35,5 @@ export async function registerPushToken(
       );
     }
   }
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Push token kaydedilemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Push token kaydedilemedi");
 }

@@ -1,9 +1,9 @@
-import type { VoteBurstDirection } from "@/components/LikeHeartBurst";
-import { memo, useCallback, useState } from "react";
+import { memo } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 import type { EngagementStatus } from "@/features/ranking/types";
 import { SPINNER_COLOR, ui } from "@/lib/uiClasses";
 import { usePostCardOwnerActions } from "../hooks/usePostCardOwnerActions";
+import { usePostVoteFeedback } from "../hooks/usePostVoteFeedback";
 import { useShareAndRepost } from "../hooks/useShareAndRepost";
 import type { Post } from "../types";
 import { EditPostTextModal } from "./EditPostTextModal";
@@ -13,11 +13,11 @@ import { PostCardOwnerSheets } from "./PostCardOwnerSheets";
 import { useOpenCommentSheet } from "../hooks/useOpenCommentSheet";
 import { PostHeader } from "./PostHeader";
 import { PostShareModals } from "./PostShareModals";
+import { PostVoteFountainLayer } from "./PostVoteFountainLayer";
 
 type PostCardProps = {
   post: Post;
   onScoreUpdate?: (postId: string, postScore: number) => void;
-  onOpenVideo?: (postId: string) => void;
   engagement?: EngagementStatus;
   onEngagementPatch?: (patch: Partial<EngagementStatus>) => void;
   onPostDeleted?: (postId: string) => void;
@@ -29,7 +29,6 @@ type PostCardProps = {
 export const PostCard = memo(function PostCard({
   post,
   onScoreUpdate,
-  onOpenVideo,
   engagement: externalEngagement,
   onEngagementPatch,
   onPostDeleted,
@@ -38,10 +37,9 @@ export const PostCard = memo(function PostCard({
   mediaImagePriority = "normal",
 }: PostCardProps) {
   const isOwner = Boolean(currentUserId && post.authorId === currentUserId);
-  const [voteBurstKey, setVoteBurstKey] = useState(0);
-  const [voteBurstDirection, setVoteBurstDirection] =
-    useState<VoteBurstDirection>("up");
   const openCommentSheet = useOpenCommentSheet();
+  const { fountainRef, triggerFeedback, buttonPulseSeq, lastButtonPulse } =
+    usePostVoteFeedback();
 
   const {
     displayPost,
@@ -72,7 +70,6 @@ export const PostCard = memo(function PostCard({
   });
 
   const {
-    score,
     counts,
     loading,
     handleLike,
@@ -89,7 +86,6 @@ export const PostCard = memo(function PostCard({
     handleReposted,
     canRepost,
     handleRepostSelect,
-    handleStorySelect,
     handleExternalShareSelect,
   } = useShareAndRepost({
     post,
@@ -99,43 +95,22 @@ export const PostCard = memo(function PostCard({
     onScoreUpdate,
   });
 
-  const triggerVoteBurst = useCallback((direction: VoteBurstDirection) => {
-    setVoteBurstDirection(direction);
-    setVoteBurstKey((k) => k + 1);
-  }, []);
-
-  const handleLikePress = useCallback(() => {
-    handleLike();
-    triggerVoteBurst("up");
-  }, [handleLike, triggerVoteBurst]);
-
-  const handleDislikePress = useCallback(() => {
-    handleDislike();
-    triggerVoteBurst("down");
-  }, [handleDislike, triggerVoteBurst]);
-
   return (
     <>
       <View
         className={ui.postCard}
-        style={Platform.OS === "android" ? { elevation: 3 } : undefined}
+        style={Platform.OS === "android" ? { elevation: 3, position: "relative" } : { position: "relative" }}
       >
         <PostHeader
           post={displayPost}
-          score={score}
           isOwner={isOwner}
           currentUserId={currentUserId}
-          onOwnerMenuPress={handleOwnerMenuPress}
-          onMoreMenuPress={!isOwner ? handleMoreMenuPress : undefined}
         />
 
         <PostCardBody
           post={displayPost}
-          voteBurstKey={voteBurstKey}
-          voteBurstDirection={voteBurstDirection}
           onLike={handleLike}
-          onLikeAnimated={() => triggerVoteBurst("up")}
-          onOpenVideo={onOpenVideo}
+          onLikeAnimated={() => triggerFeedback("up")}
           currentUserId={currentUserId}
           mediaImagePriority={mediaImagePriority}
         />
@@ -145,13 +120,26 @@ export const PostCard = memo(function PostCard({
           shareActive={shareActive}
           saveActive={saveActive}
           loading={loading}
-          onLikePress={handleLikePress}
-          onDislikePress={handleDislikePress}
+          onLikePress={() => {
+            handleLike();
+            triggerFeedback("up");
+          }}
+          onDislikePress={() => {
+            handleDislike();
+            triggerFeedback("down");
+          }}
           onCommentPress={() =>
             openCommentSheet(post.id, applyCommentResult)
           }
           onSharePress={handleSharePress}
           onSavePress={handleSave}
+          onMenuPress={
+            isOwner ? handleOwnerMenuPress : handleMoreMenuPress
+          }
+          menuAccessibilityLabel="Gönderi seçenekleri"
+          fountainRef={fountainRef}
+          buttonPulseSeq={buttonPulseSeq}
+          lastButtonPulse={lastButtonPulse}
         />
 
         {loading || ownerActionLoading ? (
@@ -159,6 +147,8 @@ export const PostCard = memo(function PostCard({
             <ActivityIndicator size="small" color={SPINNER_COLOR} />
           </View>
         ) : null}
+
+        <PostVoteFountainLayer ref={fountainRef} />
       </View>
 
       {editOpen ? (
@@ -199,11 +189,23 @@ export const PostCard = memo(function PostCard({
         canRepost={canRepost}
         shareLoading={loading}
         onRepostSelect={handleRepostSelect}
-        onStorySelect={handleStorySelect}
         onExternalShare={handleExternalShareSelect}
         onReposted={handleReposted}
-        onOpenVideo={onOpenVideo}
       />
     </>
+  );
+}, (prev, next) => {
+  return (
+    prev.post.id === next.post.id &&
+    prev.post.content === next.post.content &&
+    prev.post.contentType === next.post.contentType &&
+    prev.post.authorId === next.post.authorId &&
+    prev.currentUserId === next.currentUserId &&
+    prev.engagement === next.engagement &&
+    prev.mediaImagePriority === next.mediaImagePriority &&
+    prev.onScoreUpdate === next.onScoreUpdate &&
+    prev.onEngagementPatch === next.onEngagementPatch &&
+    prev.onPostDeleted === next.onPostDeleted &&
+    prev.onPostContentUpdated === next.onPostContentUpdated
   );
 });

@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 export type DeletePostResponse = {
   ok: boolean;
@@ -21,10 +22,7 @@ export async function deletePost(postId: string): Promise<DeletePostResponse> {
   );
 
   const data = (await response.json().catch(() => ({}))) as DeletePostResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Gönderi silinemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Gönderi silinemedi");
 
   return data;
 }

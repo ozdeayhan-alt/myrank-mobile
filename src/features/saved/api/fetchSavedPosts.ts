@@ -9,5 +9,5 @@ export async function fetchSavedPostsPage(
   cursor: string | null = null,
   pageSize = 30
 ): Promise<SavedPostsPage> {
-  return fetchSavedFeedPage(cursor, pageSize);
+  return fetchSavedFeedPage(cursor, { limit: pageSize });
 }

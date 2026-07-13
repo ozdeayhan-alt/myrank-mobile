@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { InboxEntry } from "../types";
 
 export { mapInboxDoc } from "./inboxMapping";
@@ -27,10 +28,7 @@ export async function fetchInboxEntries(
   });
 
   const data = (await response.json()) as InboxApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Mesajlar yüklenemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Mesajlar yüklenemedi");
 
   return (data.entries ?? []).map((entry) => ({
     conversationId: entry.conversationId,

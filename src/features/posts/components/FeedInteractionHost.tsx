@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useRouter } from "expo-router";
+import { useShallow } from "zustand/react/shallow";
 import { usePostEngagement } from "@/features/ranking/store/useEngagementStore";
 import type { EngagementStatus } from "@/features/ranking/types";
 import { useFeedRefreshStore } from "../store/useFeedRefreshStore";
@@ -22,7 +22,6 @@ type FeedInteractionHostInnerProps = {
   onScoreUpdate?: (postId: string, postScore: number) => void;
   onPostDeleted?: (postId: string) => void;
   onPostContentUpdated?: (postId: string, content: string) => void;
-  onOpenVideo?: (postId: string) => void;
 };
 
 function FeedInteractionHostInner({
@@ -32,27 +31,42 @@ function FeedInteractionHostInner({
   onScoreUpdate,
   onPostDeleted,
   onPostContentUpdated,
-  onOpenVideo,
 }: FeedInteractionHostInnerProps) {
-  const router = useRouter();
   const bumpFeed = useFeedRefreshStore((s) => s.bump);
 
-  const shareSheetOpen = useFeedInteractionStore((s) => s.shareSheetOpen);
-  const repostOpen = useFeedInteractionStore((s) => s.repostOpen);
-  const ownerMenuOpen = useFeedInteractionStore((s) => s.ownerMenuOpen);
-  const moreMenuOpen = useFeedInteractionStore((s) => s.moreMenuOpen);
-  const deleteConfirmOpen = useFeedInteractionStore((s) => s.deleteConfirmOpen);
-  const reportMenuOpen = useFeedInteractionStore((s) => s.reportMenuOpen);
-  const editOpen = useFeedInteractionStore((s) => s.editOpen);
-  const setShareSheetOpen = useFeedInteractionStore((s) => s.setShareSheetOpen);
-  const setRepostOpen = useFeedInteractionStore((s) => s.setRepostOpen);
-  const setOwnerMenuOpen = useFeedInteractionStore((s) => s.setOwnerMenuOpen);
-  const setMoreMenuOpen = useFeedInteractionStore((s) => s.setMoreMenuOpen);
-  const setDeleteConfirmOpen = useFeedInteractionStore(
-    (s) => s.setDeleteConfirmOpen
+  const {
+    shareSheetOpen,
+    repostOpen,
+    ownerMenuOpen,
+    moreMenuOpen,
+    deleteConfirmOpen,
+    reportMenuOpen,
+    editOpen,
+    setShareSheetOpen,
+    setRepostOpen,
+    setOwnerMenuOpen,
+    setMoreMenuOpen,
+    setDeleteConfirmOpen,
+    setReportMenuOpen,
+    setEditOpen,
+  } = useFeedInteractionStore(
+    useShallow((s) => ({
+      shareSheetOpen: s.shareSheetOpen,
+      repostOpen: s.repostOpen,
+      ownerMenuOpen: s.ownerMenuOpen,
+      moreMenuOpen: s.moreMenuOpen,
+      deleteConfirmOpen: s.deleteConfirmOpen,
+      reportMenuOpen: s.reportMenuOpen,
+      editOpen: s.editOpen,
+      setShareSheetOpen: s.setShareSheetOpen,
+      setRepostOpen: s.setRepostOpen,
+      setOwnerMenuOpen: s.setOwnerMenuOpen,
+      setMoreMenuOpen: s.setMoreMenuOpen,
+      setDeleteConfirmOpen: s.setDeleteConfirmOpen,
+      setReportMenuOpen: s.setReportMenuOpen,
+      setEditOpen: s.setEditOpen,
+    }))
   );
-  const setReportMenuOpen = useFeedInteractionStore((s) => s.setReportMenuOpen);
-  const setEditOpen = useFeedInteractionStore((s) => s.setEditOpen);
 
   const engagement = usePostEngagement(post.id);
 
@@ -90,14 +104,6 @@ function FeedInteractionHostInner({
     setShareSheetOpen(false);
     setRepostOpen(true);
   }, [setRepostOpen, setShareSheetOpen]);
-
-  const handleStorySelect = useCallback(() => {
-    setShareSheetOpen(false);
-    router.push({
-      pathname: "/stories/share-from-post",
-      params: { postId: post.id },
-    });
-  }, [post.id, router, setShareSheetOpen]);
 
   const handleExternalShareSelect = useCallback(() => {
     setShareSheetOpen(false);
@@ -157,10 +163,8 @@ function FeedInteractionHostInner({
         canRepost={canRepost}
         shareLoading={loading}
         onRepostSelect={handleRepostSelect}
-        onStorySelect={handleStorySelect}
         onExternalShare={handleExternalShareSelect}
         onReposted={handleReposted}
-        onOpenVideo={onOpenVideo}
       />
     </>
   );

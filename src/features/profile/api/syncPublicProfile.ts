@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { UserMetadata } from "../types";
 import type { BioCategoryVisibility } from "../utils/bioCategoryVisibility";
 
@@ -33,8 +34,5 @@ export async function syncPublicProfile(
   );
 
   const data = (await response.json()) as SyncPublicProfileApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Public profile sync failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Public profile sync failed");
 }

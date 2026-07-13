@@ -2,6 +2,8 @@ import { memo, useMemo } from "react";
 import { useWindowDimensions, View } from "react-native";
 import { PROFILE_METRIC_CARD_MIN_HEIGHT } from "@/components/ProfileMetricCard";
 import { useRankingLadder } from "../hooks/useRankingLadder";
+import { profileVoteDisplayKey } from "@/features/ranking/vote/voteDisplayStore";
+import { useVoteDisplay } from "@/features/ranking/vote/useVoteDisplay";
 import { getProfileSegmentGaugeLayout } from "../profileLayout";
 import type { GaugeVoteMode } from "../lib/gaugeVoteModeStorage";
 import type { VoteFlashDirection } from "./ProfileVoteProvider";
@@ -10,9 +12,8 @@ import { EMPTY_METADATA } from "../types";
 import { ProfileTotalScoreGauge } from "./ProfileTotalScoreGauge";
 
 type ProfileTotalScoreDisplayProps = {
-  /** Ortadaki anlık TP */
-  displayScore: number;
-  userId?: string;
+  userId: string;
+  initialTotalScore: number;
   metadata?: UserMetadata;
   rankingsReady?: boolean;
   compact?: boolean;
@@ -22,8 +23,8 @@ type ProfileTotalScoreDisplayProps = {
 };
 
 function ProfileTotalScoreDisplayInner({
-  displayScore,
   userId,
+  initialTotalScore,
   metadata = EMPTY_METADATA,
   rankingsReady = false,
   compact = false,
@@ -37,10 +38,15 @@ function ProfileTotalScoreDisplayInner({
     [screenWidth, fontScale]
   );
 
+  const currentScore = useVoteDisplay(
+    profileVoteDisplayKey(userId),
+    initialTotalScore
+  );
+
   const { snapshotScore, aheadRungs, behindRungs, labelLoading, pointsLoading, ready, labelCategory, gaugeOfficialRank, atPinnacle, atGlobalLast } =
     useRankingLadder(userId, metadata, {
       rankingsReady,
-      displayScore,
+      displayScore: currentScore,
       gaugeVoteMode,
       fullLadderEnabled,
     });
@@ -52,7 +58,8 @@ function ProfileTotalScoreDisplayInner({
       collapsable={false}
     >
       <ProfileTotalScoreGauge
-        displayScore={displayScore}
+        userId={userId}
+        initialTotalScore={initialTotalScore}
         snapshotScore={snapshotScore}
         aheadRungs={aheadRungs}
         behindRungs={behindRungs}

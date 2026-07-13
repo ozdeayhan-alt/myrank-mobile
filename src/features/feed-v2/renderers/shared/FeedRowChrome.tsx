@@ -1,13 +1,17 @@
+import { memo } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { DoubleTapToLike } from "@/components/DoubleTapToLike";
-import { LikeHeartBurst } from "@/components/LikeHeartBurst";
 import { SPINNER_COLOR } from "@/lib/uiClasses";
 import { EditPostTextModal } from "@/features/posts/components/EditPostTextModal";
 import { PostCardActionBar } from "@/features/posts/components/PostCardActionBar";
 import { PostCardOwnerSheets } from "@/features/posts/components/PostCardOwnerSheets";
 import { PostHeader } from "@/features/posts/components/PostHeader";
 import { PostShareModals } from "@/features/posts/components/PostShareModals";
+import { PostVoteFountainLayer } from "@/features/posts/components/PostVoteFountainLayer";
+import { WHISP_BODY_TEXT_CLASS } from "@/features/posts/constants/whispTypography";
+import { usePostVoteFeedback } from "@/features/posts/hooks/usePostVoteFeedback";
 import { RichPostText } from "@/features/posts/components/RichPostText";
+import { WhispLinkCard } from "@/features/posts/components/WhispLinkCard";
 import { postBodyText } from "@/features/posts/utils/postBodyText";
 import { FeedCellShell } from "./FeedCellShell";
 import type { FeedRowInteractionState } from "./useFeedRowInteractions";
@@ -15,50 +19,49 @@ import type { FeedRowInteractionState } from "./useFeedRowInteractions";
 type FeedRowChromeProps = {
   row: FeedRowInteractionState;
   currentUserId?: string | null;
-  onOpenVideo?: (postId: string) => void;
   children?: React.ReactNode;
   bodyAbove?: React.ReactNode;
   bodyBelow?: React.ReactNode;
-  onSinglePress?: () => void;
   accessibilityLabel?: string;
 };
 
-export function FeedRowChrome({
+function FeedRowChromeInner({
   row,
   currentUserId = null,
-  onOpenVideo,
   children,
   bodyAbove,
   bodyBelow,
-  onSinglePress,
   accessibilityLabel = "Çift dokunarak beğen",
 }: FeedRowChromeProps) {
   const bodyText = postBodyText(row.displayPost);
+  const { fountainRef, triggerFeedback, buttonPulseSeq, lastButtonPulse } =
+    usePostVoteFeedback();
 
   return (
     <>
       <FeedCellShell>
         <PostHeader
           post={row.displayPost}
-          score={row.score}
           isOwner={row.isOwner}
           currentUserId={currentUserId}
-          onOwnerMenuPress={row.isOwner ? row.openOwnerMenu : undefined}
-          onMoreMenuPress={!row.isOwner ? row.openMoreMenu : undefined}
         />
 
         <DoubleTapToLike
-          onLike={row.handleLikePress}
-          onLikeAnimated={row.handleLikeAnimated}
-          onSinglePress={onSinglePress}
+          onLike={row.handleLike}
+          onLikeAnimated={() => triggerFeedback("up")}
           accessibilityLabel={accessibilityLabel}
         >
           {bodyAbove}
           {bodyText && !bodyAbove ? (
             <View className="px-4 pb-3">
-              <RichPostText content={bodyText} currentUserId={currentUserId} />
+              <RichPostText
+                content={bodyText}
+                className={WHISP_BODY_TEXT_CLASS}
+                currentUserId={currentUserId}
+              />
             </View>
           ) : null}
+          <WhispLinkCard post={row.displayPost} />
           {children}
           {bodyBelow}
         </DoubleTapToLike>
@@ -68,11 +71,24 @@ export function FeedRowChrome({
           shareActive={row.shareActive}
           saveActive={row.saveActive}
           loading={row.loading}
-          onLikePress={row.handleLikePress}
-          onDislikePress={row.handleDislikePress}
+          onLikePress={() => {
+            row.handleLike();
+            triggerFeedback("up");
+          }}
+          onDislikePress={() => {
+            row.handleDislike();
+            triggerFeedback("down");
+          }}
           onCommentPress={row.openComment}
           onSharePress={row.handleSharePress}
           onSavePress={row.handleSave}
+          onMenuPress={
+            row.isOwner ? row.openOwnerMenu : row.openMoreMenu
+          }
+          menuAccessibilityLabel="Gönderi seçenekleri"
+          fountainRef={fountainRef}
+          buttonPulseSeq={buttonPulseSeq}
+          lastButtonPulse={lastButtonPulse}
         />
 
         {row.loading || row.ownerActionLoading ? (
@@ -81,10 +97,7 @@ export function FeedRowChrome({
           </View>
         ) : null}
 
-        <LikeHeartBurst
-          burstKey={row.voteBurstKey}
-          direction={row.voteBurstDirection}
-        />
+        <PostVoteFountainLayer ref={fountainRef} />
       </FeedCellShell>
 
       {row.editOpen ? (
@@ -125,11 +138,11 @@ export function FeedRowChrome({
         canRepost={row.canRepost}
         shareLoading={row.loading}
         onRepostSelect={row.handleRepostSelect}
-        onStorySelect={row.handleStorySelect}
         onExternalShare={row.handleExternalShareSelect}
         onReposted={row.handleReposted}
-        onOpenVideo={onOpenVideo}
       />
     </>
   );
 }
+
+export const FeedRowChrome = memo(FeedRowChromeInner);

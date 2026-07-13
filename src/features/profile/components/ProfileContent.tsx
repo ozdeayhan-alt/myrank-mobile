@@ -1,27 +1,17 @@
-import {
-  useNavigation,
-  useScrollToTop,
-  type ParamListBase,
-} from "@react-navigation/native";
-import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { useScrollToTop, useIsFocused } from "@react-navigation/native";
 import type { FlashListRef } from "@shopify/flash-list";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { View, useWindowDimensions } from "react-native";
 import { HomeFeedContentFilter } from "@/components/HomeFeedContentFilter";
 import { useAuth } from "@/features/auth";
+import { toFeedApiContentType } from "@/features/feed/feedContentType";
 import {
   FeedFlashList,
   type FeedListItem,
 } from "@/features/posts/components/FeedFlashList";
-import { ReelsTabFeed } from "@/features/posts/components/ReelsTabFeed";
 import { getEmptyFeedMessage } from "@/features/posts/constants/contentTypeLabels";
-import type { HomeFeedContentFilter as HomeFeedContentFilterValue } from "@/features/posts/store/useHomeFeedContentStore";
-import { useReelsActiveIndexStore } from "@/features/posts/store/useReelsActiveIndexStore";
-import { useReelsNavigationStore } from "@/features/posts/store/useReelsNavigationStore";
 import { useFeedRefreshStore } from "@/features/posts/store/useFeedRefreshStore";
-import { filterPostsByContentType } from "@/features/posts/utils/filterPostsByContentType";
-import { collectVideoPostsForPlaylist } from "@/features/posts/utils/videoPosts";
 import type { UserMetadata } from "../types";
 import type { BioCategoryVisibility } from "../utils/bioCategoryVisibility";
 import { isMetadataComplete } from "../types";
@@ -35,11 +25,15 @@ import {
   profileGaugeBootstrapQueryKey,
   useProfileGaugeBootstrap,
 } from "../hooks/useProfileGaugeBootstrap";
+import { FlowFeedScreen } from "@/features/flow/components/FlowFeedScreen";
+import { usePrefetchFlowFeed } from "@/features/flow/hooks/usePrefetchFlowFeed";
+import { mapPostsToLegacyFeedItems } from "@/features/flow/utils/groupPostsForMixedFeed";
+import { authorPostsQueryKey } from "../hooks/useAuthorPosts";
 import { useProfileStore } from "../store/useProfileStore";
 import { ProfileContentHeader } from "./ProfileContentHeader";
 import { ProfileVoteArrowFountainOverlay } from "./ProfileVoteArrowFountainOverlay";
 import { ProfileVoteProvider } from "./ProfileVoteProvider";
-import { PROFILE_HORIZONTAL_PADDING } from "../profileLayout";
+import { getProfileHorizontalPadding } from "../profileLayout";
 
 type ProfileContentProps = {
   userId: string;
@@ -60,6 +54,8 @@ type ProfileFeedBodyProps = Omit<ProfileContentProps, "loadedTotalScore"> & {
   onContentFilterChange: (filter: HomeFeedContentFilterValue) => void;
 };
 
+type HomeFeedContentFilterValue = import("@/features/posts/store/useHomeFeedContentStore").HomeFeedContentFilter;
+
 function ProfileFeedBody({
   userId,
   displayName,
@@ -73,9 +69,14 @@ function ProfileFeedBody({
   contentFilter,
   onContentFilterChange,
 }: ProfileFeedBodyProps) {
-  const navigation = useNavigation<BottomTabNavigationProp<ParamListBase>>();
+  const { width: screenWidth } = useWindowDimensions();
+  const horizontalPadding = useMemo(
+    () => getProfileHorizontalPadding(screenWidth),
+    [screenWidth]
+  );
   const listRef = useRef<FlashListRef<FeedListItem>>(null);
   useScrollToTop(listRef);
+  const isFocused = useIsFocused();
 
   const ownProfileHydrated = useProfileStore(
     (s) =>
@@ -103,13 +104,27 @@ function ProfileFeedBody({
   const queryClient = useQueryClient();
   const feedVersion = useFeedRefreshStore((s) => s.version);
   const setStoreTotalScore = useProfileStore((s) => s.setTotalScore);
+  const apiContentType = toFeedApiContentType(contentFilter);
 
-  const listContentFilter = contentFilter === "video" ? null : contentFilter;
-  const feedEnabled = contentFilter !== "video";
+  const hasGaugeCache = Boolean(
+    queryClient.getQueryData(profileGaugeBootstrapQueryKey(userId, feedVersion))
+  );
+  const hasSummaryCache = Boolean(
+    queryClient.getQueryData(profileSummaryQueryKey(userId, feedVersion))
+  );
+  const hasAuthorPostsCache = Boolean(
+    queryClient.getQueryData(
+      authorPostsQueryKey(userId, apiContentType, feedVersion)
+    )
+  );
+
   const authorPostsEnabled =
-    feedEnabled &&
     Boolean(userId) &&
-    (ownProfileHydrated || profileBootstrapReady);
+    (ownProfileHydrated ||
+      profileBootstrapReady ||
+      hasGaugeCache ||
+      hasSummaryCache ||
+      hasAuthorPostsCache);
 
   const {
     posts,
@@ -121,45 +136,32 @@ function ProfileFeedBody({
     isRefetching,
     hasNextPage,
     isFetchingNextPage,
+    isFetching,
     fetchNextPage,
-  } = useAuthorPosts(userId, authorPostsEnabled);
-
-  useEffect(() => {
-    if (!isOwnProfile) {
-      return;
-    }
-
-    const unsubscribe = navigation.addListener("tabPress", () => {
-      if (contentFilter === "video") {
-        useReelsNavigationStore.getState().clearNavigation();
-        onContentFilterChange(null);
-      }
-    });
-
-    return unsubscribe;
-  }, [contentFilter, isOwnProfile, navigation, onContentFilterChange]);
+  } = useAuthorPosts(userId, apiContentType, authorPostsEnabled);
 
   const items = useMemo(
-    (): FeedListItem[] =>
-      filterPostsByContentType(posts, listContentFilter).map((post) => ({
-        kind: "post",
-        key: post.id,
-        post,
-      })),
-    [posts, listContentFilter]
-  );
-
-  const videoPosts = useMemo(
-    () => collectVideoPostsForPlaylist(posts),
+    (): FeedListItem[] => mapPostsToLegacyFeedItems(posts),
     [posts]
   );
 
+  const isFlowMode = contentFilter === "flow";
+
+  usePrefetchFlowFeed({
+    variant: "author",
+    authorId: userId,
+    enabled: isFocused && !isFlowMode && authorPostsEnabled,
+  });
+
   const emptyMessage = useMemo(() => {
-    if (listContentFilter === "tweet" || listContentFilter === "image") {
-      return getEmptyFeedMessage(listContentFilter);
+    if (contentFilter === "flow") {
+      return "Henüz Flow yok.";
+    }
+    if (contentFilter === "tweet" || contentFilter === "image") {
+      return getEmptyFeedMessage(contentFilter);
     }
     return "Henüz gönderi yok.";
-  }, [listContentFilter]);
+  }, [contentFilter]);
 
   const handleRefresh = useCallback(() => {
     const tasks: Promise<unknown>[] = [refresh()];
@@ -232,30 +234,28 @@ function ProfileFeedBody({
 
   const contentContainerStyle = useMemo(
     () => ({
-      paddingHorizontal: PROFILE_HORIZONTAL_PADDING,
+      paddingHorizontal: horizontalPadding,
       paddingBottom: 32,
     }),
-    []
+    [horizontalPadding]
   );
 
-  if (contentFilter === "video") {
+  if (isFlowMode) {
     return (
-      <View className="flex-1 bg-black">
-        <ReelsTabFeed
-          currentUserId={currentUserId}
-          fullscreen
-          profileBrowse
-          profileAuthorId={userId}
-          profileSeedPosts={videoPosts}
-        />
-      </View>
+      <FlowFeedScreen
+        variant="author"
+        authorId={userId}
+        enabled={authorPostsEnabled}
+        ListHeaderComponent={listHeader}
+        emptyMessage={emptyMessage}
+        horizontalPadding={horizontalPadding}
+      />
     );
   }
 
   return (
     <FeedFlashList
       items={items}
-      videoPosts={videoPosts}
       loading={loading}
       error={error}
       emptyMessage={emptyMessage}
@@ -271,11 +271,10 @@ function ProfileFeedBody({
       currentUserId={currentUserId}
       hasNextPage={hasNextPage}
       isFetchingNextPage={isFetchingNextPage}
+      isFetching={isFetching}
       onLoadMore={fetchNextPage}
-      listHorizontalInset={PROFILE_HORIZONTAL_PADDING}
+      listHorizontalInset={horizontalPadding}
       mediaEdgeBleed={false}
-      reelsSource="profile"
-      reelsAuthorId={userId}
     />
   );
 }
@@ -295,17 +294,6 @@ export function ProfileContent({
   const [contentFilter, setContentFilter] =
     useState<HomeFeedContentFilterValue>(null);
 
-  const handleContentFilterChange = useCallback(
-    (filter: HomeFeedContentFilterValue) => {
-      useReelsNavigationStore.getState().clearNavigation();
-      if (filter === "video") {
-        useReelsActiveIndexStore.getState().resetActiveIndex();
-      }
-      setContentFilter(filter);
-    },
-    []
-  );
-
   return (
     <ProfileVoteProvider
       targetUserId={userId}
@@ -324,9 +312,9 @@ export function ProfileContent({
           rankingsReady={rankingsReady}
           currentUserId={user?.uid ?? null}
           contentFilter={contentFilter}
-          onContentFilterChange={handleContentFilterChange}
+          onContentFilterChange={setContentFilter}
         />
-        {contentFilter !== "video" ? <ProfileVoteArrowFountainOverlay /> : null}
+        <ProfileVoteArrowFountainOverlay />
       </View>
     </ProfileVoteProvider>
   );

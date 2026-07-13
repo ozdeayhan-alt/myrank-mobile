@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { PostComment } from "../types";
 
 type CommentsApiResponse = {
@@ -18,10 +19,7 @@ export async function fetchPostComments(postId: string): Promise<PostComment[]> 
   );
 
   const data = (await response.json()) as CommentsApiResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Comments request failed");
-  }
+  throwIfNotOk(response, data, data.error ?? "Comments request failed");
 
   return data.comments ?? [];
 }

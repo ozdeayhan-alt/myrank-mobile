@@ -1,10 +1,8 @@
 import type { Post } from "@/features/posts/types";
 import {
   resolveMediaDisplayUrl,
-  resolveVideoPosterUrl,
 } from "@/lib/media/resolveMediaDisplayUrl";
 import { isRepostPost, resolveEmbeddedOriginalPost } from "@/features/posts/utils/repostUtils";
-import { isVideoPost } from "@/features/posts/utils/videoPosts";
 
 export type FeedMediaDisplayUrls = {
   previewUri: string | undefined;
@@ -27,9 +25,13 @@ export function resolveFeedMediaDisplayUrls(post: Post): FeedMediaDisplayUrls {
     return { previewUri, fullUri };
   }
 
-  if (isVideoPost(post)) {
-    const previewUri = resolveVideoPosterUrl(post);
-    return { previewUri, fullUri: previewUri };
+  if (post.contentType === "flow") {
+    const thumb = (post.thumbnailUrl ?? post.posterURL)?.trim();
+    if (!thumb) {
+      return { previewUri: undefined, fullUri: undefined };
+    }
+    // YouTube CDN URLs — do not run through Firebase media proxy.
+    return { previewUri: thumb, fullUri: undefined };
   }
 
   return { previewUri: undefined, fullUri: undefined };

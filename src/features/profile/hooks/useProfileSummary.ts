@@ -71,7 +71,7 @@ export function seedProfileSummaryCaches(
   };
 
   queryClient.setQueryData(
-    authorPostsQueryKey(userId, feedVersion),
+    authorPostsQueryKey(userId, "all", feedVersion),
     (existing: { pages: AuthorPostsPage[]; pageParams: unknown[] } | undefined) => {
       if (existing?.pages?.length) {
         return existing;

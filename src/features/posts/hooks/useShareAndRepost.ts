@@ -1,5 +1,4 @@
-import { useCallback, useState } from "react";
-import { useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { useFeedRefreshStore } from "../store/useFeedRefreshStore";
 import type { Post } from "../types";
 import { canRepostPost } from "../utils/repostUtils";
@@ -21,10 +20,14 @@ export function useShareAndRepost({
   onEngagementPatch,
   onScoreUpdate,
 }: UseShareAndRepostOptions) {
-  const router = useRouter();
   const bumpFeed = useFeedRefreshStore((s) => s.bump);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [repostOpen, setRepostOpen] = useState(false);
+
+  useEffect(() => {
+    setShareSheetOpen(false);
+    setRepostOpen(false);
+  }, [post.id]);
 
   const interactions = usePostInteractions({
     post,
@@ -45,14 +48,6 @@ export function useShareAndRepost({
     setRepostOpen(true);
   }, []);
 
-  const handleStorySelect = useCallback(() => {
-    setShareSheetOpen(false);
-    router.push({
-      pathname: "/stories/share-from-post",
-      params: { postId: post.id },
-    });
-  }, [post.id, router]);
-
   const handleExternalShareSelect = useCallback(() => {
     setShareSheetOpen(false);
     void interactions.handleExternalShare();
@@ -72,7 +67,6 @@ export function useShareAndRepost({
     handleReposted,
     canRepost,
     handleRepostSelect,
-    handleStorySelect,
     handleExternalShareSelect,
   };
 }

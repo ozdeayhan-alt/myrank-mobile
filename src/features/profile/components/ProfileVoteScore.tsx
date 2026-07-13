@@ -3,12 +3,12 @@ import { useProfileVoteActions, useProfileVoteDisplay } from "./ProfileVoteProvi
 import { ProfileTotalScoreDisplay } from "./ProfileTotalScoreDisplay";
 
 function ProfileVoteScoreInner() {
-  const { targetUserId } = useProfileVoteActions();
-  const { displayTP, voteFlash, gaugeVoteMode, fullLadderRequested } = useProfileVoteDisplay();
+  const { targetUserId, initialTotalScore } = useProfileVoteActions();
+  const { voteFlash, gaugeVoteMode, fullLadderRequested } = useProfileVoteDisplay();
   return (
     <ProfileTotalScoreDisplay
-      displayScore={displayTP}
       userId={targetUserId}
+      initialTotalScore={initialTotalScore}
       voteFlash={voteFlash}
       gaugeVoteMode={gaugeVoteMode}
       fullLadderEnabled={fullLadderRequested}

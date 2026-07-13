@@ -13,7 +13,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "bundleIdentifier": "com.myrank.mobile",
@@ -22,8 +22,7 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Profil fotoğrafı ve paylaşım için galeri erişimi gerekir.",
         "NSPhotoLibraryAddUsageDescription": "Profil fotoğrafı ve paylaşım için galeriye kaydetme erişimi gerekir.",
-        "NSCameraUsageDescription": "Fotoğraf ve video çekmek için kamera erişimi gerekir.",
-        "NSMicrophoneUsageDescription": "Video kaydı için mikrofon erişimi gerekir.",
+        "NSCameraUsageDescription": "Fotoğraf çekmek için kamera erişimi gerekir.",
         "NSUserNotificationUsageDescription": "Beğeni, yorum ve mesaj bildirimlerini almak için bildirim izni gerekir.",
         "UIBackgroundModes": [
           "remote-notification"
@@ -32,17 +31,15 @@
     },
     "android": {
       "package": "com.myrank.mobile",
-      "versionCode": 32,
+      "versionCode": 33,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#000000",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO",
         "READ_EXTERNAL_STORAGE",
         "POST_NOTIFICATIONS",
         "VIBRATE"
@@ -58,7 +55,7 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#111827",
+          "color": "#000000",
           "defaultChannel": "default"
         }
       ]

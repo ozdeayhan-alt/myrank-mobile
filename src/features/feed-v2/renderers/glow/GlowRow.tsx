@@ -6,7 +6,7 @@ import { FeedPostErrorBoundary } from "@/features/posts/components/FeedPostError
 import { RichPostText } from "@/features/posts/components/RichPostText";
 import { estimateFeedStreamRowHeight } from "@/features/posts/utils/feedStreamLayout";
 import { postBodyText } from "@/features/posts/utils/postBodyText";
-import { useIsFeedPostMediaHighPriority } from "@/features/posts/context/FeedVisiblePostsContext";
+import { useIsFeedPostMediaHighPriority } from "@/features/posts/store/feedScrollVisibilityStore";
 import { DEFAULT_LIST_HORIZONTAL_INSET } from "@/features/posts/constants/feedMediaLayout";
 import { FeedRowChrome } from "../shared/FeedRowChrome";
 import { useFeedRowInteractions } from "../shared/useFeedRowInteractions";
@@ -45,6 +45,7 @@ function GlowRowInner({
     <FeedRowChrome
       row={row}
       currentUserId={currentUserId}
+      bodyAbove={<View />}
       bodyBelow={
         bodyText ? (
           <View className="px-4 py-3">

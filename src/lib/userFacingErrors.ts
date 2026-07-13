@@ -1,4 +1,5 @@
 import { getFirebaseErrorMessage } from "./firebaseErrors";
+import { ApiError } from "./apiError";
 
 const HTTP_STATUS_MESSAGES: Record<number, string> = {
   400: "İstek geçersiz. Lütfen tekrar deneyin.",
@@ -70,6 +71,13 @@ function mapNetworkError(message: string): string | null {
  * Upload, API ve ağ hataları için kullanıcıya gösterilecek Türkçe metin.
  */
 export function getUserFacingErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    const httpMessage = messageFromHttpStatus(error.status);
+    if (httpMessage) {
+      return httpMessage;
+    }
+  }
+
   if (error instanceof Error) {
     const networkMapped = mapNetworkError(error.message);
     if (networkMapped) {
@@ -80,14 +88,7 @@ export function getUserFacingErrorMessage(error: unknown): string {
     if (status !== null) {
       const detailMatch = error.message.match(/^(.+?) \((\d{3})\)$/);
       const detail = detailMatch?.[1]?.trim();
-      if (
-        detail &&
-        (status === 500 ||
-          status === 403 ||
-          status === 400 ||
-          status === 401) &&
-        !detail.toLowerCase().includes("ffmpeg version")
-      ) {
+      if (detail && (status === 500 || status === 403 || status === 400 || status === 401)) {
         return detail;
       }
 

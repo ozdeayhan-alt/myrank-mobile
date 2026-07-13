@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 
 export type ResolvedMention = {
   token: string;
@@ -29,10 +30,7 @@ export async function resolveMentions(
     mentions?: ResolvedMention[];
     error?: string;
   };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Mention çözümlenemedi");
-  }
+  throwIfNotOk(response, data, data.error ?? "Mention çözümlenemedi");
 
   return data.mentions ?? [];
 }

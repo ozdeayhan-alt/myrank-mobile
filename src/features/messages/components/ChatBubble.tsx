@@ -1,6 +1,5 @@
 import { Text, View } from "react-native";
 import { Image } from "expo-image";
-import { useVideoPlayer, VideoView } from "expo-video";
 import { ProfileAvatar } from "@/features/profile/components/ProfileAvatar";
 import type { ChatMessage } from "../types";
 import { messageTheme } from "../theme";
@@ -24,22 +23,6 @@ type ChatBubbleProps = {
   showAvatar?: boolean;
 };
 
-function ChatVideoBubble({ uri }: { uri: string; posterURL?: string }) {
-  const player = useVideoPlayer(uri, (instance) => {
-    instance.loop = false;
-    instance.muted = false;
-  });
-
-  return (
-    <VideoView
-      player={player}
-      style={{ width: 220, height: 280, borderRadius: 12 }}
-      contentFit="cover"
-      nativeControls
-    />
-  );
-}
-
 export function ChatBubble({
   message,
   isMine,
@@ -47,7 +30,7 @@ export function ChatBubble({
   avatarFallbackLetter = "?",
   showAvatar = true,
 }: ChatBubbleProps) {
-  const isMedia = message.type === "image" || message.type === "video";
+  const isMedia = message.type === "image";
 
   const avatarSlot = (
     <View
@@ -93,13 +76,6 @@ export function ChatBubble({
             source={{ uri: message.mediaURL }}
             style={{ width: 220, height: 220, borderRadius: 12 }}
             contentFit="cover"
-          />
-        ) : null}
-
-        {message.type === "video" && message.mediaURL ? (
-          <ChatVideoBubble
-            uri={message.mediaURL}
-            posterURL={message.posterURL}
           />
         ) : null}
 

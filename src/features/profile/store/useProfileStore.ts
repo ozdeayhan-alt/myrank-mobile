@@ -27,6 +27,8 @@ type ProfileState = {
   isSyncing: boolean;
   /** Firestore users/{uid} kaydı mevcut ve metadata sunucuda tam. */
   profileSavedOnServer: boolean;
+  /** Sunucu profil reconcile devam ediyor — onboarding formu gösterme. */
+  isProfileRemoteReconcilePending: boolean;
   setMetadata: (partial: Partial<UserMetadata>) => void;
   setDisplayName: (displayName: string) => void;
   setPhotoURL: (photoURL: string) => void;
@@ -44,6 +46,7 @@ type ProfileState = {
   setRemoteLoaded: (loaded: boolean) => void;
   setSyncing: (syncing: boolean) => void;
   setProfileSavedOnServer: (saved: boolean) => void;
+  setProfileRemoteReconcilePending: (pending: boolean) => void;
   beginProfileBootstrap: () => void;
   finishProfileBootstrap: () => void;
   reset: () => void;
@@ -64,6 +67,7 @@ export const useProfileStore = create<ProfileState>()(
       isProfileBootstrapSettled: false,
       isSyncing: false,
       profileSavedOnServer: false,
+      isProfileRemoteReconcilePending: false,
 
       setMetadata: (partial) =>
         set((state) => ({
@@ -110,11 +114,22 @@ export const useProfileStore = create<ProfileState>()(
 
       setProfileSavedOnServer: (saved) => set({ profileSavedOnServer: saved }),
 
+      setProfileRemoteReconcilePending: (pending) =>
+        set({ isProfileRemoteReconcilePending: pending }),
+
       beginProfileBootstrap: () =>
-        set({ isRemoteLoaded: false, isProfileBootstrapSettled: false }),
+        set({
+          isRemoteLoaded: false,
+          isProfileBootstrapSettled: false,
+          isProfileRemoteReconcilePending: false,
+        }),
 
       finishProfileBootstrap: () =>
-        set({ isRemoteLoaded: true, isProfileBootstrapSettled: true }),
+        set({
+          isRemoteLoaded: true,
+          isProfileBootstrapSettled: true,
+          isProfileRemoteReconcilePending: false,
+        }),
 
       reset: () =>
         set({
@@ -129,6 +144,7 @@ export const useProfileStore = create<ProfileState>()(
           isProfileBootstrapSettled: false,
           isSyncing: false,
           profileSavedOnServer: false,
+          isProfileRemoteReconcilePending: false,
         }),
 
       isComplete: () => isMetadataComplete(get().metadata),

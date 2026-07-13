@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api";
 import { fetchApi } from "@/lib/fetchApi";
+import { throwIfNotOk } from "@/lib/apiError";
 import type { FollowListResponse } from "../types/followLists";
 
 type FetchFollowersListParams = {
@@ -25,10 +26,7 @@ export async function fetchFollowersList({
   );
 
   const data = (await response.json().catch(() => ({}))) as FollowListResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Takipçiler alınamadı");
-  }
+  throwIfNotOk(response, data, data.error ?? "Takipçiler alınamadı");
 
   return {
     users: data.users ?? [],

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps, ReactNode } from "react";
-import { Platform, Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
-import { PROFILE_HORIZONTAL_PADDING } from "@/features/profile/profileLayout";
+import { Platform, Pressable, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from "react-native";
+import { getProfileHorizontalPadding } from "@/features/profile/profileLayout";
 import { PROFILE_MUTED_ICON_COLOR } from "@/features/profile/profileIconThemes";
 
 type ProfileExpandableCardProps = {
@@ -26,6 +26,8 @@ export function ProfileExpandableCard({
   trailing,
   children,
 }: ProfileExpandableCardProps) {
+  const { width: screenWidth } = useWindowDimensions();
+  const horizontalPadding = getProfileHorizontalPadding(screenWidth);
   const headerShellStyle: StyleProp<ViewStyle> =
     headerHeight != null
       ? { height: headerHeight, paddingVertical: 0 }
@@ -42,7 +44,7 @@ export function ProfileExpandableCard({
   return (
     <View
       className="mb-4"
-      style={{ marginHorizontal: -PROFILE_HORIZONTAL_PADDING }}
+      style={{ marginHorizontal: -horizontalPadding }}
     >
       <View
         className="flex-row items-center rounded-2xl border border-gray-200 bg-white px-3 py-2 shadow-sm"
